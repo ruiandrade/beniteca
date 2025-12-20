@@ -1,73 +1,51 @@
-const { sql, getConnection } = require('../config/db');
+const userService = require('../services/userService');
 
-exports.getAllUsers = async (req, res) => {
-  try {
-    const pool = await getConnection();
-    const result = await pool.request().query('SELECT * FROM dbo.Users');
-    res.json(result.recordset);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-exports.getUserById = async (req, res) => {
-  try {
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('id', sql.Int, req.params.id)
-      .query('SELECT * FROM dbo.Users WHERE id = @id');
-    if (result.recordset.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+class UserController {
+  async create(req, res) {
+    try {
+      const user = await userService.createUser(req.body);
+      res.status(201).json(user);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
-    res.json(result.recordset[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-};
 
-exports.createUser = async (req, res) => {
-  try {
-    const { name, email } = req.body;
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('name', sql.VarChar, name)
-      .input('email', sql.VarChar, email)
-      .query('INSERT INTO dbo.Users (name, email) OUTPUT INSERTED.* VALUES (@name, @email)');
-    res.status(201).json(result.recordset[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-exports.updateUser = async (req, res) => {
-  try {
-    const { name, email } = req.body;
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('id', sql.Int, req.params.id)
-      .input('name', sql.VarChar, name)
-      .input('email', sql.VarChar, email)
-      .query('UPDATE dbo.Users SET name = @name, email = @email OUTPUT INSERTED.* WHERE id = @id');
-    if (result.rowsAffected[0] === 0) {
-      return res.status(404).json({ error: 'User not found' });
+  async getAll(req, res) {
+    try {
+      const users = await userService.getUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-    res.json(result.recordset[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-};
 
-exports.deleteUser = async (req, res) => {
-  try {
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('id', sql.Int, req.params.id)
-      .query('DELETE FROM dbo.Users WHERE id = @id');
-    if (result.rowsAffected[0] === 0) {
-      return res.status(404).json({ error: 'User not found' });
+  async getById(req, res) {
+    try {
+      const user = await userService.getUserById(req.params.id);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-    res.json({ message: 'User deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-};
+
+  async update(req, res) {
+    try {
+      const user = await userService.updateUser(req.params.id, req.body);
+      res.json(user);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  async delete(req, res) {
+    try {
+      await userService.deleteUser(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+}
+
+module.exports = new UserController();
