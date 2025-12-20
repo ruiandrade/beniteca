@@ -1,5 +1,13 @@
 node_modules
 # Keep environment variables out of version control
 .env
+# .gitignore
+.env.development
+.env.production
+.env.test
+.env.example
+
+
+
 
 /src/generated/prisma
