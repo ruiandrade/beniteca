@@ -1,3 +1,5 @@
+const path = require('path');
+
 exports.index = (req, res) => {
-  res.send('App Node.js rodando no Codespaces 🚀');
+  res.sendFile(path.join(__dirname, '../../public/index.html'));
 };
