@@ -1,30 +1,57 @@
-const prisma = require('../lib/prisma');
+const { getConnection, sql } = require('../config/db');
 
 class MaterialService {
   async createMaterial(data) {
-    // TODO: Check permissions for level
-    return await prisma.material.create({ data });
+    const pool = await getConnection();
+    const insertQuery = `
+      INSERT INTO Material (levelId, description, quantity, estimatedValue, realValue)
+      OUTPUT INSERTED.*
+      VALUES (@levelId, @description, @quantity, @estimatedValue, @realValue)
+    `;
+    const result = await pool.request()
+      .input('levelId', sql.Int, data.levelId)
+      .input('description', sql.NVarChar, data.description)
+      .input('quantity', sql.Float, data.quantity)
+      .input('estimatedValue', sql.Float, data.estimatedValue)
+      .input('realValue', sql.Float, data.realValue)
+      .query(insertQuery);
+    return result.recordset[0];
   }
 
   async getMaterialsByLevel(levelId) {
-    return await prisma.material.findMany({
-      where: { levelId: parseInt(levelId) }
-    });
+    const pool = await getConnection();
+    const result = await pool.request()
+      .input('levelId', sql.Int, parseInt(levelId))
+      .query('SELECT * FROM Material WHERE levelId = @levelId ORDER BY id');
+    return result.recordset;
   }
 
   async updateMaterial(id, data) {
-    // TODO: Permissions
-    return await prisma.material.update({
-      where: { id: parseInt(id) },
-      data
-    });
+    const pool = await getConnection();
+    const updateQuery = `
+      UPDATE Material
+      SET levelId = @levelId, description = @description, quantity = @quantity, 
+          estimatedValue = @estimatedValue, realValue = @realValue, updatedAt = GETDATE()
+      OUTPUT INSERTED.*
+      WHERE id = @id
+    `;
+    const result = await pool.request()
+      .input('id', sql.Int, parseInt(id))
+      .input('levelId', sql.Int, data.levelId)
+      .input('description', sql.NVarChar, data.description)
+      .input('quantity', sql.Float, data.quantity)
+      .input('estimatedValue', sql.Float, data.estimatedValue)
+      .input('realValue', sql.Float, data.realValue)
+      .query(updateQuery);
+    return result.recordset[0];
   }
 
   async deleteMaterial(id) {
-    // TODO: Permissions
-    return await prisma.material.delete({
-      where: { id: parseInt(id) }
-    });
+    const pool = await getConnection();
+    const result = await pool.request()
+      .input('id', sql.Int, parseInt(id))
+      .query('DELETE FROM Material OUTPUT DELETED.* WHERE id = @id');
+    return result.recordset[0];
   }
 }
 

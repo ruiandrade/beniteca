@@ -1,75 +1,62 @@
-const sql = require('mssql');
-
-const config = {
-  server: 'beniteca.database.windows.net',
-  port: 1433,
-  database: 'free-sql-db-7083145',
-  user: 'beniteca',
-  password: 'Testing10',
-  options: {
-    encrypt: true,
-    trustServerCertificate: true,
-  }
-};
+const { getConnection, sql } = require('../config/db');
 
 class UserService {
   async createUser(data) {
-    try {
-      await sql.connect(config);
-      const result = await sql.query(`
+    const pool = await getConnection();
+    const result = await pool.request()
+      .input('email', sql.NVarChar, data.email)
+      .input('name', sql.NVarChar, data.name)
+      .input('status', sql.NVarChar, data.status)
+      .query(`
         INSERT INTO [User] (email, name, status)
         OUTPUT INSERTED.*
-        VALUES ('${data.email}', '${data.name}', '${data.status}')
+        VALUES (@email, @name, @status)
       `);
-      return result.recordset[0];
-    } finally {
-      sql.close();
-    }
+    return result.recordset[0];
   }
 
   async getUsers() {
-    try {
-      await sql.connect(config);
-      const result = await sql.query('SELECT * FROM [User] ORDER BY id');
-      return result.recordset;
-    } finally {
-      sql.close();
-    }
+    const pool = await getConnection();
+    const result = await pool.request().query('SELECT * FROM [User] ORDER BY id');
+    return result.recordset;
   }
 
   async getUserById(id) {
-    try {
-      await sql.connect(config);
-      const result = await sql.query(`SELECT * FROM [User] WHERE id = ${id}`);
-      return result.recordset[0];
-    } finally {
-      sql.close();
-    }
+    const pool = await getConnection();
+    const result = await pool.request()
+      .input('id', sql.Int, parseInt(id))
+      .query('SELECT * FROM [User] WHERE id = @id');
+    return result.recordset[0];
   }
 
   async updateUser(id, data) {
-    try {
-      await sql.connect(config);
-      let query = 'UPDATE [User] SET ';
-      const updates = [];
-      if (data.email) updates.push(`email = '${data.email}'`);
-      if (data.name) updates.push(`name = '${data.name}'`);
-      if (data.status) updates.push(`status = '${data.status}'`);
-      query += updates.join(', ') + ` OUTPUT INSERTED.* WHERE id = ${id}`;
-      const result = await sql.query(query);
-      return result.recordset[0];
-    } finally {
-      sql.close();
+    const pool = await getConnection();
+    const updates = [];
+    const request = pool.request().input('id', sql.Int, parseInt(id));
+    if (data.email) {
+      updates.push('email = @email');
+      request.input('email', sql.NVarChar, data.email);
     }
+    if (data.name) {
+      updates.push('name = @name');
+      request.input('name', sql.NVarChar, data.name);
+    }
+    if (data.status) {
+      updates.push('status = @status');
+      request.input('status', sql.NVarChar, data.status);
+    }
+    if (updates.length === 0) throw new Error('No fields to update');
+    const query = `UPDATE [User] SET ${updates.join(', ')}, updatedAt = GETDATE() OUTPUT INSERTED.* WHERE id = @id`;
+    const result = await request.query(query);
+    return result.recordset[0];
   }
 
   async deleteUser(id) {
-    try {
-      await sql.connect(config);
-      await sql.query(`DELETE FROM [User] WHERE id = ${id}`);
-    } finally {
-      sql.close();
-    }
+    const pool = await getConnection();
+    const result = await pool.request()
+      .input('id', sql.Int, parseInt(id))
+      .query('DELETE FROM [User] OUTPUT DELETED.* WHERE id = @id');
+    return result.recordset[0];
   }
 }
 
