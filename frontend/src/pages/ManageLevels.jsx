@@ -13,6 +13,7 @@ export default function ManageLevels() {
   const [notes, setNotes] = useState([]);
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [completedCount, setCompletedCount] = useState(0);
 
   // Estados para formulários
   const [showSublevelForm, setShowSublevelForm] = useState(false);
@@ -112,6 +113,8 @@ export default function ManageLevels() {
       if (res.ok) {
         const data = await res.json();
         setSublevels(data);
+        const completed = data.filter(sub => sub.completed).length;
+        setCompletedCount(completed);
       }
     } catch (err) {
       console.error("Erro ao carregar subníveis:", err);
@@ -226,6 +229,19 @@ export default function ManageLevels() {
       if (res.ok) await fetchSublevels();
     } catch (err) {
       alert("Erro ao deletar subnível");
+    }
+  };
+
+  const handleToggleComplete = async (sublevelId, currentStatus) => {
+    try {
+      const res = await fetch(`/api/levels/${sublevelId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: !currentStatus }),
+      });
+      if (res.ok) await fetchSublevels();
+    } catch (err) {
+      alert("Erro ao alterar estado de conclusão");
     }
   };
 
@@ -528,6 +544,11 @@ export default function ManageLevels() {
               : (work?.name || "Obra")}
           </h1>
           <p className="ml-subtitle">{work?.description}</p>
+          {sublevels.length > 0 && (
+            <p className="ml-completion-ratio">
+              ✓ {completedCount}/{sublevels.length} níveis concluídos
+            </p>
+          )}
           <button onClick={() => setEditMode(!editMode)} className="ml-edit-btn">
             {editMode ? "Cancelar Edição" : "✏ Editar Detalhes"}
           </button>
@@ -665,10 +686,17 @@ export default function ManageLevels() {
                 sublevels.map((sub) => (
                   <div key={sub.id} className="ml-item">
                     <div className="ml-item-info">
-                      <h3>{sub.name}</h3>
+                      <h3>{sub.name} {sub.completed && <span className="ml-completed-badge">✓</span>}</h3>
                       <p>{sub.description}</p>
                     </div>
                     <div className="ml-item-actions">
+                      <button 
+                        onClick={() => handleToggleComplete(sub.id, sub.completed)} 
+                        className={sub.completed ? "ml-btn-uncomplete" : "ml-btn-complete"}
+                        title={sub.completed ? "Marcar como não concluído" : "Marcar como concluído"}
+                      >
+                        {sub.completed ? "↩" : "✓"}
+                      </button>
                       <button onClick={() => navigate(`/works/${sub.id}/levels`)} className="ml-btn-view">Ver</button>
                       <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete">Deletar</button>
                     </div>
@@ -1467,6 +1495,50 @@ export default function ManageLevels() {
         }
         .ml-btn-delete:hover {
           background: #fecaca;
+        }
+        .ml-btn-complete {
+          background: #16a34a;
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          padding: 8px 14px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: background 0.2s;
+        }
+        .ml-btn-complete:hover {
+          background: #15803d;
+        }
+        .ml-btn-uncomplete {
+          background: #f59e0b;
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          padding: 8px 14px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: background 0.2s;
+        }
+        .ml-btn-uncomplete:hover {
+          background: #d97706;
+        }
+        .ml-completed-badge {
+          display: inline-block;
+          background: #16a34a;
+          color: #fff;
+          border-radius: 50%;
+          width: 20px;
+          height: 20px;
+          text-align: center;
+          line-height: 20px;
+          font-size: 0.75rem;
+          margin-left: 8px;
+        }
+        .ml-completion-ratio {
+          font-size: 1rem;
+          color: #16a34a;
+          font-weight: 600;
+          margin-top: 8px;
         }
         .ml-photo-grid {
           display: grid;
