@@ -22,7 +22,7 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(frontendBuildPath));
   
   // Catch-all handler for SPA routing - must be after API routes
-  app.get('*', (req, res) => {
+  app.get('/*', (req, res) => {
     res.sendFile(path.join(frontendBuildPath, 'index.html'));
   });
 }
