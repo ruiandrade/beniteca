@@ -1,4 +1,6 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import CreateWork from './pages/CreateWork';
 import ManageLevels from './pages/ManageLevels';
@@ -8,9 +10,15 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/create" element={<CreateWork />} />
-        <Route path="/works/:id/levels" element={<ManageLevels />} />
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="obras" element={<Home />} />
+          <Route path="create" element={<CreateWork />} />
+          <Route path="works/:id/levels" element={<ManageLevels />} />
+          <Route path="users" element={<div style={{padding: '32px'}}><h1>👥 Gerir Utilizadores</h1><p>Em breve: criar e editar utilizadores</p></div>} />
+          <Route path="permissions" element={<div style={{padding: '32px'}}><h1>🔐 Permissões e Controlo de Acesso</h1><p>Em breve: gestão de permissões</p></div>} />
+        </Route>
       </Routes>
     </Router>
   );

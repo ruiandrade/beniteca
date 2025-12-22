@@ -4,31 +4,7 @@ nohup: ignoring input
 > vite
 
 
-  VITE v7.3.0  ready in 1963 ms
+  VITE v7.3.0  ready in 298 ms
 
   ➜  Local:   http://localhost:5173/
-  ➜  Network: http://10.0.1.179:5173/
-3:17:51 PM [vite] http proxy error: /api/levels?parentId=
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-3:17:51 PM [vite] http proxy error: /api/levels?parentId=
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-3:18:00 PM [vite] http proxy error: /api/levels?parentId=
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-3:18:00 PM [vite] http proxy error: /api/levels?parentId=
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-3:18:03 PM [vite] http proxy error: /api/levels?parentId=
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-3:18:03 PM [vite] http proxy error: /api/levels?parentId=
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
+  ➜  Network: http://10.0.10.42:5173/

@@ -5,6 +5,7 @@ export default function Home() {
   const navigate = useNavigate();
   const [obras, setObras] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchObras();
@@ -49,16 +50,32 @@ export default function Home() {
           </button>
         </div>
 
+        <div className="home-search">
+          <input
+            type="text"
+            placeholder="🔍 Pesquisar obras por nome ou descrição..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="home-search-input"
+          />
+        </div>
+
         {loading ? (
           <p className="home-loading">A carregar obras...</p>
-        ) : obras.length === 0 ? (
+        ) : obras.filter(obra => 
+            obra.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            obra.description?.toLowerCase().includes(searchTerm.toLowerCase())
+          ).length === 0 ? (
           <div className="home-empty">
-            <p>Nenhuma obra encontrada.</p>
+            <p>{searchTerm ? "Nenhuma obra encontrada com esse termo." : "Nenhuma obra encontrada."}</p>
             <p className="home-empty-hint">Comece por criar a primeira obra.</p>
           </div>
         ) : (
           <div className="home-grid">
-            {obras.map((obra) => (
+            {obras.filter(obra => 
+              obra.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              obra.description?.toLowerCase().includes(searchTerm.toLowerCase())
+            ).map((obra) => (
               <div key={obra.id} className="home-card">
                 {obra.coverImage && (
                   <img src={obra.coverImage} alt={obra.name} className="home-card-img" />
@@ -113,11 +130,31 @@ export default function Home() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 32px;
+          margin-bottom: 20px;
           padding: 24px 32px;
           background: #fff;
           border-radius: 12px;
           box-shadow: 0 2px 16px #0001;
+        }
+        .home-search {
+          margin-bottom: 24px;
+        }
+        .home-search-input {
+          width: 100%;
+          padding: 14px 20px;
+          font-size: 1rem;
+          border: 2px solid #e2e8f0;
+          border-radius: 10px;
+          background: #fff;
+          transition: border-color 0.2s;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .home-search-input:focus {
+          outline: none;
+          border-color: #6366f1;
+        }
+        .home-search-input::placeholder {
+          color: #94a3b8;
         }
         .home-title {
           font-size: 2.5rem;
@@ -163,8 +200,8 @@ export default function Home() {
         }
         .home-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-          gap: 24px;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 20px;
         }
         .home-card {
           background: #fff;

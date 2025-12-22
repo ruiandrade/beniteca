@@ -81,8 +81,8 @@ export default function CreateWork() {
       <form className="cw-form desktop" onSubmit={handleSubmit} noValidate>
         <div className="cw-header-row">
           <h2 className="cw-title">Criar Obra</h2>
-          <button type="button" onClick={() => navigate("/")} className="cw-home-btn">
-            ← Voltar ao Início
+          <button type="button" onClick={() => navigate("/obras")} className="cw-home-btn">
+            ← Voltar às Obras
           </button>
         </div>
         <div className="cw-row">
