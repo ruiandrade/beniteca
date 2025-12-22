@@ -11,7 +11,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from public directory (for legacy assets if any)
-app.use(express.static(path.join(__dirname, '../public')));
+// Disable index so it doesn't take over '/' in production
+app.use(express.static(path.join(__dirname, '../public'), { index: false }));
+// Also expose under /public for direct access if needed
+app.use('/public', express.static(path.join(__dirname, '../public')));
 
 // API routes (mounted under /api for both dev and prod)
 app.use('/api', routes);
