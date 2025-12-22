@@ -172,21 +172,28 @@ export default function ManageLevels() {
     const errors = {};
     if (!sublevelName.trim()) errors.name = "Nome é obrigatório";
     if (!sublevelDesc.trim()) errors.description = "Descrição é obrigatória";
-    if (!sublevelCover) errors.cover = "Imagem é obrigatória";
+    // Imagem é obrigatória apenas em obras principais (parentId === null)
+    // Para subníveis, imagem é opcional
     setSublevelErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     setLoading(true);
     try {
-      const formData = new FormData();
-      const renamed = new File([sublevelCover], `${id}-${Date.now()}-cover-${sublevelCover.name}`, { type: sublevelCover.type });
-      formData.append("file", renamed);
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!uploadRes.ok) throw new Error("Erro ao fazer upload");
-      const { url } = await uploadRes.json();
+      let url = null;
+      
+      // Upload da imagem apenas se foi fornecida
+      if (sublevelCover) {
+        const formData = new FormData();
+        const renamed = new File([sublevelCover], `${id}-${Date.now()}-cover-${sublevelCover.name}`, { type: sublevelCover.type });
+        formData.append("file", renamed);
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (!uploadRes.ok) throw new Error("Erro ao fazer upload");
+        const uploadData = await uploadRes.json();
+        url = uploadData.url;
+      }
 
       const res = await fetch("/api/levels", {
         method: "POST",
@@ -636,7 +643,7 @@ export default function ManageLevels() {
                   {sublevelErrors.description && <span className="ml-error">{sublevelErrors.description}</span>}
                 </div>
                 <div className="ml-field">
-                  <label>Imagem de Capa *</label>
+                  <label>Imagem de Capa (opcional)</label>
                   <input
                     type="file"
                     accept="image/*"
