@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "echo \"No tests yet\""
+    "test": "echo \"No tests yet\"",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "build": "npm run build:frontend",
+    "deploy:azure": "npm install && npm run build"
   },
   "repository": {
     "type": "git",
@@ -22,8 +25,10 @@
   "homepage": "https://github.com/ruiandrade/beniteca#readme",
   "dependencies": {
     "@azure/storage-blob": "^12.29.1",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "mssql": "^12.2.0"
+    "mssql": "^12.2.0",
+    "multer": "^2.0.2"
   }
 }

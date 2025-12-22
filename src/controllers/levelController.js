@@ -12,7 +12,8 @@ class LevelController {
 
   async getAll(req, res) {
     try {
-      const levels = await levelService.getLevels();
+      const { parentId } = req.query || {};
+      const levels = await levelService.getLevels({ parentId });
       res.json(levels);
     } catch (error) {
       res.status(500).json({ error: error.message });

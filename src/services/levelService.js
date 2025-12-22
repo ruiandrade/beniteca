@@ -30,19 +30,29 @@ class LevelService {
     return result.recordset[0];
   }
 
-  async getLevels() {
+  async getLevels(filter = {}) {
     const pool = await getConnection();
-    const query = `
+    let query = `
       SELECT l.*, 
              p.name as parentName,
              cm.name as constructionManagerName,
              cm.email as constructionManagerEmail
       FROM Level l
       LEFT JOIN Level p ON l.parentId = p.id
-      LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
-      ORDER BY l.id
-    `;
-    const result = await pool.request().query(query);
+      LEFT JOIN [User] cm ON l.constructionManagerId = cm.id`;
+
+    const req = pool.request();
+    if (Object.prototype.hasOwnProperty.call(filter, 'parentId')) {
+      if (filter.parentId === null || filter.parentId === 'null' || filter.parentId === '') {
+        query += `\n      WHERE l.parentId IS NULL`;
+      } else {
+        query += `\n      WHERE l.parentId = @parentId`;
+        req.input('parentId', sql.Int, parseInt(filter.parentId));
+      }
+    }
+    query += `\n      ORDER BY l.id`;
+
+    const result = await req.query(query);
     // For includes like children, materials, etc., we'd need separate queries or complex JOINs
     // For simplicity, return basic info; can expand later
     return result.recordset;
@@ -68,27 +78,62 @@ class LevelService {
 
   async updateLevel(id, data) {
     const pool = await getConnection();
+    
+    // Build dynamic update query based on provided fields
+    const fields = [];
+    const request = pool.request().input('id', sql.Int, parseInt(id));
+    
+    if (data.name !== undefined) {
+      fields.push('name = @name');
+      request.input('name', sql.NVarChar, data.name);
+    }
+    if (data.description !== undefined) {
+      fields.push('description = @description');
+      request.input('description', sql.NVarChar, data.description);
+    }
+    if (data.hasOwnProperty('parentId')) {
+      fields.push('parentId = @parentId');
+      request.input('parentId', sql.Int, data.parentId);
+    }
+    if (data.startDate !== undefined) {
+      fields.push('startDate = @startDate');
+      request.input('startDate', sql.DateTime, data.startDate);
+    }
+    if (data.endDate !== undefined) {
+      fields.push('endDate = @endDate');
+      request.input('endDate', sql.DateTime, data.endDate);
+    }
+    if (data.completed !== undefined) {
+      fields.push('completed = @completed');
+      request.input('completed', sql.Bit, data.completed);
+    }
+    if (data.notes !== undefined) {
+      fields.push('notes = @notes');
+      request.input('notes', sql.NVarChar, data.notes);
+    }
+    if (data.coverImage !== undefined) {
+      fields.push('coverImage = @coverImage');
+      request.input('coverImage', sql.NVarChar, data.coverImage);
+    }
+    if (data.constructionManagerId !== undefined) {
+      fields.push('constructionManagerId = @constructionManagerId');
+      request.input('constructionManagerId', sql.Int, data.constructionManagerId);
+    }
+    
+    if (fields.length === 0) {
+      throw new Error('No fields to update');
+    }
+    
+    fields.push('updatedAt = GETDATE()');
+    
     const updateQuery = `
       UPDATE Level
-      SET name = @name, description = @description, parentId = @parentId, 
-          startDate = @startDate, endDate = @endDate, completed = @completed, 
-          notes = @notes, coverImage = @coverImage, constructionManagerId = @constructionManagerId,
-          updatedAt = GETDATE()
+      SET ${fields.join(', ')}
       OUTPUT INSERTED.*
       WHERE id = @id
     `;
-    const result = await pool.request()
-      .input('id', sql.Int, parseInt(id))
-      .input('name', sql.NVarChar, data.name)
-      .input('description', sql.NVarChar, data.description)
-      .input('parentId', sql.Int, data.parentId)
-      .input('startDate', sql.DateTime, data.startDate)
-      .input('endDate', sql.DateTime, data.endDate)
-      .input('completed', sql.Bit, data.completed)
-      .input('notes', sql.NVarChar, data.notes)
-      .input('coverImage', sql.NVarChar, data.coverImage)
-      .input('constructionManagerId', sql.Int, data.constructionManagerId)
-      .query(updateQuery);
+    
+    const result = await request.query(updateQuery);
     return result.recordset[0];
   }
 

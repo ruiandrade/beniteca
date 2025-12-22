@@ -7,6 +7,8 @@ router.use('/users', require('./users'));
 router.use('/levels', require('./levels'));
 router.use('/materials', require('./materials'));
 router.use('/photos', require('./photos'));
+router.use('/documents', require('./documents'));
 router.use('/permissions', require('./permissions'));
+router.use('/upload', require('./upload'));
 
 module.exports = router;

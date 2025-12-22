@@ -4,9 +4,9 @@ class MaterialService {
   async createMaterial(data) {
     const pool = await getConnection();
     const insertQuery = `
-      INSERT INTO Material (levelId, description, quantity, estimatedValue, realValue)
+      INSERT INTO Material (levelId, description, quantity, estimatedValue, realValue, deliveryStatus, assemblyStatus)
       OUTPUT INSERTED.*
-      VALUES (@levelId, @description, @quantity, @estimatedValue, @realValue)
+      VALUES (@levelId, @description, @quantity, @estimatedValue, @realValue, @deliveryStatus, @assemblyStatus)
     `;
     const result = await pool.request()
       .input('levelId', sql.Int, data.levelId)
@@ -14,6 +14,8 @@ class MaterialService {
       .input('quantity', sql.Float, data.quantity)
       .input('estimatedValue', sql.Float, data.estimatedValue)
       .input('realValue', sql.Float, data.realValue)
+        .input('deliveryStatus', sql.NVarChar, data.deliveryStatus || null)
+        .input('assemblyStatus', sql.NVarChar, data.assemblyStatus || null)
       .query(insertQuery);
     return result.recordset[0];
   }
@@ -31,7 +33,8 @@ class MaterialService {
     const updateQuery = `
       UPDATE Material
       SET levelId = @levelId, description = @description, quantity = @quantity, 
-          estimatedValue = @estimatedValue, realValue = @realValue, updatedAt = GETDATE()
+          estimatedValue = @estimatedValue, realValue = @realValue,
+          deliveryStatus = @deliveryStatus, assemblyStatus = @assemblyStatus, updatedAt = GETDATE()
       OUTPUT INSERTED.*
       WHERE id = @id
     `;
@@ -42,6 +45,8 @@ class MaterialService {
       .input('quantity', sql.Float, data.quantity)
       .input('estimatedValue', sql.Float, data.estimatedValue)
       .input('realValue', sql.Float, data.realValue)
+        .input('deliveryStatus', sql.NVarChar, data.deliveryStatus || null)
+        .input('assemblyStatus', sql.NVarChar, data.assemblyStatus || null)
       .query(updateQuery);
     return result.recordset[0];
   }

@@ -1,53 +1,176 @@
 # Beniteca
 
-Production-ready Node.js backend for managing construction projects ("obras") with hierarchical levels, strong database modelling, role-based access control, and clear separation between development, test, and production environments.
+Production-ready construction project management system ("obras") with hierarchical levels, materials tracking, document management, and photo uploads.
 
-## Features
+## 🏗️ Features
 
-- Hierarchical project structure with unlimited depth
-- User roles: Admin (A), Construction Manager (C), Write (W), Read-only (R)
-- Permissions per level
-- Materials and photos management
-- Azure SQL Database integration
-- Azure Blob Storage for photos
-- Environment-based configuration
+- **Hierarchical Project Structure**: Unlimited depth levels and sublevels
+- **Materials Management**: Track materials with delivery and assembly status
+- **Document Management**: Upload and organize project documents
+- **Photo Management**: Organize photos by project phase (Before/During/After)
+- **Level Tree Navigation**: Visual tree sidebar for easy navigation
+- **Notes System**: Add notes to any level
+- **Azure Integration**: SQL Database + Blob Storage
+- **Responsive UI**: Desktop-optimized React interface
 
-## Tech Stack
+## 🚀 Tech Stack
 
+### Backend
 - Node.js + Express
-- Prisma ORM with SQL Server
 - Azure SQL Database
-- Azure Blob Storage
+- Azure Blob Storage (@azure/storage-blob)
+- Multer for file uploads
 
-## Project Structure
+### Frontend
+- React 19
+- Vite
+- React Router DOM
+- Modern CSS
+
+## 📁 Project Structure
 
 ```
-src/
-  controllers/     # Request handlers
-  routes/          # API routes
-  services/        # Business logic
-  lib/             # Utilities (Prisma client)
-prisma/
-  schema.prisma    # Database schema
-  seed.js          # Seed data
-.env.development   # Dev environment vars
-.env.test          # Test environment vars
-.env.production    # Prod environment vars
+├── src/
+│   ├── controllers/      # Request handlers
+│   ├── routes/          # API routes  
+│   ├── services/        # Business logic + database operations
+│   └── config/          # Database configuration
+├── frontend/
+│   ├── src/
+│   │   ├── pages/       # React page components
+│   │   └── App.jsx      # Main app + routing
+│   └── dist/            # Production build (generated)
+├── migrations/          # SQL migration scripts
+├── .env.example        # Environment template
+├── DEPLOYMENT.md       # Full deployment guide
+└── AZURE_CHECKLIST.md  # Step-by-step Azure setup
 ```
 
-## Setup
+## 🛠️ Local Development Setup
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+### Prerequisites
+- Node.js 18+ 
+- Azure SQL Database
+- Azure Storage Account
 
-2. Configure environment variables:
-   - Copy `.env.development` and update with your Azure SQL and Blob Storage credentials
-   - For test/prod, update respective files
+### 1. Install Dependencies
 
-3. Generate Prisma client:
-   ```bash
+```bash
+# Install backend dependencies
+npm install
+
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
+```
+
+### 2. Configure Environment
+
+Copy `env.example` to `.env` and update with your credentials:
+
+```bash
+cp env.example .env
+```
+
+Required environment variables:
+- `DATABASE_URL` - Azure SQL connection string
+- `AZURE_STORAGE_CONNECTION_STRING` - Azure Storage connection string
+- `AZURE_STORAGE_ACCOUNT_NAME` - Storage account name
+- `AZURE_STORAGE_ACCESS_KEY` - Storage access key
+
+### 3. Run Development Servers
+
+```bash
+# Terminal 1: Start backend (port 3000)
+npm run dev
+
+# Terminal 2: Start frontend dev server (port 5173)
+cd frontend
+npm run dev
+```
+
+Access the app at: **http://localhost:5173**
+
+The Vite dev server automatically proxies `/api` requests to the backend.
+
+## 🌐 Azure Deployment
+
+### Quick Deploy
+
+```bash
+# Build frontend for production
+npm run build
+
+# Deploy to Azure (requires Azure CLI)
+az webapp up --name your-app-name --resource-group your-rg --runtime "NODE:18-lts"
+```
+
+### Automated Deployment
+
+Set up GitHub Actions for automatic deployment:
+
+1. Download publish profile from Azure Portal
+2. Add as GitHub secret: `AZURE_WEBAPP_PUBLISH_PROFILE`
+3. Update `.github/workflows/azure-deploy.yml` with your app name
+4. Push to `main` branch → automatic deployment
+
+### Detailed Guides
+
+- 📖 [DEPLOYMENT.md](./DEPLOYMENT.md) - Complete deployment guide
+- ✅ [AZURE_CHECKLIST.md](./AZURE_CHECKLIST.md) - Step-by-step Azure setup
+
+## 🔑 Environment Configuration
+
+### Local Development
+Environment variables are loaded from `.env` file.
+
+### Azure App Service  
+Configure in Azure Portal → App Service → Configuration → Application Settings:
+
+| Variable | Description |
+|----------|-------------|
+| `NODE_ENV` | Set to `production` |
+| `DATABASE_URL` | Azure SQL connection string |
+| `AZURE_STORAGE_CONNECTION_STRING` | Blob storage connection |
+| `AZURE_STORAGE_ACCOUNT_NAME` | Storage account name |
+| `AZURE_STORAGE_ACCESS_KEY` | Storage access key |
+
+**Important**: After adding settings, click Save and restart the app.
+
+## 📦 Azure Blob Storage Setup
+
+The application uses Azure Blob Storage for file uploads:
+
+### Required Containers
+1. `beniteca-photos` (Private)
+2. `beniteca-documents` (Private)
+
+### Authentication Method
+- Connection String authentication
+- SAS tokens generated server-side for secure file access
+- Read-only tokens with 1-year validity
+
+### Network Access
+Ensure Azure App Service can reach the storage account:
+- Allow Azure services in storage firewall
+- Or add App Service outbound IPs to whitelist
+
+## 🧪 Testing in Production
+
+After deployment, test these features:
+
+- ✅ Home page loads and displays existing obras
+- ✅ Create new obra with cover image
+- ✅ Navigate level hierarchy with breadcrumbs
+- ✅ Add/edit/delete sublevels
+- ✅ Add materials with delivery/assembly status
+- ✅ Upload and view photos (Before/During/After)
+- ✅ Upload and download documents
+- ✅ Add notes to levels
+- ✅ Use tree sidebar for navigation
+
+## 🔍 API Endpoints
    npm run prisma:generate
    ```
 

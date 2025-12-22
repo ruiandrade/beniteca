@@ -6,6 +6,12 @@ node_modules
 .env.test
 .env.example
 
+# Frontend development
+frontend/node_modules
+frontend/.vite
 
+# Frontend production build (deployed to Azure)
+# Uncomment if you want to commit the build, otherwise build on Azure
+# frontend/dist
 
 /src/generated/prisma
