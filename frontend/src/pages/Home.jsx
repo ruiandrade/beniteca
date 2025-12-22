@@ -123,8 +123,8 @@ export default function Home() {
           padding: 20px;
         }
         .home-container {
-          max-width: 1400px;
-          margin: 0 auto;
+          width: 100%;
+          max-width: 100%;
         }
         .home-header {
           display: flex;

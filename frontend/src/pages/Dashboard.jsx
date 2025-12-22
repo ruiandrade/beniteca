@@ -18,8 +18,8 @@ export default function Dashboard() {
       <style>{`
         .dashboard-container {
           padding: 32px;
-          max-width: 1400px;
-          margin: 0 auto;
+          width: 100%;
+          max-width: 100%;
         }
         .dashboard-header {
           margin-bottom: 32px;
