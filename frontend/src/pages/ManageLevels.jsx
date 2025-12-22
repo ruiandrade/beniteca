@@ -112,8 +112,22 @@ export default function ManageLevels() {
       const res = await fetch(`/api/levels?parentId=${id}`);
       if (res.ok) {
         const data = await res.json();
-        setSublevels(data);
-        const completed = data.filter(sub => sub.completed).length;
+        
+        // Fetch children count for each sublevel
+        const enrichedData = await Promise.all(
+          data.map(async (sub) => {
+            const childrenRes = await fetch(`/api/levels?parentId=${sub.id}`);
+            if (childrenRes.ok) {
+              const children = await childrenRes.json();
+              const completedChildren = children.filter(c => c.completed).length;
+              return { ...sub, childrenCount: children.length, completedChildren };
+            }
+            return { ...sub, childrenCount: 0, completedChildren: 0 };
+          })
+        );
+        
+        setSublevels(enrichedData);
+        const completed = enrichedData.filter(sub => sub.completed).length;
         setCompletedCount(completed);
       }
     } catch (err) {
@@ -233,6 +247,11 @@ export default function ManageLevels() {
   };
 
   const handleToggleComplete = async (sublevelId, currentStatus) => {
+    const message = currentStatus 
+      ? "Tem certeza que deseja marcar como não concluído?" 
+      : "Tem certeza que deseja marcar como concluído?";
+    if (!confirm(message)) return;
+    
     try {
       const res = await fetch(`/api/levels/${sublevelId}`, {
         method: "PUT",
@@ -688,17 +707,22 @@ export default function ManageLevels() {
                     <div className="ml-item-info">
                       <h3>{sub.name} {sub.completed && <span className="ml-completed-badge">✓</span>}</h3>
                       <p>{sub.description}</p>
+                      {sub.childrenCount > 0 && (
+                        <p className="ml-sublevel-ratio">
+                          ✓ {sub.completedChildren}/{sub.childrenCount} níveis concluídos
+                        </p>
+                      )}
                     </div>
                     <div className="ml-item-actions">
-                      <button 
-                        onClick={() => handleToggleComplete(sub.id, sub.completed)} 
-                        className={sub.completed ? "ml-btn-uncomplete" : "ml-btn-complete"}
-                        title={sub.completed ? "Marcar como não concluído" : "Marcar como concluído"}
-                      >
-                        {sub.completed ? "↩" : "✓"}
-                      </button>
                       <button onClick={() => navigate(`/works/${sub.id}/levels`)} className="ml-btn-view">Ver</button>
                       <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete">Deletar</button>
+                      <button 
+                        onClick={() => handleToggleComplete(sub.id, sub.completed)} 
+                        className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
+                        title={sub.completed ? "Marcar como não concluído" : "Marcar como concluído"}
+                      >
+                        {sub.completed ? "✓" : "○"}
+                      </button>
                     </div>
                   </div>
                 ))
@@ -1496,7 +1520,20 @@ export default function ManageLevels() {
         .ml-btn-delete:hover {
           background: #fecaca;
         }
-        .ml-btn-complete {
+        .ml-btn-incomplete {
+          background: #e2e8f0;
+          color: #64748b;
+          border: none;
+          border-radius: 6px;
+          padding: 8px 14px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: background 0.2s;
+        }
+        .ml-btn-incomplete:hover {
+          background: #cbd5e1;
+        }
+        .ml-btn-completed {
           background: #16a34a;
           color: #fff;
           border: none;
@@ -1506,21 +1543,8 @@ export default function ManageLevels() {
           font-weight: 600;
           transition: background 0.2s;
         }
-        .ml-btn-complete:hover {
+        .ml-btn-completed:hover {
           background: #15803d;
-        }
-        .ml-btn-uncomplete {
-          background: #f59e0b;
-          color: #fff;
-          border: none;
-          border-radius: 6px;
-          padding: 8px 14px;
-          cursor: pointer;
-          font-weight: 600;
-          transition: background 0.2s;
-        }
-        .ml-btn-uncomplete:hover {
-          background: #d97706;
         }
         .ml-completed-badge {
           display: inline-block;
@@ -1539,6 +1563,12 @@ export default function ManageLevels() {
           color: #16a34a;
           font-weight: 600;
           margin-top: 8px;
+        }
+        .ml-sublevel-ratio {
+          font-size: 0.9rem;
+          color: #16a34a;
+          font-weight: 600;
+          margin-top: 6px;
         }
         .ml-photo-grid {
           display: grid;
