@@ -13,8 +13,8 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from public directory (for legacy assets if any)
 app.use(express.static(path.join(__dirname, '../public')));
 
-// API routes
-app.use('/', routes);
+// API routes (mounted under /api for both dev and prod)
+app.use('/api', routes);
 
 // In production, serve the built frontend
 if (process.env.NODE_ENV === 'production') {
