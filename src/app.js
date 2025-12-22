@@ -22,8 +22,13 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(frontendBuildPath));
   
   // Catch-all handler for SPA routing - must be after API routes
-  app.get('/*', (req, res) => {
-    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  app.use((req, res, next) => {
+    // Only handle GET requests that are not API/static files
+    if (req.method !== 'GET') return next();
+    // If request already matched a static file, skip
+    if (req.path.startsWith('/api')) return next();
+    if (req.path.startsWith('/static')) return next();
+    return res.sendFile(path.join(frontendBuildPath, 'index.html'));
   });
 }
 
