@@ -1153,8 +1153,8 @@ export default function ManageLevels() {
           padding: 20px;
         }
         .ml-layout {
-          max-width: 1400px;
-          margin: 0 auto;
+          width: 100%;
+          margin: 0;
           display: grid;
           grid-template-columns: 280px 1fr;
           gap: 20px;
@@ -1213,8 +1213,8 @@ export default function ManageLevels() {
           color: #94a3b8;
         }
         .ml-container {
-          max-width: 1200px;
-          margin: 0 auto;
+          width: 100%;
+          margin: 0;
           background: #fff;
           border-radius: 12px;
           box-shadow: 0 2px 16px #0001;

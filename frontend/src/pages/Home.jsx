@@ -218,8 +218,10 @@ export default function Home() {
         }
         .home-card-img {
           width: 100%;
-          height: 200px;
+          aspect-ratio: 1 / 1;
+          height: auto;
           object-fit: cover;
+          background: #f1f5f9;
         }
         .home-card-content {
           padding: 20px;
