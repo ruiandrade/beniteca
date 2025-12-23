@@ -51,7 +51,9 @@ export default function ManageLevels() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoType, setPhotoType] = useState("inicio");
   const [photoDesc, setPhotoDesc] = useState("");
+  const [photoRole, setPhotoRole] = useState("B");
   const [photoErrors, setPhotoErrors] = useState({});
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
 
   // Estado para editar detalhes do nível atual
   const [editMode, setEditMode] = useState(false);
@@ -459,6 +461,7 @@ export default function ManageLevels() {
         body: JSON.stringify({
           url,
           type: photoType,
+          role: photoRole,
           levelId: id,
         }),
       });
@@ -466,6 +469,7 @@ export default function ManageLevels() {
       await fetchPhotos();
       setPhotoFile(null);
       setPhotoType("inicio");
+      setPhotoRole("B");
       setPhotoDesc("");
       setShowPhotoForm(false);
       setPhotoErrors({});
@@ -715,7 +719,7 @@ export default function ManageLevels() {
                     </div>
                     <div className="ml-item-actions">
                       <button onClick={() => navigate(`/works/${sub.id}/levels`)} className="ml-btn-view">Ver</button>
-                      <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete">Deletar</button>
+                      <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete" title="Deletar">🗑️</button>
                       <button 
                         onClick={() => handleToggleComplete(sub.id, sub.completed)} 
                         className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
@@ -948,7 +952,7 @@ export default function ManageLevels() {
                           >
                             Editar
                           </button>
-                          <button onClick={() => handleDeleteMaterial(mat.id)} className="ml-btn-delete">Deletar</button>
+                          <button onClick={() => handleDeleteMaterial(mat.id)} className="ml-btn-delete" title="Deletar">🗑️</button>
                         </div>
                       </>
                     )}
@@ -964,28 +968,7 @@ export default function ManageLevels() {
           <div className="ml-tab-content">
             <div className="ml-section-header">
               <h2>Notas</h2>
-              <button onClick={() => setShowNoteForm(!showNoteForm)} className="ml-add-btn">
-                {showNoteForm ? "Cancelar" : "+ Adicionar Nota"}
-              </button>
             </div>
-
-            {showNoteForm && (
-              <form onSubmit={handleCreateNote} className="ml-form">
-                <div className="ml-field">
-                  <label>Texto *</label>
-                  <textarea
-                    rows="4"
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                  />
-                  {noteErrors.text && <span className="ml-error">{noteErrors.text}</span>}
-                </div>
-                {noteErrors.submit && <div className="ml-error">{noteErrors.submit}</div>}
-                <button type="submit" className="ml-btn" disabled={loading}>
-                  {loading ? "A criar..." : "Criar Nota"}
-                </button>
-              </form>
-            )}
 
             <div className="ml-form">
               <div className="ml-field">
@@ -1040,6 +1023,25 @@ export default function ManageLevels() {
                   </select>
                 </div>
                 <div className="ml-field">
+                  <label>Visibilidade</label>
+                  <div className="ml-toggle-group">
+                    <button
+                      type="button"
+                      className={`ml-toggle-btn ${photoRole === 'B' ? 'active' : ''}`}
+                      onClick={() => setPhotoRole('B')}
+                    >
+                      Backend (B)
+                    </button>
+                    <button
+                      type="button"
+                      className={`ml-toggle-btn ${photoRole === 'C' ? 'active' : ''}`}
+                      onClick={() => setPhotoRole('C')}
+                    >
+                      Cliente (C)
+                    </button>
+                  </div>
+                </div>
+                <div className="ml-field">
                   <label>Arquivo *</label>
                   <input
                     type="file"
@@ -1075,8 +1077,15 @@ export default function ManageLevels() {
                     ) : (
                       photos.filter(p => p.type === section).map(photo => (
                         <div key={photo.id} className="ml-photo-card">
-                          <img src={photo.url} alt={"Foto"} className="ml-photo-img" />
-                          <button onClick={() => handleDeletePhoto(photo.id)} className="ml-btn-delete-photo">✕</button>
+                          <img 
+                            src={photo.url} 
+                            alt={"Foto"} 
+                            className="ml-photo-img" 
+                            onClick={() => setSelectedPhoto(photo.url)}
+                            style={{cursor: 'pointer'}}
+                          />
+                          <div className="ml-photo-badge">{photo.role || 'B'}</div>
+                          <button onClick={() => handleDeletePhoto(photo.id)} className="ml-btn-delete-photo">🗑️</button>
                         </div>
                       ))
                     )}
@@ -1135,7 +1144,7 @@ export default function ManageLevels() {
                       <a href={doc.url} target="_blank" rel="noreferrer" className="ml-doc-link">Abrir</a>
                     </div>
                     <div className="ml-item-actions">
-                      <button onClick={() => handleDeleteDocument(doc.id)} className="ml-btn-delete">Deletar</button>
+                      <button onClick={() => handleDeleteDocument(doc.id)} className="ml-btn-delete" title="Deletar">🗑️</button>
                     </div>
                   </div>
                 ))
@@ -1145,6 +1154,16 @@ export default function ManageLevels() {
         )}
       </div>
       </div>
+
+      {/* Photo Preview Modal */}
+      {selectedPhoto && (
+        <div className="ml-modal-overlay" onClick={() => setSelectedPhoto(null)}>
+          <div className="ml-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="ml-modal-close" onClick={() => setSelectedPhoto(null)}>✕</button>
+            <img src={selectedPhoto} alt="Preview" className="ml-modal-img" />
+          </div>
+        </div>
+      )}
 
       <style>{`
         .ml-bg {
@@ -1662,6 +1681,110 @@ export default function ManageLevels() {
           color: #2563eb;
           text-decoration: underline;
           font-weight: 600;
+        }
+        
+        /* Toggle button group for role selection */
+        .ml-toggle-group {
+          display: flex;
+          gap: 8px;
+        }
+        .ml-toggle-btn {
+          flex: 1;
+          padding: 8px 16px;
+          border: 2px solid #cbd5e1;
+          border-radius: 8px;
+          background: #fff;
+          color: #64748b;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+        .ml-toggle-btn:hover {
+          border-color: #94a3b8;
+        }
+        .ml-toggle-btn.active {
+          border-color: #2563eb;
+          background: #2563eb;
+          color: #fff;
+        }
+        
+        /* Photo badge showing role */
+        .ml-photo-badge {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          background: rgba(0,0,0,0.7);
+          color: #fff;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: bold;
+        }
+        .ml-photo-card {
+          position: relative;
+        }
+        
+        /* Photo preview modal */
+        .ml-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.85);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          padding: 20px;
+        }
+        .ml-modal-content {
+          position: relative;
+          max-width: 90vw;
+          max-height: 90vh;
+          background: #fff;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .ml-modal-img {
+          max-width: 100%;
+          max-height: 90vh;
+          display: block;
+        }
+        .ml-modal-close {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          background: rgba(0,0,0,0.7);
+          color: #fff;
+          border: none;
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
+          font-size: 1.2rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .ml-modal-close:hover {
+          background: #000;
+        }
+        
+        /* Fix form and field overflow */
+        .ml-form {
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        .ml-field {
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        .ml-field input,
+        .ml-field textarea,
+        .ml-field select {
+          max-width: 100%;
+          box-sizing: border-box;
         }
       `}</style>
     </div>

@@ -4,14 +4,15 @@ class PhotoService {
   async createPhoto(data) {
     const pool = await getConnection();
     const insertQuery = `
-      INSERT INTO Photo (levelId, type, url)
+      INSERT INTO Photo (levelId, type, url, role)
       OUTPUT INSERTED.*
-      VALUES (@levelId, @type, @url)
+      VALUES (@levelId, @type, @url, @role)
     `;
     const result = await pool.request()
       .input('levelId', sql.Int, data.levelId)
       .input('type', sql.NVarChar, data.type)
       .input('url', sql.NVarChar, data.url)
+      .input('role', sql.Char, data.role || 'B')
       .query(insertQuery);
     return result.recordset[0];
   }

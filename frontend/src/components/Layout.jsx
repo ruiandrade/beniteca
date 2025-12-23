@@ -21,6 +21,9 @@ export default function Layout() {
           <NavLink to="/obras" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
             🏗️ As Minhas Obras
           </NavLink>
+          <NavLink to="/archived" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+            📦 Obras Arquivadas
+          </NavLink>
           <NavLink to="/users" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
             👥 Gerir Utilizadores
           </NavLink>
