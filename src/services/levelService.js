@@ -60,6 +60,48 @@ class LevelService {
     return result.recordset;
   }
 
+  // Helper: fetch direct children with counts
+  async getLevelChildren(parentId) {
+    const pool = await getConnection();
+    const query = `
+      SELECT l.*, 
+             p.name as parentName,
+             cm.name as constructionManagerName,
+             cm.email as constructionManagerEmail,
+             (SELECT COUNT(*) FROM Level WHERE parentId = l.id) as childrenCount,
+             (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND completed = 1) as completedChildren
+      FROM Level l
+      LEFT JOIN Level p ON l.parentId = p.id
+      LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
+      WHERE l.parentId = @parentId
+      ORDER BY l.id
+    `;
+    const result = await (await getConnection()).request()
+      .input('parentId', sql.Int, parseInt(parentId))
+      .query(query);
+    return result.recordset;
+  }
+
+  // Recursively build tree of levels
+  async buildTree(parentId) {
+    const children = await this.getLevelChildren(parentId);
+    const nodes = [];
+    for (const child of children) {
+      const node = { ...child };
+      node.children = await this.buildTree(child.id);
+      nodes.push(node);
+    }
+    return nodes;
+  }
+
+  // Get full tree for a root level
+  async getLevelTree(rootId) {
+    const root = await this.getLevelById(rootId);
+    if (!root) return null;
+    const children = await this.buildTree(rootId);
+    return { root, children };
+  }
+
   async getLevelById(id) {
     const pool = await getConnection();
     const query = `

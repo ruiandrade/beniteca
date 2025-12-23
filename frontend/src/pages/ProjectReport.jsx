@@ -5,7 +5,7 @@ export default function ProjectReport() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [obra, setObra] = useState(null);
-  const [levels, setLevels] = useState([]);
+  const [treeChildren, setTreeChildren] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,11 +21,11 @@ export default function ProjectReport() {
         const obraData = await obraRes.json();
         setObra(obraData);
 
-        // Fetch all direct sublevels
-        const levelsRes = await fetch(`/api/levels?parentId=${id}`);
-        if (levelsRes.ok) {
-          const levelsData = await levelsRes.json();
-          setLevels(levelsData);
+        // Fetch hierarchical tree of sublevels
+        const treeRes = await fetch(`/api/levels/tree/${id}`);
+        if (treeRes.ok) {
+          const treeData = await treeRes.json();
+          setTreeChildren(treeData.children || []);
         }
       }
     } catch (err) {
@@ -103,6 +103,52 @@ export default function ProjectReport() {
 
   const weeks = getWeekColumns();
 
+  // Recursively render rows for the full hierarchy
+  const renderTreeRows = (nodes, depth = 1) => {
+    return nodes.flatMap((level) => {
+      const pos = calculateLevelPosition(
+        level.startDate || obra.startDate,
+        level.endDate || obra.endDate
+      );
+      const kpi = calculateLevelKPI(level);
+
+      const row = (
+        <div key={`row-${level.id}`} className="gantt-row">
+          <div className="gantt-row-label">
+            <span
+              className="gantt-label-text gantt-label-click"
+              style={{ paddingLeft: depth * 16 }}
+              onClick={() => navigate(`/works/${level.id}/levels`)}
+            >
+              {depth > 0 ? '└─ ' : ''}{level.name}
+            </span>
+          </div>
+          <div className="gantt-timeline">
+            <div
+              className="gantt-bar gantt-bar-level"
+              style={{
+                left: `${pos.left}%`,
+                width: `${Math.max(pos.width, 2)}%`
+              }}
+              title={`${kpi.timePercent}% tempo | ${kpi.completionPercent}% conclusão`}
+            >
+              <div className="gantt-bar-content">
+                <span className="gantt-bar-time">{kpi.timePercent}%</span>
+                <span className="gantt-bar-completion">{kpi.completionPercent}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      const children = level.children && level.children.length
+        ? renderTreeRows(level.children, depth + 1)
+        : [];
+
+      return [row, ...children];
+    });
+  };
+
   return (
     <div className="report-bg">
       <div className="report-header">
@@ -149,37 +195,8 @@ export default function ProjectReport() {
             </div>
           </div>
 
-          {/* Subníveis */}
-          {levels.map((level) => {
-            const pos = calculateLevelPosition(
-              level.startDate || obra.startDate,
-              level.endDate || obra.endDate
-            );
-            const kpi = calculateLevelKPI(level);
-
-            return (
-              <div key={level.id} className="gantt-row">
-                <div className="gantt-row-label">
-                  <span className="gantt-label-text gantt-sublevel-indent">└─ {level.name}</span>
-                </div>
-                <div className="gantt-timeline">
-                  <div
-                    className="gantt-bar gantt-bar-level"
-                    style={{
-                      left: `${pos.left}%`,
-                      width: `${Math.max(pos.width, 2)}%`
-                    }}
-                    title={`${kpi.timePercent}% tempo | ${kpi.completionPercent}% conclusão`}
-                  >
-                    <div className="gantt-bar-content">
-                      <span className="gantt-bar-time">{kpi.timePercent}%</span>
-                      <span className="gantt-bar-completion">{kpi.completionPercent}%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {/* Hierarquia completa de subníveis */}
+          {renderTreeRows(treeChildren, 1)}
         </div>
       </div>
 
@@ -269,11 +286,7 @@ export default function ProjectReport() {
           text-overflow: ellipsis;
           font-size: 0.95rem;
         }
-        .gantt-sublevel-indent {
-          padding-left: 12px;
-          font-size: 0.9rem;
-          color: #475569;
-        }
+        .gantt-label-click { cursor: pointer; }
         .gantt-timeline {
           position: relative;
           background: #fafbfc;

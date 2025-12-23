@@ -4,6 +4,7 @@ const levelController = require('../controllers/levelController');
 
 router.get('/', levelController.getAll);
 router.get('/:id', levelController.getById);
+router.get('/tree/:id', levelController.getTree);
 router.post('/', levelController.create);
 router.put('/:id', levelController.update);
 router.delete('/:id', levelController.delete);
