@@ -36,7 +36,9 @@ class LevelService {
       SELECT l.*, 
              p.name as parentName,
              cm.name as constructionManagerName,
-             cm.email as constructionManagerEmail
+             cm.email as constructionManagerEmail,
+             (SELECT COUNT(*) FROM Level WHERE parentId = l.id) as childrenCount,
+             (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND completed = 1) as completedChildren
       FROM Level l
       LEFT JOIN Level p ON l.parentId = p.id
       LEFT JOIN [User] cm ON l.constructionManagerId = cm.id`;
@@ -64,7 +66,9 @@ class LevelService {
       SELECT l.*, 
              p.name as parentName,
              cm.name as constructionManagerName,
-             cm.email as constructionManagerEmail
+             cm.email as constructionManagerEmail,
+             (SELECT COUNT(*) FROM Level WHERE parentId = l.id) as childrenCount,
+             (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND completed = 1) as completedChildren
       FROM Level l
       LEFT JOIN Level p ON l.parentId = p.id
       LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
