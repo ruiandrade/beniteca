@@ -10,5 +10,6 @@ router.use('/photos', require('./photos'));
 router.use('/documents', require('./documents'));
 router.use('/permissions', require('./permissions'));
 router.use('/upload', require('./upload'));
+router.use('/level-users', require('./levelUsers'));
 
 module.exports = router;

@@ -12,6 +12,9 @@ export default function ManageLevels() {
   const [documents, setDocuments] = useState([]);
   const [notes, setNotes] = useState([]);
   const [photos, setPhotos] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [levelUsers, setLevelUsers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [loading, setLoading] = useState(false);
   const [completedCount, setCompletedCount] = useState(0);
 
@@ -73,6 +76,8 @@ export default function ManageLevels() {
     fetchDocuments();
     fetchNotes();
     fetchPhotos();
+    fetchUsers();
+    fetchLevelUsers();
     buildBreadcrumb();
   }, [id]);
 
@@ -182,6 +187,30 @@ export default function ManageLevels() {
       }
     } catch (err) {
       console.error("Erro ao carregar fotos:", err);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar utilizadores:', err);
+    }
+  };
+
+  const fetchLevelUsers = async () => {
+    try {
+      const res = await fetch(`/api/level-users/level/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setLevelUsers(data);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar associações:', err);
     }
   };
 
@@ -385,6 +414,40 @@ export default function ManageLevels() {
       setDocumentErrors({ submit: err.message });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddLevelUser = async (e) => {
+    e.preventDefault();
+    if (!selectedUserId) return;
+    try {
+      const res = await fetch('/api/level-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ levelId: id, userId: selectedUserId })
+      });
+      if (res.ok) {
+        await fetchLevelUsers();
+        setSelectedUserId("");
+      } else {
+        alert('Erro ao associar utilizador');
+      }
+    } catch (err) {
+      alert('Erro ao associar utilizador: ' + err.message);
+    }
+  };
+
+  const handleRemoveLevelUser = async (assocId) => {
+    if (!confirm('Remover associação?')) return;
+    try {
+      const res = await fetch(`/api/level-users/${assocId}`, { method: 'DELETE' });
+      if (res.ok) {
+        await fetchLevelUsers();
+      } else {
+        alert('Erro ao remover associação');
+      }
+    } catch (err) {
+      alert('Erro ao remover associação: ' + err.message);
     }
   };
 
@@ -655,6 +718,14 @@ export default function ManageLevels() {
           >
             Documentos
           </button>
+          {work?.parentId === null && (
+            <button
+              className={activeTab === "people" ? "ml-tab ml-tab-active" : "ml-tab"}
+              onClick={() => setActiveTab("people")}
+            >
+              Equipa
+            </button>
+          )}
         </div>
 
         {/* ========== TAB: SUBNÍVEIS ========== */}
@@ -1145,6 +1216,51 @@ export default function ManageLevels() {
                     </div>
                     <div className="ml-item-actions">
                       <button onClick={() => handleDeleteDocument(doc.id)} className="ml-btn-delete" title="Deletar">🗑️</button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ========== TAB: EQUIPA (apenas nível raiz) ========== */}
+        {activeTab === "people" && work?.parentId === null && (
+          <div className="ml-tab-content">
+            <div className="ml-section-header">
+              <h2>Equipa da Obra</h2>
+            </div>
+
+            <form onSubmit={handleAddLevelUser} className="ml-form">
+              <div className="ml-field">
+                <label>Selecionar Utilizador</label>
+                <select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
+                  <option value="">-- Escolha um utilizador --</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name || u.email} {u.Car ? `(${u.Car})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" className="ml-btn" disabled={loading || !selectedUserId}>
+                Associar
+              </button>
+            </form>
+
+            <div className="ml-list">
+              {levelUsers.length === 0 ? (
+                <p className="ml-empty">Nenhum utilizador associado.</p>
+              ) : (
+                levelUsers.map((lu) => (
+                  <div key={lu.id} className="ml-doc-card">
+                    <div className="ml-doc-info">
+                      <h3>{lu.name || lu.email}</h3>
+                      <p className="ml-doc-type">Email: {lu.email}</p>
+                      {lu.Car && <p className="ml-doc-type">Carro: {lu.Car}</p>}
+                    </div>
+                    <div className="ml-item-actions">
+                      <button onClick={() => handleRemoveLevelUser(lu.id)} className="ml-btn-delete" title="Remover">🗑️</button>
                     </div>
                   </div>
                 ))
