@@ -12,9 +12,7 @@ export default function ManageLevels() {
   const [documents, setDocuments] = useState([]);
   const [notes, setNotes] = useState([]);
   const [photos, setPhotos] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [levelUsers, setLevelUsers] = useState([]);
-  const [selectedUserId, setSelectedUserId] = useState("");
+  // Equipa moved to dedicated page; remove related local state
   const [loading, setLoading] = useState(false);
   const [completedCount, setCompletedCount] = useState(0);
 
@@ -29,6 +27,8 @@ export default function ManageLevels() {
   const [sublevelName, setSublevelName] = useState("");
   const [sublevelDesc, setSublevelDesc] = useState("");
   const [sublevelCover, setSublevelCover] = useState(null);
+  const [sublevelStart, setSublevelStart] = useState("");
+  const [sublevelEnd, setSublevelEnd] = useState("");
   const [sublevelErrors, setSublevelErrors] = useState({});
 
   // Formulário de material
@@ -64,6 +64,7 @@ export default function ManageLevels() {
   const [editDesc, setEditDesc] = useState("");
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
+  const [editCover, setEditCover] = useState(null);
   const [editErrors, setEditErrors] = useState({});
 
   // Estado para editar material
@@ -76,8 +77,6 @@ export default function ManageLevels() {
     fetchDocuments();
     fetchNotes();
     fetchPhotos();
-    fetchUsers();
-    fetchLevelUsers();
     buildBreadcrumb();
   }, [id]);
 
@@ -91,6 +90,9 @@ export default function ManageLevels() {
         setEditDesc(data.description || "");
         setEditStart(data.startDate ? data.startDate.split('T')[0] : "");
         setEditEnd(data.endDate ? data.endDate.split('T')[0] : "");
+        // Set default dates for sublevel form
+        setSublevelStart(data.startDate ? data.startDate.split('T')[0] : "");
+        setSublevelEnd(data.endDate ? data.endDate.split('T')[0] : "");
       }
     } catch (err) {
       console.error("Erro ao carregar obra:", err);
@@ -190,29 +192,7 @@ export default function ManageLevels() {
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      const res = await fetch('/api/users');
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-      }
-    } catch (err) {
-      console.error('Erro ao carregar utilizadores:', err);
-    }
-  };
-
-  const fetchLevelUsers = async () => {
-    try {
-      const res = await fetch(`/api/level-users/level/${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLevelUsers(data);
-      }
-    } catch (err) {
-      console.error('Erro ao carregar associações:', err);
-    }
-  };
+  // Equipa-related fetches removed; handled in Equipa page
 
   // ========== SUBNÍVEIS ==========
   const handleCreateSublevel = async (e) => {
@@ -251,6 +231,8 @@ export default function ManageLevels() {
           description: sublevelDesc,
           coverImage: url,
           parentId: id,
+          startDate: sublevelStart || null,
+          endDate: sublevelEnd || null,
         }),
       });
       if (!res.ok) throw new Error("Erro ao criar subnível");
@@ -258,6 +240,8 @@ export default function ManageLevels() {
       setSublevelName("");
       setSublevelDesc("");
       setSublevelCover(null);
+      setSublevelStart(work?.startDate ? work.startDate.split('T')[0] : "");
+      setSublevelEnd(work?.endDate ? work.endDate.split('T')[0] : "");
       setShowSublevelForm(false);
       setSublevelErrors({});
     } catch (err) {
@@ -268,12 +252,29 @@ export default function ManageLevels() {
   };
 
   const handleDeleteSublevel = async (sublevelId) => {
-    if (!confirm("Tem certeza que deseja deletar este subnível?")) return;
+    if (!confirm("Tem certeza que deseja ocultar este subnível? Pode ser mostrado novamente a qualquer momento.")) return;
     try {
-      const res = await fetch(`/api/levels/${sublevelId}`, { method: "DELETE" });
+      const res = await fetch(`/api/levels/${sublevelId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hidden: true }),
+      });
       if (res.ok) await fetchSublevels();
     } catch (err) {
-      alert("Erro ao deletar subnível");
+      alert("Erro ao ocultar subnível");
+    }
+  };
+
+  const handleShowSublevel = async (sublevelId) => {
+    try {
+      const res = await fetch(`/api/levels/${sublevelId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hidden: false }),
+      });
+      if (res.ok) await fetchSublevels();
+    } catch (err) {
+      alert("Erro ao mostrar subnível");
     }
   };
 
@@ -289,7 +290,13 @@ export default function ManageLevels() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed: !currentStatus }),
       });
-      if (res.ok) await fetchSublevels();
+      if (res.ok) {
+        // If completing the main work level, refresh its state
+        if (sublevelId == id) {
+          await fetchWork();
+        }
+        await fetchSublevels();
+      }
     } catch (err) {
       alert("Erro ao alterar estado de conclusão");
     }
@@ -417,39 +424,7 @@ export default function ManageLevels() {
     }
   };
 
-  const handleAddLevelUser = async (e) => {
-    e.preventDefault();
-    if (!selectedUserId) return;
-    try {
-      const res = await fetch('/api/level-users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ levelId: id, userId: selectedUserId })
-      });
-      if (res.ok) {
-        await fetchLevelUsers();
-        setSelectedUserId("");
-      } else {
-        alert('Erro ao associar utilizador');
-      }
-    } catch (err) {
-      alert('Erro ao associar utilizador: ' + err.message);
-    }
-  };
-
-  const handleRemoveLevelUser = async (assocId) => {
-    if (!confirm('Remover associação?')) return;
-    try {
-      const res = await fetch(`/api/level-users/${assocId}`, { method: 'DELETE' });
-      if (res.ok) {
-        await fetchLevelUsers();
-      } else {
-        alert('Erro ao remover associação');
-      }
-    } catch (err) {
-      alert('Erro ao remover associação: ' + err.message);
-    }
-  };
+  // Equipa-related handlers removed; handled in Equipa page
 
   const handleDeleteDocument = async (docId) => {
     if (!confirm("Tem certeza que deseja deletar este documento?")) return;
@@ -553,29 +528,81 @@ export default function ManageLevels() {
     }
   };
 
+  const handleTogglePhotoRole = async (photoId, currentRole) => {
+    const newRole = currentRole === 'B' ? 'C' : 'B';
+    try {
+      const res = await fetch(`/api/photos/${photoId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+      if (res.ok) await fetchPhotos();
+      else alert("Erro ao alterar visibilidade");
+    } catch (err) {
+      alert("Erro ao alterar visibilidade: " + err.message);
+    }
+  };
+
   const handleUpdateLevel = async () => {
     const errors = {};
     if (!editName.trim()) errors.name = "Nome é obrigatório";
     if (!editDesc.trim()) errors.description = "Descrição é obrigatória";
+
+    // Validar datas contra o pai se houver
+    if (work && work.parentId && (editStart || editEnd)) {
+      try {
+        const parentRes = await fetch(`/api/levels/${work.parentId}`);
+        if (parentRes.ok) {
+          const parent = await parentRes.json();
+          if (parent.startDate && editStart && editStart < parent.startDate.slice(0, 10)) {
+            errors.startDate = "Não pode começar antes do nível pai";
+          }
+          if (parent.endDate && editEnd && editEnd > parent.endDate.slice(0, 10)) {
+            errors.endDate = "Não pode terminar depois do nível pai";
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao validar datas do pai:', err);
+      }
+    }
+
     setEditErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     setLoading(true);
     try {
+      let coverUrl = null;
+      if (editCover) {
+        const formData = new FormData();
+        const renamed = new File([editCover], `${id}-${Date.now()}-cover-${editCover.name}`, { type: editCover.type });
+        formData.append("file", renamed);
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (!uploadRes.ok) throw new Error("Erro ao fazer upload da imagem");
+        const uploadData = await uploadRes.json();
+        coverUrl = uploadData.url;
+      }
+
+      const payload = {
+        name: editName,
+        description: editDesc,
+        startDate: editStart || null,
+        endDate: editEnd || null,
+      };
+      if (coverUrl) payload.coverImage = coverUrl;
+
       const res = await fetch(`/api/levels/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editName,
-          description: editDesc,
-          startDate: editStart || null,
-          endDate: editEnd || null,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Erro ao atualizar nível");
       await fetchWork();
       await buildBreadcrumb();
       setEditMode(false);
+      setEditCover(null);
       setEditErrors({});
     } catch (err) {
       setEditErrors({ submit: err.message });
@@ -613,22 +640,35 @@ export default function ManageLevels() {
         <div className="ml-container">
           <div className="ml-header">
           <button onClick={() => navigate("/")} className="ml-back-btn">← Início</button>
-          <h1 className="ml-title">
-            {breadcrumb.length > 0
-              ? breadcrumb.map((b, idx) => (
-                  <span key={b.id}>
-                    {idx < breadcrumb.length - 1 ? (
-                      <button onClick={() => navigate(`/works/${b.id}/levels`)} className="ml-breadcrumb-link">
-                        {b.name}
-                      </button>
-                    ) : (
-                      <span className="ml-breadcrumb-current">{b.name}</span>
-                    )}
-                    {idx < breadcrumb.length - 1 ? " › " : ""}
-                  </span>
-                ))
-              : (work?.name || "Obra")}
-          </h1>
+          <div className="ml-header-title-section">
+            <h1 className="ml-title">
+              {breadcrumb.length > 0
+                ? breadcrumb.map((b, idx) => (
+                    <span key={b.id}>
+                      {idx < breadcrumb.length - 1 ? (
+                        <button onClick={() => navigate(`/works/${b.id}/levels`)} className="ml-breadcrumb-link">
+                          {b.name}
+                        </button>
+                      ) : (
+                        <span className="ml-breadcrumb-current">{b.name}</span>
+                      )}
+                      {idx < breadcrumb.length - 1 ? " › " : ""}
+                    </span>
+                  ))
+                : (work?.name || "Obra")}
+            </h1>
+            <div className="ml-header-actions">
+              {work && (
+                <button 
+                  onClick={() => handleToggleComplete(work.id, work.completed)} 
+                  className={work.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
+                  title={work.completed ? "Marcar como não concluído" : "Marcar como concluído"}
+                >
+                  {work.completed ? "✓" : "○"}
+                </button>
+              )}
+            </div>
+          </div>
           <p className="ml-subtitle">{work?.description}</p>
           {sublevels.length > 0 && (
             <p className="ml-completion-ratio">
@@ -661,6 +701,14 @@ export default function ManageLevels() {
                 />
                 {editErrors.description && <span className="ml-error">{editErrors.description}</span>}
               </div>
+              <div className="ml-field">
+                <label>Alterar Imagem de Capa (opcional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setEditCover(e.target.files[0])}
+                />
+              </div>
               <div className="ml-row">
                 <div className="ml-field">
                   <label>Data de Início</label>
@@ -669,6 +717,7 @@ export default function ManageLevels() {
                     value={editStart}
                     onChange={(e) => setEditStart(e.target.value)}
                   />
+                  {editErrors.startDate && <span className="ml-error">{editErrors.startDate}</span>}
                 </div>
                 <div className="ml-field">
                   <label>Data de Fim</label>
@@ -677,6 +726,7 @@ export default function ManageLevels() {
                     value={editEnd}
                     onChange={(e) => setEditEnd(e.target.value)}
                   />
+                  {editErrors.endDate && <span className="ml-error">{editErrors.endDate}</span>}
                 </div>
               </div>
               {editErrors.submit && <div className="ml-error">{editErrors.submit}</div>}
@@ -691,41 +741,39 @@ export default function ManageLevels() {
           <button
             className={activeTab === "sublevels" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("sublevels")}
+            title="Subníveis"
           >
-            Subníveis
+            🏗️
           </button>
           <button
             className={activeTab === "materials" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("materials")}
+            title="Materiais"
           >
-            Materiais
+            📦
           </button>
           <button
             className={activeTab === "notes" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("notes")}
+            title="Notas"
           >
-            Notas
+            📝
           </button>
           <button
             className={activeTab === "photos" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("photos")}
+            title="Fotografias"
           >
-            Fotografias
+            📸
           </button>
           <button
             className={activeTab === "documents" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("documents")}
+            title="Documentos"
           >
-            Documentos
+            📄
           </button>
-          {work?.parentId === null && (
-            <button
-              className={activeTab === "people" ? "ml-tab ml-tab-active" : "ml-tab"}
-              onClick={() => setActiveTab("people")}
-            >
-              Equipa
-            </button>
-          )}
+          {/* Equipa tab removida — agora é página dedicada */}
         </div>
 
         {/* ========== TAB: SUBNÍVEIS ========== */}
@@ -758,6 +806,22 @@ export default function ManageLevels() {
                   {sublevelErrors.description && <span className="ml-error">{sublevelErrors.description}</span>}
                 </div>
                 <div className="ml-field">
+                  <label>Data de Início</label>
+                  <input
+                    type="date"
+                    value={sublevelStart}
+                    onChange={(e) => setSublevelStart(e.target.value)}
+                  />
+                </div>
+                <div className="ml-field">
+                  <label>Data de Fim</label>
+                  <input
+                    type="date"
+                    value={sublevelEnd}
+                    onChange={(e) => setSublevelEnd(e.target.value)}
+                  />
+                </div>
+                <div className="ml-field">
                   <label>Imagem de Capa (opcional)</label>
                   <input
                     type="file"
@@ -777,30 +841,115 @@ export default function ManageLevels() {
               {sublevels.length === 0 ? (
                 <p className="ml-empty">Nenhum subnível encontrado.</p>
               ) : (
-                sublevels.map((sub) => (
-                  <div key={sub.id} className="ml-item">
-                    <div className="ml-item-info">
-                      <h3>{sub.name} {sub.completed && <span className="ml-completed-badge">✓</span>}</h3>
-                      <p>{sub.description}</p>
-                      {sub.childrenCount > 0 && (
-                        <p className="ml-sublevel-ratio">
-                          ✓ {sub.completedChildren}/{sub.childrenCount} níveis concluídos
-                        </p>
-                      )}
-                    </div>
-                    <div className="ml-item-actions">
-                      <button onClick={() => navigate(`/works/${sub.id}/levels`)} className="ml-btn-view">Ver</button>
-                      <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete" title="Deletar">🗑️</button>
-                      <button 
-                        onClick={() => handleToggleComplete(sub.id, sub.completed)} 
-                        className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
-                        title={sub.completed ? "Marcar como não concluído" : "Marcar como concluído"}
-                      >
-                        {sub.completed ? "✓" : "○"}
-                      </button>
-                    </div>
-                  </div>
-                ))
+                <>
+                  {/* Não Concluídos e Visíveis */}
+                  {sublevels.filter(s => !s.completed && !s.hidden).length > 0 && (
+                    <>
+                      <h3 className="ml-sublevels-header">📋 Não Concluídos</h3>
+                      <div className="ml-sublist">
+                        {sublevels.filter(s => !s.completed && !s.hidden).map((sub) => (
+                          <div key={sub.id} className="ml-item">
+                            <div 
+                              className="ml-item-info"
+                              onClick={() => navigate(`/works/${sub.id}/levels`)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <h3>{sub.name}</h3>
+                              <p>{sub.description}</p>
+                              {sub.childrenCount > 0 && (
+                                <p className="ml-sublevel-ratio">
+                                  ✓ {sub.completedChildren}/{sub.childrenCount} níveis concluídos
+                                </p>
+                              )}
+                            </div>
+                            <div className="ml-item-actions">
+                              <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete" title="Ocultar">👁️</button>
+                              <button 
+                                onClick={() => handleToggleComplete(sub.id, sub.completed)} 
+                                className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
+                                title={sub.completed ? "Marcar como não concluído" : "Marcar como concluído"}
+                              >
+                                {sub.completed ? "✓" : "○"}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Concluídos e Visíveis */}
+                  {sublevels.filter(s => s.completed && !s.hidden).length > 0 && (
+                    <>
+                      <h3 className="ml-sublevels-header">✅ Concluídos</h3>
+                      <div className="ml-sublist">
+                        {sublevels.filter(s => s.completed && !s.hidden).map((sub) => (
+                          <div key={sub.id} className="ml-item ml-item-completed">
+                            <div 
+                              className="ml-item-info"
+                              onClick={() => navigate(`/works/${sub.id}/levels`)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <h3>{sub.name} <span className="ml-completed-badge">✓</span></h3>
+                              <p>{sub.description}</p>
+                              {sub.childrenCount > 0 && (
+                                <p className="ml-sublevel-ratio">
+                                  ✓ {sub.completedChildren}/{sub.childrenCount} níveis concluídos
+                                </p>
+                              )}
+                            </div>
+                            <div className="ml-item-actions">
+                              <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete" title="Ocultar">👁️</button>
+                              <button 
+                                onClick={() => handleToggleComplete(sub.id, sub.completed)} 
+                                className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
+                                title={sub.completed ? "Marcar como não concluído" : "Marcar como concluído"}
+                              >
+                                {sub.completed ? "✓" : "○"}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Ocultos */}
+                  {sublevels.filter(s => s.hidden).length > 0 && (
+                    <>
+                      <h3 className="ml-sublevels-header ml-sublevels-header-hidden">👻 Ocultos</h3>
+                      <div className="ml-sublist ml-sublist-hidden">
+                        {sublevels.filter(s => s.hidden).map((sub) => (
+                          <div key={sub.id} className="ml-item ml-item-hidden">
+                            <div 
+                              className="ml-item-info"
+                              onClick={() => navigate(`/works/${sub.id}/levels`)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <h3>{sub.name}</h3>
+                              <p>{sub.description}</p>
+                              {sub.childrenCount > 0 && (
+                                <p className="ml-sublevel-ratio">
+                                  ✓ {sub.completedChildren}/{sub.childrenCount} níveis concluídos
+                                </p>
+                              )}
+                            </div>
+                            <div className="ml-item-actions">
+                              <button onClick={() => handleShowSublevel(sub.id)} className="ml-btn-show" title="Mostrar">👁️‍🗨️</button>
+                              <button 
+                                onClick={() => handleToggleComplete(sub.id, sub.completed)} 
+                                className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
+                                title={sub.completed ? "Marcar como não concluído" : "Marcar como concluído"}
+                              >
+                                {sub.completed ? "✓" : "○"}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -820,33 +969,33 @@ export default function ManageLevels() {
               <form onSubmit={handleCreateMaterial} className="ml-form">
                 <div className="ml-status-row">
                   <div className="ml-field">
-                    <label>Delivery</label>
+                    <label>Entrega</label>
                     <div className="ml-radio-group">
-                      {['Not requested','Requested','Delivered'].map(status => (
-                        <label key={status} className="ml-radio">
+                      {[{v:'Not requested',l:'Não pedido'},{v:'Requested',l:'Pedido'},{v:'Delivered',l:'Entregue'}].map(({v,l}) => (
+                        <label key={v} className="ml-radio">
                           <input
                             type="radio"
-                            value={status}
-                            checked={materialDeliveryStatus === status}
+                            value={v}
+                            checked={materialDeliveryStatus === v}
                             onChange={(e) => setMaterialDeliveryStatus(e.target.value)}
                           />
-                          {status}
+                          {l}
                         </label>
                       ))}
                     </div>
                   </div>
                   <div className="ml-field">
-                    <label>Assembly</label>
+                    <label>Montagem</label>
                     <div className="ml-radio-group">
-                      {['Not started','Started','Finished'].map(status => (
-                        <label key={status} className="ml-radio">
+                      {[{v:'Not started',l:'Não iniciado'},{v:'Started',l:'Iniciado'},{v:'Finished',l:'Terminado'}].map(({v,l}) => (
+                        <label key={v} className="ml-radio">
                           <input
                             type="radio"
-                            value={status}
-                            checked={materialAssemblyStatus === status}
+                            value={v}
+                            checked={materialAssemblyStatus === v}
                             onChange={(e) => setMaterialAssemblyStatus(e.target.value)}
                           />
-                          {status}
+                          {l}
                         </label>
                       ))}
                     </div>
@@ -920,33 +1069,33 @@ export default function ManageLevels() {
                       <div className="ml-edit-material">
                         <div className="ml-status-row">
                           <div className="ml-field">
-                            <label>Delivery</label>
+                            <label>Entrega</label>
                             <div className="ml-radio-group">
-                              {['Not requested','Requested','Delivered'].map(status => (
-                                <label key={status} className="ml-radio">
+                              {[{v:'Not requested',l:'Não pedido'},{v:'Requested',l:'Pedido'},{v:'Delivered',l:'Entregue'}].map(({v,l}) => (
+                                <label key={v} className="ml-radio">
                                   <input
                                     type="radio"
-                                    value={status}
-                                    checked={editingMaterial.deliveryStatus === status}
+                                    value={v}
+                                    checked={editingMaterial.deliveryStatus === v}
                                     onChange={(e) => setEditingMaterial({...editingMaterial, deliveryStatus: e.target.value})}
                                   />
-                                  {status}
+                                  {l}
                                 </label>
                               ))}
                             </div>
                           </div>
                           <div className="ml-field">
-                            <label>Assembly</label>
+                            <label>Montagem</label>
                             <div className="ml-radio-group">
-                              {['Not started','Started','Finished'].map(status => (
-                                <label key={status} className="ml-radio">
+                              {[{v:'Not started',l:'Não iniciado'},{v:'Started',l:'Iniciado'},{v:'Finished',l:'Terminado'}].map(({v,l}) => (
+                                <label key={v} className="ml-radio">
                                   <input
                                     type="radio"
-                                    value={status}
-                                    checked={editingMaterial.assemblyStatus === status}
+                                    value={v}
+                                    checked={editingMaterial.assemblyStatus === v}
                                     onChange={(e) => setEditingMaterial({...editingMaterial, assemblyStatus: e.target.value})}
                                   />
-                                  {status}
+                                  {l}
                                 </label>
                               ))}
                             </div>
@@ -1155,8 +1304,16 @@ export default function ManageLevels() {
                             onClick={() => setSelectedPhoto(photo.url)}
                             style={{cursor: 'pointer'}}
                           />
-                          <div className="ml-photo-badge">{photo.role || 'B'}</div>
-                          <button onClick={() => handleDeletePhoto(photo.id)} className="ml-btn-delete-photo">🗑️</button>
+                          <div className="ml-photo-actions">
+                            <button
+                              onClick={() => handleTogglePhotoRole(photo.id, photo.role || 'B')}
+                              className="ml-btn-toggle-role"
+                              title={photo.role === 'C' ? 'Cliente (clique para Backend)' : 'Backend (clique para Cliente)'}
+                            >
+                              {photo.role === 'C' ? '👤' : '🏢'}
+                            </button>
+                            <button onClick={() => handleDeletePhoto(photo.id)} className="ml-btn-delete-photo">🗑️</button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -1224,50 +1381,7 @@ export default function ManageLevels() {
           </div>
         )}
 
-        {/* ========== TAB: EQUIPA (apenas nível raiz) ========== */}
-        {activeTab === "people" && work?.parentId === null && (
-          <div className="ml-tab-content">
-            <div className="ml-section-header">
-              <h2>Equipa da Obra</h2>
-            </div>
-
-            <form onSubmit={handleAddLevelUser} className="ml-form">
-              <div className="ml-field">
-                <label>Selecionar Utilizador</label>
-                <select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
-                  <option value="">-- Escolha um utilizador --</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.email} {u.Car ? `(${u.Car})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button type="submit" className="ml-btn" disabled={loading || !selectedUserId}>
-                Associar
-              </button>
-            </form>
-
-            <div className="ml-list">
-              {levelUsers.length === 0 ? (
-                <p className="ml-empty">Nenhum utilizador associado.</p>
-              ) : (
-                levelUsers.map((lu) => (
-                  <div key={lu.id} className="ml-doc-card">
-                    <div className="ml-doc-info">
-                      <h3>{lu.name || lu.email}</h3>
-                      <p className="ml-doc-type">Email: {lu.email}</p>
-                      {lu.Car && <p className="ml-doc-type">Carro: {lu.Car}</p>}
-                    </div>
-                    <div className="ml-item-actions">
-                      <button onClick={() => handleRemoveLevelUser(lu.id)} className="ml-btn-delete" title="Remover">🗑️</button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
+        {/* Conteúdo da Equipa removido — usar página /works/:id/equipa */}
       </div>
       </div>
 
@@ -1358,6 +1472,16 @@ export default function ManageLevels() {
         .ml-header {
           margin-bottom: 32px;
         }
+        .ml-header-title-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 20px;
+        }
+        .ml-header-actions {
+          display: flex;
+          gap: 10px;
+        }
         .ml-back-btn {
           background: #e2e8f0;
           border: none;
@@ -1408,6 +1532,38 @@ export default function ManageLevels() {
         }
         .ml-edit-btn:hover {
           background: #c7d2fe;
+        }
+        .ml-complete-btn {
+          background: #dcfce7;
+          color: #16a34a;
+          border: none;
+          border-radius: 6px;
+          padding: 10px 18px;
+          cursor: pointer;
+          font-size: 0.95rem;
+          font-weight: 600;
+          margin-top: 12px;
+          margin-left: 12px;
+          transition: background 0.2s;
+        }
+        .ml-complete-btn:hover {
+          background: #bbf7d0;
+        }
+        .ml-uncomplete-btn {
+          background: #fed7aa;
+          color: #b45309;
+          border: none;
+          border-radius: 6px;
+          padding: 10px 18px;
+          cursor: pointer;
+          font-size: 0.95rem;
+          font-weight: 600;
+          margin-top: 12px;
+          margin-left: 12px;
+          transition: background 0.2s;
+        }
+        .ml-uncomplete-btn:hover {
+          background: #fdba74;
         }
         .ml-edit-section {
           background: #fff;
@@ -1598,6 +1754,9 @@ export default function ManageLevels() {
         .ml-item:hover {
           box-shadow: 0 2px 8px #0001;
         }
+        .ml-item-info {
+          flex: 1;
+        }
         .ml-item-info h3 {
           font-size: 1.1rem;
           font-weight: 600;
@@ -1607,6 +1766,56 @@ export default function ManageLevels() {
         .ml-item-info p {
           color: #64748b;
           font-size: 0.95rem;
+        }
+        .ml-item-completed {
+          opacity: 0.75;
+          background: #f0fdf4;
+        }
+        .ml-sublist {
+          margin-bottom: 20px;
+        }
+        .ml-sublist-hidden {
+          opacity: 0.6;
+        }
+        .ml-item-hidden {
+          background: #f5f5f5;
+          border-color: #d4d4d8;
+        }
+        .ml-sublevels-header {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin-top: 24px;
+          margin-bottom: 12px;
+          padding: 8px 0;
+          border-bottom: 2px solid #e2e8f0;
+        }
+        .ml-sublevels-header-hidden {
+          color: #94a3b8;
+          border-bottom-color: #cbd5e1;
+        }
+        .ml-btn-show {
+          padding: 8px 16px;
+          border: none;
+          border-radius: 6px;
+          font-weight: 600;
+          cursor: pointer;
+          font-size: 0.9rem;
+          transition: background 0.2s;
+          background: #dbeafe;
+          color: #0284c7;
+        }
+        .ml-btn-show:hover {
+          background: #bfdbfe;
+        }
+        .ml-sublevels-header {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin-top: 24px;
+          margin-bottom: 12px;
+          padding: 8px 0;
+          border-bottom: 2px solid #e2e8f0;
         }
         .ml-status-badges {
           display: flex;
@@ -1631,7 +1840,6 @@ export default function ManageLevels() {
           display: flex;
           gap: 8px;
         }
-        .ml-btn-view,
         .ml-btn-delete {
           padding: 8px 16px;
           border: none;
@@ -1640,20 +1848,20 @@ export default function ManageLevels() {
           cursor: pointer;
           font-size: 0.9rem;
           transition: background 0.2s;
-        }
-        .ml-btn-view {
-          background: #e0e7ff;
-          color: #4338ca;
-        }
-        .ml-btn-view:hover {
-          background: #c7d2fe;
-        }
-        .ml-btn-delete {
           background: #fee2e2;
           color: #dc2626;
         }
         .ml-btn-delete:hover {
           background: #fecaca;
+        }
+        .ml-sublist {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-bottom: 24px;
+        }
+        .ml-item-completed {
+          opacity: 0.75;
         }
         .ml-btn-incomplete {
           background: #e2e8f0;
@@ -1756,18 +1964,53 @@ export default function ManageLevels() {
           position: absolute;
           top: 8px;
           right: 8px;
-          background: #dc2626;
-          color: #fff;
-          border: none;
-          border-radius: 50%;
-          width: 28px;
-          height: 28px;
+          background: #fff;
+          color: #dc2626;
+          border: 1px solid #e5e7eb;
+          border-radius: 4px;
+          width: 32px;
+          height: 32px;
           font-size: 1rem;
           cursor: pointer;
-          transition: background 0.2s;
+          transition: all 0.2s;
+          z-index: 2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
         }
         .ml-btn-delete-photo:hover {
-          background: #b91c1c;
+          background: #fee2e2;
+          border-color: #dc2626;
+        }
+        .ml-photo-actions {
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          right: 8px;
+          display: flex;
+          justify-content: space-between;
+          z-index: 2;
+          gap: 8px;
+        }
+        .ml-btn-toggle-role {
+          background: #fff;
+          color: #3b82f6;
+          border: 1px solid #e5e7eb;
+          border-radius: 4px;
+          width: 32px;
+          height: 32px;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+        }
+        .ml-btn-toggle-role:hover {
+          background: #eff6ff;
+          border-color: #3b82f6;
         }
         .ml-doc-grid {
           display: grid;

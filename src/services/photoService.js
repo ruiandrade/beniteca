@@ -27,18 +27,42 @@ class PhotoService {
 
   async updatePhoto(id, data) {
     const pool = await getConnection();
+    
+    // Build dynamic update based on provided fields
+    const fields = [];
+    const request = pool.request().input('id', sql.Int, parseInt(id));
+    
+    if (data.levelId !== undefined) {
+      fields.push('levelId = @levelId');
+      request.input('levelId', sql.Int, data.levelId);
+    }
+    if (data.type !== undefined) {
+      fields.push('type = @type');
+      request.input('type', sql.NVarChar, data.type);
+    }
+    if (data.url !== undefined) {
+      fields.push('url = @url');
+      request.input('url', sql.NVarChar, data.url);
+    }
+    if (data.role !== undefined) {
+      fields.push('role = @role');
+      request.input('role', sql.Char, data.role);
+    }
+    
+    if (fields.length === 0) {
+      throw new Error('No fields to update');
+    }
+    
+    fields.push('updatedAt = GETDATE()');
+    
     const updateQuery = `
       UPDATE Photo
-      SET levelId = @levelId, type = @type, url = @url, updatedAt = GETDATE()
+      SET ${fields.join(', ')}
       OUTPUT INSERTED.*
       WHERE id = @id
     `;
-    const result = await pool.request()
-      .input('id', sql.Int, parseInt(id))
-      .input('levelId', sql.Int, data.levelId)
-      .input('type', sql.NVarChar, data.type)
-      .input('url', sql.NVarChar, data.url)
-      .query(updateQuery);
+    
+    const result = await request.query(updateQuery);
     return result.recordset[0];
   }
 

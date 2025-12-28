@@ -1,19 +1,12 @@
-
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
-const constructionManagers = [
-  { id: "1", name: "João Silva" },
-  { id: "2", name: "Maria Costa" },
-  { id: "3", name: "Carlos Pinto" },
-];
 
 export default function CreateWork() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [coverImage, setCoverImage] = useState(null);
   const [constructionManagerId, setConstructionManagerId] = useState("");
+  const [constructionManagers, setConstructionManagers] = useState([]);
   const [notes, setNotes] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -21,6 +14,22 @@ export default function CreateWork() {
   const [loading, setLoading] = useState(false);
   const [createdWorkId, setCreatedWorkId] = useState(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchConstructionManagers();
+  }, []);
+
+  const fetchConstructionManagers = async () => {
+    try {
+      const res = await fetch("/api/users");
+      if (res.ok) {
+        const data = await res.json();
+        setConstructionManagers(data);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar responsáveis:", err);
+    }
+  };
 
   const validate = () => {
     const newErrors = {};

@@ -165,6 +165,10 @@ class LevelService {
       fields.push('constructionManagerId = @constructionManagerId');
       request.input('constructionManagerId', sql.Int, data.constructionManagerId);
     }
+    if (data.hidden !== undefined) {
+      fields.push('hidden = @hidden');
+      request.input('hidden', sql.Bit, data.hidden);
+    }
     
     if (fields.length === 0) {
       throw new Error('No fields to update');

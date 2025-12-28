@@ -1,0 +1,481 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const [obras, setObras] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedObra, setSelectedObra] = useState(null);
+  const [obraChildren, setObraChildren] = useState([]);
+
+  useEffect(() => {
+    fetchObras();
+  }, []);
+
+  useEffect(() => {
+    if (selectedObra) {
+      fetchObraChildren(selectedObra.id);
+    }
+  }, [selectedObra]);
+
+  const fetchObras = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/levels?parentId=");
+      if (res.ok) {
+        const data = await res.json();
+        setObras(data.filter(obra => !obra.completed));
+      }
+    } catch (err) {
+      console.error("Erro ao carregar obras:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchObraChildren = async (parentId) => {
+    try {
+      const res = await fetch(`/api/levels?parentId=${parentId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setObraChildren(data);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar filhos:", err);
+      setObraChildren([]);
+    }
+  };
+
+  // Get bar color based on state
+  const getBarColor = (level) => {
+    if (level.completed) return "#10b981"; // Green
+    if (level.startDate) return "#f97316"; // Orange
+    return "#3b82f6"; // Blue
+  };
+
+  const getBarBgColor = (level) => {
+    if (level.completed) return "#d1fae5";
+    if (level.startDate) return "#fed7aa";
+    return "#dbeafe";
+  };
+
+  const getChildRatio = (level) => {
+    if (!level.childrenCount) return "—";
+    const completed = level.completedChildren || 0;
+    return `${completed}/${level.childrenCount}`;
+  };
+
+  const calculateWeeks = (startDate, endDate) => {
+    if (!startDate || !endDate) return [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const weeks = [];
+    let current = new Date(start);
+    
+    const dayOfWeek = current.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 1 : (1 - dayOfWeek + 7) % 7 || 7;
+    current.setDate(current.getDate() + daysToMonday);
+    
+    let weekNum = 1;
+    while (current <= end && weekNum <= 16) {
+      const dateStr = current.toLocaleDateString("pt-PT", { 
+        day: "2-digit", 
+        month: "2-digit", 
+        year: "numeric" 
+      });
+      weeks.push({ number: weekNum, label: `S${weekNum}: ${dateStr}` });
+      current.setDate(current.getDate() + 7);
+      weekNum++;
+    }
+    return weeks;
+  };
+
+  const filteredObras = obras.filter(obra =>
+    obra.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    obra.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Render main cards view
+  if (!selectedObra) {
+    return (
+      <div className="dashboard-bg">
+        <div className="dashboard-container">
+          <div className="dashboard-header">
+            <h1 className="dashboard-title">📊 Dashboard de Obras</h1>
+          </div>
+
+          <div className="dashboard-search">
+            <input
+              type="text"
+              placeholder="🔍 Pesquisar obras..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="dashboard-search-input"
+            />
+          </div>
+
+          {loading ? (
+            <p className="dashboard-loading">A carregar obras...</p>
+          ) : filteredObras.length === 0 ? (
+            <div className="dashboard-empty">
+              <p>Nenhuma obra encontrada.</p>
+            </div>
+          ) : (
+            <div className="dashboard-grid">
+              {filteredObras.map((obra) => (
+                <div
+                  key={obra.id}
+                  className="dashboard-card"
+                  onClick={() => setSelectedObra(obra)}
+                  style={{
+                    borderLeft: `4px solid ${getBarColor(obra)}`
+                  }}
+                >
+                  <div className="dashboard-card-header" style={{
+                    background: getBarBgColor(obra)
+                  }}>
+                    <h2 className="dashboard-card-title">{obra.name}</h2>
+                    <p className="dashboard-card-manager">{obra.constructionManagerName || "Sem responsável"}</p>
+                  </div>
+
+                  <div className="dashboard-card-content">
+                    <div className="dashboard-kpi-row">
+                      <div className="dashboard-kpi-item">
+                        <span className="dashboard-kpi-label">Início</span>
+                        <span className="dashboard-kpi-value">
+                          {new Date(obra.startDate).toLocaleDateString("pt-PT")}
+                        </span>
+                      </div>
+                      <div className="dashboard-kpi-item">
+                        <span className="dashboard-kpi-label">Fim</span>
+                        <span className="dashboard-kpi-value">
+                          {new Date(obra.endDate).toLocaleDateString("pt-PT")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="dashboard-kpi-row">
+                      <div className="dashboard-kpi-item">
+                        <span className="dashboard-kpi-label">Filhos</span>
+                        <span className="dashboard-kpi-value">{getChildRatio(obra)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <style>{`
+          .dashboard-bg {
+            min-height: 100vh;
+            background: #f8fafc;
+            padding: 20px;
+          }
+          .dashboard-container {
+            width: 100%;
+            max-width: 100%;
+          }
+          .dashboard-header {
+            margin-bottom: 24px;
+            padding: 24px 32px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px #0001;
+          }
+          .dashboard-title {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin: 0;
+          }
+          .dashboard-search {
+            margin-bottom: 24px;
+          }
+          .dashboard-search-input {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #fff;
+            transition: border-color 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          }
+          .dashboard-search-input:focus {
+            outline: none;
+            border-color: #2563eb;
+          }
+          .dashboard-loading {
+            text-align: center;
+            color: #64748b;
+            padding: 40px;
+          }
+          .dashboard-empty {
+            text-align: center;
+            color: #64748b;
+            padding: 60px 20px;
+            background: #fff;
+            border-radius: 12px;
+          }
+          .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+          }
+          .dashboard-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+          }
+          .dashboard-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+          }
+          .dashboard-card-header {
+            padding: 20px;
+          }
+          .dashboard-card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: #1e293b;
+          }
+          .dashboard-card-manager {
+            font-size: 0.9rem;
+            margin: 0;
+            color: #64748b;
+          }
+          .dashboard-card-content {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+          }
+          .dashboard-kpi-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+          }
+          .dashboard-kpi-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+          .dashboard-kpi-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+          }
+          .dashboard-kpi-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+      <style>{`
+        .dashboard-bg {
+          min-height: 100vh;
+          background: #f8fafc;
+          padding: 20px;
+        }
+        .dashboard-container {
+          width: 100%;
+          max-width: 100%;
+        }
+        .dashboard-header {
+          margin-bottom: 24px;
+          padding: 24px 32px;
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 2px 16px #0001;
+        }
+        .dashboard-title {
+          font-size: 2rem;
+          font-weight: 800;
+          color: #1e293b;
+          margin: 0;
+        }
+        .dashboard-search {
+          margin-bottom: 24px;
+        }
+        .dashboard-search-input {
+          width: 100%;
+          padding: 14px 20px;
+          font-size: 1rem;
+          border: 2px solid #e2e8f0;
+          border-radius: 10px;
+          background: #fff;
+          transition: border-color 0.2s;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .dashboard-search-input:focus {
+          outline: none;
+          border-color: #2563eb;
+        }
+        .dashboard-tabs {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 24px;
+          background: #fff;
+          padding: 12px;
+          border-radius: 12px;
+        }
+        .tab-btn {
+          padding: 10px 20px;
+          border: 2px solid #e2e8f0;
+          background: #fff;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .tab-btn:hover {
+          border-color: #cbd5e1;
+        }
+        .tab-btn.active {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: #fff;
+          border-color: #667eea;
+        }
+        .dashboard-loading {
+          text-align: center;
+          color: #64748b;
+          padding: 40px;
+          font-size: 1.1rem;
+        }
+        .dashboard-empty {
+          text-align: center;
+          color: #64748b;
+          padding: 60px 20px;
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 2px 16px #0001;
+        }
+        .gantt-view {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+        .gantt-table {
+          background: #fff;
+          border-radius: 12px;
+          padding: 20px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .gantt-table h3 {
+          margin: 0 0 16px 0;
+          font-size: 1.2rem;
+        }
+        .gantt-grid {
+          margin-bottom: 16px;
+          overflow-x: auto;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+        }
+        .gantt-header-row {
+          display: grid;
+          grid-template-columns: 200px repeat(auto-fit, minmax(100px, 1fr));
+          background: #f8fafc;
+          border-bottom: 2px solid #e2e8f0;
+          font-weight: 600;
+          font-size: 0.85rem;
+        }
+        .gantt-name-col {
+          padding: 12px;
+          font-weight: 600;
+          color: #1e293b;
+        }
+        .gantt-week-col {
+          padding: 12px;
+          color: #64748b;
+          text-align: center;
+          border-right: 1px solid #e2e8f0;
+        }
+        .gantt-data-row {
+          display: grid;
+          grid-template-columns: 200px repeat(auto-fit, minmax(100px, 1fr));
+          align-items: center;
+        }
+        .gantt-name-cell {
+          padding: 12px;
+          border-right: 1px solid #e2e8f0;
+          font-weight: 500;
+        }
+        .gantt-bar-cell {
+          padding: 12px;
+          text-align: center;
+          border-right: 1px solid #e2e8f0;
+          min-height: 50px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .gantt-bar {
+          height: 24px;
+          width: 60%;
+          border-radius: 4px;
+        }
+        .gantt-info {
+          padding: 12px;
+          border-radius: 8px;
+          display: flex;
+          gap: 24px;
+          font-size: 0.95rem;
+        }
+        .hierarchy-view {
+          background: #fff;
+          border-radius: 12px;
+          padding: 20px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .hierarchy-section {
+          margin-bottom: 8px;
+        }
+        .hierarchy-item {
+          padding: 16px;
+          border-radius: 8px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .hierarchy-item {
+          padding: 16px;
+          border-radius: 8px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          transition: all 0.2s;
+        }
+        .hierarchy-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+          gap: 16px;
+        }
+        .hierarchy-name {
+          font-weight: 600;
+          color: #1e293b;
+          flex: 1;
+        }
+        .hierarchy-ratio {
+          font-weight: 600;
+          color: #64748b;
+          min-width: 60px;
+          text-align: right;
+        }
+      `}</style>
+    </div>
+  );
+}

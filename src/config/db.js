@@ -13,18 +13,19 @@ const config = {
   }
 };
 
-const poolPromise = sql.connect(config)
-  .then(pool => {
-    console.log('Conectado ao Azure SQL ✅');
-    return pool;
-  })
-  .catch(err => {
-    console.log('Erro na conexão SQL:', err);
-    throw err;
-  });
+let pool = null;
 
 const getConnection = async () => {
-  return poolPromise;
+  try {
+    if (pool && pool.connected) return pool;
+    pool = await sql.connect(config);
+    console.log('Conectado ao Azure SQL ✅');
+    return pool;
+  } catch (err) {
+    console.log('Erro na conexão SQL:', err);
+    // Propagate error to be handled per-request by controllers/services
+    throw err;
+  }
 };
 
 module.exports = {

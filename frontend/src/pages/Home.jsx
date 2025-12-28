@@ -95,7 +95,11 @@ export default function Home() {
               obra.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
               obra.description?.toLowerCase().includes(searchTerm.toLowerCase())
             ).map((obra) => (
-              <div key={obra.id} className="home-card">
+              <div 
+                key={obra.id} 
+                className="home-card"
+                onClick={() => navigate(`/works/${obra.id}/levels`)}
+              >
                 {obra.coverImage && (
                   <img src={obra.coverImage} alt={obra.name} className="home-card-img" />
                 )}
@@ -119,17 +123,14 @@ export default function Home() {
                   )}
                 </div>
                 <div className="home-card-actions">
-                  <button
-                    onClick={() => navigate(`/works/${obra.id}/levels`)}
-                    className="home-btn-view"
-                  >
-                    Gerir
+                  <button onClick={(e) => { e.stopPropagation(); navigate(`/works/${obra.id}/planeamento`); }} className="home-btn-plan" title="Planeamento diário">
+                    📅
                   </button>
-                  <button onClick={() => handleArchive(obra.id)} className="home-btn-archive" title="Arquivar">
+                  <button onClick={(e) => { e.stopPropagation(); navigate(`/works/${obra.id}/equipa`); }} className="home-btn-archive" title="Equipa">
+                    👥
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); handleArchive(obra.id); }} className="home-btn-archive" title="Arquivar">
                     🗄️
-                  </button>
-                  <button onClick={() => handleDelete(obra.id)} className="home-btn-delete" title="Deletar">
-                    🗑️
                   </button>
                 </div>
               </div>
@@ -233,6 +234,7 @@ export default function Home() {
           transition: box-shadow 0.3s, transform 0.2s;
           display: flex;
           flex-direction: column;
+          cursor: pointer;
         }
         .home-card:hover {
           box-shadow: 0 4px 24px #0002;
@@ -289,6 +291,7 @@ export default function Home() {
           opacity: 0.9;
         }
         .home-btn-archive,
+        .home-btn-plan,
         .home-btn-delete {
           padding: 10px 14px;
           border: none;
@@ -297,6 +300,13 @@ export default function Home() {
           cursor: pointer;
           font-size: 1.2rem;
           transition: background 0.2s;
+        }
+        .home-btn-plan {
+          background: #e0f2fe;
+          color: #0369a1;
+        }
+        .home-btn-plan:hover {
+          background: #bae6fd;
         }
         .home-btn-archive {
           background: #fef3c7;
