@@ -21,6 +21,14 @@ class UserService {
     return result.recordset;
   }
 
+  async getUserByEmail(email) {
+    const pool = await getConnection();
+    const result = await pool.request()
+      .input('email', sql.NVarChar, email)
+      .query('SELECT TOP 1 * FROM [User] WHERE email = @email');
+    return result.recordset[0];
+  }
+
   async getUserById(id) {
     const pool = await getConnection();
     const result = await pool.request()
@@ -44,6 +52,10 @@ class UserService {
     if (data.status) {
       updates.push('status = @status');
       request.input('status', sql.NVarChar, data.status);
+    }
+    if (data.passwordHash !== undefined) {
+      updates.push('passwordHash = @passwordHash');
+      request.input('passwordHash', sql.NVarChar, data.passwordHash);
     }
     if (updates.length === 0) throw new Error('No fields to update');
     const query = `UPDATE [User] SET ${updates.join(', ')}, updatedAt = GETDATE() OUTPUT INSERTED.* WHERE id = @id`;
