@@ -1,153 +1,179 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import WorkerSchedule from './WorkerSchedule';
 
 export default function Home() {
   const navigate = useNavigate();
-  const [obras, setObras] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState('list');
+  const [levels, setLevels] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchObras();
+    loadLevels();
   }, []);
 
-  const fetchObras = async () => {
+  const loadLevels = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await fetch("/api/levels?parentId=");
-      if (res.ok) {
-        const data = await res.json();
-        // Filter to show only active works (not completed)
-        setObras(data.filter(obra => !obra.completed));
-      }
+      const res = await fetch('/api/levels?parentId=');
+      if (!res.ok) throw new Error('Erro ao carregar obras');
+      const data = await res.json();
+      setLevels(data.filter(l => !l.completed));
     } catch (err) {
-      console.error("Erro ao carregar obras:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Tem certeza que deseja deletar esta obra?")) return;
-    try {
-      const res = await fetch(`/api/levels/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        await fetchObras();
-      } else {
-        alert("Erro ao deletar obra");
-      }
-    } catch (err) {
-      alert("Erro ao deletar obra: " + err.message);
-    }
-  };
-
   const handleArchive = async (id) => {
-    if (!confirm("Tem certeza que deseja arquivar esta obra?")) return;
+    if (!confirm('Tem certeza que deseja arquivar esta obra?')) return;
     try {
       const res = await fetch(`/api/levels/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: true })
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: true }),
       });
-      if (res.ok) {
-        await fetchObras();
-      } else {
-        alert("Erro ao arquivar obra");
-      }
+      if (!res.ok) throw new Error('Erro ao arquivar');
+      loadLevels();
     } catch (err) {
-      alert("Erro ao arquivar obra: " + err.message);
+      alert('Erro ao arquivar obra');
+      console.error(err);
     }
   };
 
+  const filteredLevels = levels.filter(level =>
+    level.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    level.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="home-bg">
-      <div className="home-container">
-        <div className="home-header">
-          <h1 className="home-title">Gestão de Obras</h1>
-          <button onClick={() => navigate("/create")} className="home-create-btn">
-            + Criar Nova Obra
-          </button>
+    <div className="home-page">
+      <div className="home-header">
+        <div>
+          <h1 className="home-title">🏗️ As Minhas Obras</h1>
+          <p className="home-subtitle">Gerir obras ativas</p>
         </div>
+        <button className="btn-primary" onClick={() => navigate('/create')}>
+          ➕ Nova Obra
+        </button>
+      </div>
 
-        <div className="home-search">
-          <input
-            type="text"
-            placeholder="🔍 Pesquisar obras por nome ou descrição..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="home-search-input"
-          />
-        </div>
+      <div className="home-tabs">
+        <button
+          className={`tab ${activeTab === 'list' ? 'active' : ''}`}
+          onClick={() => setActiveTab('list')}
+        >
+          📋 Lista de Obras
+        </button>
+        <button
+          className={`tab ${activeTab === 'calendar' ? 'active' : ''}`}
+          onClick={() => setActiveTab('calendar')}
+        >
+          📅 Calendário
+        </button>
+      </div>
 
-        {loading ? (
-          <p className="home-loading">A carregar obras...</p>
-        ) : obras.filter(obra => 
-            obra.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            obra.description?.toLowerCase().includes(searchTerm.toLowerCase())
-          ).length === 0 ? (
-          <div className="home-empty">
-            <p>{searchTerm ? "Nenhuma obra encontrada com esse termo." : "Nenhuma obra encontrada."}</p>
-            <p className="home-empty-hint">Comece por criar a primeira obra.</p>
-          </div>
+      <div className="home-content">
+        {activeTab === 'list' ? (
+          <>
+            <div className="home-search">
+              <input
+                type="text"
+                placeholder="🔍 Pesquisar obras..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="home-search-input"
+              />
+            </div>
+
+            <div className="works-list">
+              {loading ? (
+                <p className="loading-text">A carregar...</p>
+              ) : filteredLevels.length === 0 ? (
+                <p className="empty-text">
+                  {searchTerm ? 'Nenhuma obra encontrada com esse termo.' : 'Sem obras ativas. Clique em "Nova Obra" para começar.'}
+                </p>
+              ) : (
+                <div className="cards-grid">
+                  {filteredLevels.map((level) => (
+                    <div 
+                      key={level.id} 
+                      className="work-card"
+                      onClick={() => navigate(`/works/${level.id}/levels`)}
+                    >
+                      {level.coverImage && (
+                        <img src={level.coverImage} alt={level.name} className="work-card-img" />
+                      )}
+                      <div className="card-content">
+                        <div className="card-header">
+                          <h3 className="card-title">{level.name}</h3>
+                          {level.childrenCount > 0 && (
+                            <span className="badge info">
+                              {level.childrenCount} {level.childrenCount === 1 ? 'nível' : 'níveis'}
+                            </span>
+                          )}
+                        </div>
+                        {level.description && (
+                          <p className="card-description">{level.description}</p>
+                        )}
+                        {level.startDate && (
+                          <p className="card-date">
+                            📅 {new Date(level.startDate).toLocaleDateString('pt-PT')} - {new Date(level.endDate).toLocaleDateString('pt-PT')}
+                          </p>
+                        )}
+                        {level.constructionManagerName && (
+                          <p className="card-manager">
+                            👷 {level.constructionManagerName}
+                          </p>
+                        )}
+                      </div>
+                      <div className="card-actions">
+                        <button
+                          className="btn-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/works/${level.id}/equipa`);
+                          }}
+                        >
+                          👥 Equipa
+                        </button>
+                        <button
+                          className="btn-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/works/${level.id}/planeamento`);
+                          }}
+                        >
+                          📆 Planeamento
+                        </button>
+                        <button
+                          className="btn-danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleArchive(level.id);
+                          }}
+                        >
+                          📦 Arquivar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         ) : (
-          <div className="home-grid">
-            {obras.filter(obra => 
-              obra.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              obra.description?.toLowerCase().includes(searchTerm.toLowerCase())
-            ).map((obra) => (
-              <div 
-                key={obra.id} 
-                className="home-card"
-                onClick={() => navigate(`/works/${obra.id}/levels`)}
-              >
-                {obra.coverImage && (
-                  <img src={obra.coverImage} alt={obra.name} className="home-card-img" />
-                )}
-                <div className="home-card-content">
-                  <h2 className="home-card-title">{obra.name}</h2>
-                  <p className="home-card-desc">{obra.description}</p>
-                  {obra.startDate && (
-                    <p className="home-card-date">
-                      Início: {new Date(obra.startDate).toLocaleDateString("pt-PT")}
-                    </p>
-                  )}
-                  {obra.endDate && (
-                    <p className="home-card-date">
-                      Fim: {new Date(obra.endDate).toLocaleDateString("pt-PT")}
-                    </p>
-                  )}
-                  {obra.constructionManagerName && (
-                    <p className="home-card-manager">
-                      Responsável: {obra.constructionManagerName}
-                    </p>
-                  )}
-                </div>
-                <div className="home-card-actions">
-                  <button onClick={(e) => { e.stopPropagation(); navigate(`/works/${obra.id}/planeamento`); }} className="home-btn-plan" title="Planeamento diário">
-                    📅
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); navigate(`/works/${obra.id}/equipa`); }} className="home-btn-archive" title="Equipa">
-                    👥
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); handleArchive(obra.id); }} className="home-btn-archive" title="Arquivar">
-                    🗄️
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <WorkerSchedule />
         )}
       </div>
 
       <style>{`
-        .home-bg {
-          min-height: 100vh;
-          background: #f8fafc;
+        .home-page {
           padding: 20px;
-        }
-        .home-container {
-          width: 100%;
-          max-width: 100%;
+          background: #f8fafc;
+          min-height: 100vh;
         }
         .home-header {
           display: flex;
@@ -158,6 +184,50 @@ export default function Home() {
           background: #fff;
           border-radius: 12px;
           box-shadow: 0 2px 16px #0001;
+        }
+        .home-title {
+          margin: 0;
+          font-size: 2rem;
+          color: #1e293b;
+          font-weight: 800;
+        }
+        .home-subtitle {
+          margin: 4px 0 0 0;
+          color: #64748b;
+          font-size: 1rem;
+        }
+        .home-tabs {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 20px;
+          border-bottom: 2px solid #e2e8f0;
+          padding-bottom: 0;
+        }
+        .tab {
+          background: transparent;
+          border: none;
+          padding: 12px 20px;
+          font-size: 1rem;
+          font-weight: 600;
+          color: #64748b;
+          cursor: pointer;
+          border-bottom: 3px solid transparent;
+          transition: all 0.2s;
+          margin-bottom: -2px;
+        }
+        .tab:hover {
+          color: #1e293b;
+          background: #f1f5f9;
+        }
+        .tab.active {
+          color: #2563eb;
+          border-bottom-color: #2563eb;
+        }
+        .home-content {
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 2px 16px #0001;
+          padding: 20px;
         }
         .home-search {
           margin-bottom: 24px;
@@ -174,153 +244,156 @@ export default function Home() {
         }
         .home-search-input:focus {
           outline: none;
-          border-color: #6366f1;
+          border-color: #2563eb;
         }
-        .home-search-input::placeholder {
-          color: #94a3b8;
+        .works-list {
+          min-height: 400px;
         }
-        .home-title {
-          font-size: 2.5rem;
-          font-weight: 700;
-          color: #1e293b;
-          margin: 0;
-        }
-        .home-create-btn {
-          background: linear-gradient(90deg, #6366f1 0%, #2563eb 100%);
-          color: #fff;
-          border: none;
-          border-radius: 8px;
-          padding: 12px 24px;
-          font-weight: 600;
-          font-size: 1.05rem;
-          cursor: pointer;
-          transition: transform 0.2s;
-        }
-        .home-create-btn:hover {
-          transform: scale(1.05);
-        }
-        .home-loading {
+        .loading-text, .empty-text {
           text-align: center;
           color: #64748b;
-          padding: 60px;
-          font-size: 1.1rem;
-        }
-        .home-empty {
-          text-align: center;
-          padding: 80px 40px;
-          background: #fff;
-          border-radius: 12px;
-          box-shadow: 0 2px 16px #0001;
-        }
-        .home-empty p {
-          font-size: 1.2rem;
-          color: #64748b;
-          margin-bottom: 8px;
-        }
-        .home-empty-hint {
-          color: #94a3b8;
+          padding: 40px 20px;
           font-size: 1rem;
         }
-        .home-grid {
+        .cards-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          gap: 16px;
         }
-        .home-card {
+        .work-card {
           background: #fff;
-          border-radius: 12px;
+          border-radius: 10px;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
           overflow: hidden;
-          box-shadow: 0 2px 16px #0001;
-          transition: box-shadow 0.3s, transform 0.2s;
           display: flex;
           flex-direction: column;
+          transition: transform 0.2s, box-shadow 0.2s;
+          border: 1px solid #e2e8f0;
           cursor: pointer;
         }
-        .home-card:hover {
-          box-shadow: 0 4px 24px #0002;
-          transform: translateY(-4px);
+        .work-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
-        .home-card-img {
+        .work-card-img {
           width: 100%;
           aspect-ratio: 1 / 1;
           height: auto;
           object-fit: cover;
           background: #f1f5f9;
         }
-        .home-card-content {
-          padding: 20px;
+        .card-content {
+          padding: 12px;
           flex: 1;
         }
-        .home-card-title {
-          font-size: 1.4rem;
-          font-weight: 700;
-          color: #1e293b;
-          margin-bottom: 8px;
-        }
-        .home-card-desc {
-          color: #64748b;
-          font-size: 0.95rem;
-          margin-bottom: 12px;
-          line-height: 1.5;
-        }
-        .home-card-date,
-        .home-card-manager {
-          color: #94a3b8;
-          font-size: 0.9rem;
-          margin-bottom: 4px;
-        }
-        .home-card-actions {
+        .card-header {
           display: flex;
+          justify-content: space-between;
+          align-items: start;
+          margin-bottom: 8px;
           gap: 8px;
-          padding: 16px 20px;
+        }
+        .card-title {
+          margin: 0;
+          font-size: 1rem;
+          color: #1e293b;
+          font-weight: 700;
+          flex: 1;
+          line-height: 1.3;
+        }
+        .badge {
+          padding: 3px 8px;
+          border-radius: 8px;
+          font-size: 0.65rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          white-space: nowrap;
+        }
+        .badge.info {
+          background: #dbeafe;
+          color: #1e40af;
+        }
+        .card-description {
+          color: #64748b;
+          font-size: 0.8rem;
+          margin: 0 0 8px 0;
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .card-date, .card-manager {
+          color: #64748b;
+          font-size: 0.75rem;
+          margin: 3px 0;
+        }
+        .card-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 10px 12px;
+          background: #f8fafc;
           border-top: 1px solid #e2e8f0;
         }
-        .home-btn-view {
-          flex: 1;
-          padding: 10px 16px;
-          border: none;
-          border-radius: 6px;
-          font-weight: 600;
-          cursor: pointer;
-          font-size: 0.95rem;
-          transition: background 0.2s;
-          background: linear-gradient(90deg, #6366f1 0%, #2563eb 100%);
+        .btn-primary {
+          background: #2563eb;
           color: #fff;
-        }
-        .home-btn-view:hover {
-          opacity: 0.9;
-        }
-        .home-btn-archive,
-        .home-btn-plan,
-        .home-btn-delete {
-          padding: 10px 14px;
           border: none;
-          border-radius: 6px;
+          border-radius: 8px;
+          padding: 12px 24px;
           font-weight: 600;
+          font-size: 1rem;
           cursor: pointer;
-          font-size: 1.2rem;
-          transition: background 0.2s;
+          transition: all 0.2s;
         }
-        .home-btn-plan {
-          background: #e0f2fe;
-          color: #0369a1;
+        .btn-primary:hover {
+          background: #1d4ed8;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
-        .home-btn-plan:hover {
-          background: #bae6fd;
+        .btn-secondary {
+          background: #f1f5f9;
+          color: #475569;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          padding: 6px 10px;
+          font-weight: 600;
+          font-size: 0.75rem;
+          cursor: pointer;
+          transition: all 0.2s;
         }
-        .home-btn-archive {
-          background: #fef3c7;
-          color: #f59e0b;
+        .btn-secondary:hover {
+          background: #e2e8f0;
+          border-color: #cbd5e1;
         }
-        .home-btn-archive:hover {
-          background: #fde68a;
-        }
-        .home-btn-delete {
+        .btn-danger {
           background: #fee2e2;
-          color: #dc2626;
+          color: #b91c1c;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          padding: 6px 10px;
+          font-weight: 600;
+          font-size: 0.75rem;
+          cursor: pointer;
+          transition: all 0.2s;
         }
-        .home-btn-delete:hover {
+        .btn-danger:hover {
           background: #fecaca;
+          border-color: #fca5a5;
+        }
+        @media (max-width: 768px) {
+          .home-page {
+            padding: 16px;
+          }
+          .home-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+          .cards-grid {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </div>

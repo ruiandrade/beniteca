@@ -1,6 +1,25 @@
 const { getConnection, sql } = require('../config/db');
 
 class LevelUserDayService {
+  async getAll(from, to) {
+    const pool = await getConnection();
+    const req = pool.request();
+    if (from) req.input('from', sql.Date, from);
+    if (to) req.input('to', sql.Date, to);
+
+    const result = await req.query(`
+      SELECT lud.id, lud.levelId, lud.userId, lud.day, lud.period,
+             u.name, u.email, u.Car
+      FROM LevelUserDay lud
+      INNER JOIN [User] u ON u.id = lud.userId
+      WHERE 1=1
+        ${from ? 'AND lud.day >= @from' : ''}
+        ${to ? 'AND lud.day <= @to' : ''}
+      ORDER BY lud.day, u.name, lud.period
+    `);
+    return result.recordset;
+  }
+
   async getByLevel(levelId, from, to) {
     const pool = await getConnection();
     const req = pool.request().input('levelId', sql.Int, parseInt(levelId));

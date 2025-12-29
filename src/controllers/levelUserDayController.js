@@ -1,6 +1,16 @@
 const levelUserDayService = require('../services/levelUserDayService');
 
 class LevelUserDayController {
+  async getAll(req, res) {
+    try {
+      const { from, to } = req.query;
+      const data = await levelUserDayService.getAll(from, to);
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
   async getByLevel(req, res) {
     try {
       const { levelId } = req.params;

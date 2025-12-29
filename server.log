@@ -69,3 +69,6 @@ Erro na conexão SQL: ConnectionError: Failed to connect to beniteca.database.wi
   }
 }
 Conectado ao Azure SQL ✅
+Upload request received
+File: aldeamento-turistico.jpg image/jpeg 158324
+Upload successful, URL: https://beniteca.blob.core.windows.net/beniteca-photos/1767026599148-aldeamento-turistico.jpg?sv=2025-11-05&se=2026-12-29T16%3A43%3A19Z&sr=b&sp=r&sig=Vh%2B%2FzqSwhikzWNWUkR9%2B6fX6llwYyvAPYNeXmzAYBDk%3D
