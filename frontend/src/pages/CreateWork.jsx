@@ -13,6 +13,8 @@ export default function CreateWork() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [createdWorkId, setCreatedWorkId] = useState(null);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [templates, setTemplates] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,6 +48,62 @@ export default function CreateWork() {
     setCoverImage(e.target.files[0]);
   };
 
+  const addTemplate = () => {
+    setTemplates([...templates, { name: '', count: 1, children: [] }]);
+  };
+
+  const removeTemplate = (index) => {
+    setTemplates(templates.filter((_, i) => i !== index));
+  };
+
+  const updateTemplate = (index, field, value) => {
+    const newTemplates = [...templates];
+    newTemplates[index][field] = value;
+    setTemplates(newTemplates);
+  };
+
+  const addChildTemplate = (parentIndex) => {
+    const newTemplates = [...templates];
+    if (!newTemplates[parentIndex].children) {
+      newTemplates[parentIndex].children = [];
+    }
+    newTemplates[parentIndex].children.push({ name: '', count: 1, children: [] });
+    setTemplates(newTemplates);
+  };
+
+  const removeChildTemplate = (parentIndex, childIndex) => {
+    const newTemplates = [...templates];
+    newTemplates[parentIndex].children.splice(childIndex, 1);
+    setTemplates(newTemplates);
+  };
+
+  const updateChildTemplate = (parentIndex, childIndex, field, value) => {
+    const newTemplates = [...templates];
+    newTemplates[parentIndex].children[childIndex][field] = value;
+    setTemplates(newTemplates);
+  };
+
+  const addGrandchildTemplate = (parentIndex, childIndex) => {
+    const newTemplates = [...templates];
+    if (!newTemplates[parentIndex].children[childIndex].children) {
+      newTemplates[parentIndex].children[childIndex].children = [];
+    }
+    newTemplates[parentIndex].children[childIndex].children.push({ name: '', count: 1, children: [] });
+    setTemplates(newTemplates);
+  };
+
+  const removeGrandchildTemplate = (parentIndex, childIndex, grandchildIndex) => {
+    const newTemplates = [...templates];
+    newTemplates[parentIndex].children[childIndex].children.splice(grandchildIndex, 1);
+    setTemplates(newTemplates);
+  };
+
+  const updateGrandchildTemplate = (parentIndex, childIndex, grandchildIndex, field, value) => {
+    const newTemplates = [...templates];
+    newTemplates[parentIndex].children[childIndex].children[grandchildIndex][field] = value;
+    setTemplates(newTemplates);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
@@ -61,23 +119,48 @@ export default function CreateWork() {
       });
       if (!uploadRes.ok) throw new Error("Erro ao fazer upload da imagem");
       const { url: coverImageUrl } = await uploadRes.json();
-      const workRes = await fetch("/api/levels", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          description,
-          coverImage: coverImageUrl,
-          constructionManagerId,
-          notes,
-          startDate,
-          endDate,
-          parentId: null,
-        }),
-      });
-      if (!workRes.ok) throw new Error("Erro ao criar obra");
-      const created = await workRes.json();
-      setCreatedWorkId(created.id);
+      
+      // Create work with or without templates
+      if (showTemplates && templates.length > 0) {
+        const hierarchyData = {
+          root: {
+            name,
+            description,
+            coverImage: coverImageUrl,
+            constructionManagerId,
+            notes,
+            startDate,
+            endDate,
+          },
+          templates
+        };
+        const res = await fetch("/api/levels/hierarchy/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(hierarchyData)
+        });
+        if (!res.ok) throw new Error("Erro ao criar hierarquia");
+        const created = await res.json();
+        setCreatedWorkId(created.id);
+      } else {
+        const workRes = await fetch("/api/levels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            description,
+            coverImage: coverImageUrl,
+            constructionManagerId,
+            notes,
+            startDate,
+            endDate,
+            parentId: null,
+          }),
+        });
+        if (!workRes.ok) throw new Error("Erro ao criar obra");
+        const created = await workRes.json();
+        setCreatedWorkId(created.id);
+      }
     } catch (err) {
       setErrors({ submit: err.message });
     } finally {
@@ -142,6 +225,137 @@ export default function CreateWork() {
             <textarea id="cw-notes" value={notes} onChange={e => setNotes(e.target.value)} className={notes ? "has-value" : ""} />
             <label htmlFor="cw-notes">Notas</label>
           </div>
+        </div>
+
+        {/* Template Builder Section */}
+        <div className="cw-template-section">
+          <button 
+            type="button"
+            className={`cw-template-toggle ${showTemplates ? 'active' : ''}`}
+            onClick={() => setShowTemplates(!showTemplates)}
+          >
+            {showTemplates ? '▼' : '▶'} Criar hierarquia de subníveis automaticamente
+          </button>
+
+          {showTemplates && (
+            <div className="cw-template-builder">
+              <p className="cw-template-hint">Defina os padrões de subníveis. Ex: "Lote" com 10 unidades, cada uma com 5 "WC", etc.</p>
+              
+              {templates.map((template, idx) => (
+                <div key={idx} className="cw-template-group">
+                  <div className="cw-template-header">
+                    <input 
+                      type="text"
+                      placeholder="Nome do padrão (ex: Lote)"
+                      value={template.name}
+                      onChange={(e) => updateTemplate(idx, 'name', e.target.value)}
+                      className="cw-template-name"
+                    />
+                    <input 
+                      type="number"
+                      min="1"
+                      max="999"
+                      placeholder="Quantidade"
+                      value={template.count}
+                      onChange={(e) => updateTemplate(idx, 'count', parseInt(e.target.value) || 1)}
+                      className="cw-template-count"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => removeTemplate(idx)}
+                      className="cw-btn-remove"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Children Templates */}
+                  {template.children && template.children.map((child, cIdx) => (
+                    <div key={cIdx} className="cw-template-child">
+                      <div className="cw-template-header indent-1">
+                        <input 
+                          type="text"
+                          placeholder="Nome (ex: WC)"
+                          value={child.name}
+                          onChange={(e) => updateChildTemplate(idx, cIdx, 'name', e.target.value)}
+                          className="cw-template-name"
+                        />
+                        <input 
+                          type="number"
+                          min="1"
+                          placeholder="Qtd"
+                          value={child.count}
+                          onChange={(e) => updateChildTemplate(idx, cIdx, 'count', parseInt(e.target.value) || 1)}
+                          className="cw-template-count"
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => removeChildTemplate(idx, cIdx)}
+                          className="cw-btn-remove"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Grandchildren Templates */}
+                      {child.children && child.children.map((grandchild, gIdx) => (
+                        <div key={gIdx} className="cw-template-grandchild">
+                          <div className="cw-template-header indent-2">
+                            <input 
+                              type="text"
+                              placeholder="Nome (ex: Lavatório)"
+                              value={grandchild.name}
+                              onChange={(e) => updateGrandchildTemplate(idx, cIdx, gIdx, 'name', e.target.value)}
+                              className="cw-template-name"
+                            />
+                            <input 
+                              type="number"
+                              min="1"
+                              placeholder="Qtd"
+                              value={grandchild.count}
+                              onChange={(e) => updateGrandchildTemplate(idx, cIdx, gIdx, 'count', parseInt(e.target.value) || 1)}
+                              className="cw-template-count"
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => removeGrandchildTemplate(idx, cIdx, gIdx)}
+                              className="cw-btn-remove"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button 
+                        type="button"
+                        onClick={() => addGrandchildTemplate(idx, cIdx)}
+                        className="cw-btn-add-sub"
+                      >
+                        + Adicionar subnível
+                      </button>
+                    </div>
+                  ))}
+
+                  <button 
+                    type="button"
+                    onClick={() => addChildTemplate(idx)}
+                    className="cw-btn-add"
+                  >
+                    + Adicionar subnível a cada "{template.name}"
+                  </button>
+                </div>
+              ))}
+
+              <button 
+                type="button"
+                onClick={addTemplate}
+                className="cw-btn-add-template"
+              >
+                + Adicionar padrão
+              </button>
+            </div>
+          )}
         </div>
 
         {errors.submit && <div className="cw-error cw-error-submit">{errors.submit}</div>}
@@ -346,6 +560,153 @@ export default function CreateWork() {
         }
         .cw-link-btn:hover {
           transform: scale(1.05);
+        }
+        .cw-template-section {
+          margin-top: 32px;
+          padding-top: 20px;
+          border-top: 2px solid #e2e8f0;
+        }
+        .cw-template-toggle {
+          width: 100%;
+          padding: 12px 16px;
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          font-size: 1rem;
+          font-weight: 600;
+          color: #475569;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.2s;
+        }
+        .cw-template-toggle:hover {
+          background: #e2e8f0;
+        }
+        .cw-template-toggle.active {
+          background: #dbeafe;
+          color: #1e40af;
+          border-color: #93c5fd;
+        }
+        .cw-template-builder {
+          margin-top: 16px;
+          padding: 16px;
+          background: #f8fafc;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+        }
+        .cw-template-hint {
+          font-size: 0.9rem;
+          color: #64748b;
+          margin-bottom: 16px;
+          font-style: italic;
+        }
+        .cw-template-group {
+          margin-bottom: 16px;
+          padding: 12px;
+          background: #fff;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+        }
+        .cw-template-header {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 12px;
+          align-items: center;
+        }
+        .cw-template-header.indent-1 {
+          margin-left: 24px;
+          border-left: 3px solid #93c5fd;
+          padding-left: 12px;
+          margin-bottom: 8px;
+        }
+        .cw-template-header.indent-2 {
+          margin-left: 48px;
+          border-left: 3px solid #bfdbfe;
+          padding-left: 12px;
+          margin-bottom: 4px;
+        }
+        .cw-template-name {
+          flex: 1;
+          padding: 8px 12px;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          font-size: 0.95rem;
+        }
+        .cw-template-count {
+          width: 80px;
+          padding: 8px 12px;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          font-size: 0.95rem;
+          text-align: center;
+        }
+        .cw-btn-remove {
+          padding: 6px 10px;
+          background: #fee2e2;
+          color: #dc2626;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.2s;
+        }
+        .cw-btn-remove:hover {
+          background: #fecaca;
+        }
+        .cw-template-child, .cw-template-grandchild {
+          margin-bottom: 8px;
+        }
+        .cw-btn-add {
+          width: 100%;
+          padding: 10px;
+          background: #dbeafe;
+          color: #1e40af;
+          border: 1px dashed #93c5fd;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          font-weight: 500;
+          margin-top: 8px;
+          transition: all 0.2s;
+        }
+        .cw-btn-add:hover {
+          background: #93c5fd;
+        }
+        .cw-btn-add-sub {
+          width: 100%;
+          padding: 8px;
+          background: #e0e7ff;
+          color: #3730a3;
+          border: 1px dashed #a5b4fc;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.85rem;
+          font-weight: 500;
+          margin-left: 24px;
+          width: calc(100% - 24px);
+          margin-top: 4px;
+          transition: all 0.2s;
+        }
+        .cw-btn-add-sub:hover {
+          background: #a5b4fc;
+        }
+        .cw-btn-add-template {
+          width: 100%;
+          padding: 12px;
+          background: #dcfce7;
+          color: #166534;
+          border: 2px dashed #86efac;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 1rem;
+          font-weight: 600;
+          margin-top: 12px;
+          transition: all 0.2s;
+        }
+        .cw-btn-add-template:hover {
+          background: #86efac;
         }
       `}</style>
     </div>

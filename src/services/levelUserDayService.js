@@ -8,7 +8,7 @@ class LevelUserDayService {
     if (to) req.input('to', sql.Date, to);
 
     const result = await req.query(`
-      SELECT lud.id, lud.levelId, lud.userId, lud.day,
+      SELECT lud.id, lud.levelId, lud.userId, lud.day, lud.period,
              u.name, u.email, u.Car
       FROM LevelUserDay lud
       INNER JOIN [User] u ON u.id = lud.userId
@@ -59,12 +59,14 @@ class LevelUserDayService {
       for (const e of entries || []) {
         const userId = parseInt(e.userId);
         const day = e.day;
+        const period = e.period || 'm'; // default to morning if not specified
         if (!userId || !day) continue;
+        if (!['m', 'a'].includes(period)) continue; // validate period
         if (allowedUserIds.size > 0 && !allowedUserIds.has(userId)) continue;
-        const key = `${userId}-${day}`;
+        const key = `${userId}-${day}-${period}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        uniqueEntries.push({ userId, day });
+        uniqueEntries.push({ userId, day, period });
       }
 
       const inserted = [];
@@ -73,12 +75,13 @@ class LevelUserDayService {
           .input('levelId', sql.Int, parseInt(levelId))
           .input('userId', sql.Int, ent.userId)
           .input('day', sql.Date, ent.day)
+          .input('period', sql.Char, ent.period)
           .query(`
             IF NOT EXISTS (
-              SELECT 1 FROM LevelUserDay WHERE levelId = @levelId AND userId = @userId AND [day] = @day
+              SELECT 1 FROM LevelUserDay WHERE levelId = @levelId AND userId = @userId AND [day] = @day AND period = @period
             )
             BEGIN
-              INSERT INTO LevelUserDay (levelId, userId, [day]) OUTPUT INSERTED.* VALUES (@levelId, @userId, @day)
+              INSERT INTO LevelUserDay (levelId, userId, [day], period) OUTPUT INSERTED.* VALUES (@levelId, @userId, @day, @period)
             END
           `);
         if (ins.recordset && ins.recordset[0]) inserted.push(ins.recordset[0]);

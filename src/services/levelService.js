@@ -30,6 +30,71 @@ class LevelService {
     return result.recordset[0];
   }
 
+  async createHierarchy(data) {
+    // data = { root: {...}, templates: [{name, count, children: [{name, count, ...}]}] }
+    const pool = await getConnection();
+    const tx = new sql.Transaction(pool);
+    await tx.begin();
+
+    try {
+      // Create root level
+      const rootReq = new sql.Request(tx);
+      const rootResult = await rootReq
+        .input('name', sql.NVarChar, data.root.name)
+        .input('description', sql.NVarChar, data.root.description)
+        .input('startDate', sql.DateTime, data.root.startDate)
+        .input('endDate', sql.DateTime, data.root.endDate)
+        .input('completed', sql.Bit, data.root.completed || false)
+        .input('notes', sql.NVarChar, data.root.notes)
+        .input('coverImage', sql.NVarChar, data.root.coverImage)
+        .input('constructionManagerId', sql.Int, data.root.constructionManagerId)
+        .query(`
+          INSERT INTO Level (name, description, parentId, startDate, endDate, completed, notes, coverImage, constructionManagerId)
+          OUTPUT INSERTED.*
+          VALUES (@name, @description, NULL, @startDate, @endDate, @completed, @notes, @coverImage, @constructionManagerId)
+        `);
+      
+      const rootId = rootResult.recordset[0].id;
+
+      // Recursively create children from templates
+      const createChildren = async (parentId, templates) => {
+        for (const template of templates) {
+          for (let i = 1; i <= template.count; i++) {
+            const childName = `${template.name} ${i}`;
+            const childReq = new sql.Request(tx);
+            const childResult = await childReq
+              .input('name', sql.NVarChar, childName)
+              .input('description', sql.NVarChar, '')
+              .input('parentId', sql.Int, parentId)
+              .input('startDate', sql.DateTime, data.root.startDate)
+              .input('endDate', sql.DateTime, data.root.endDate)
+              .input('completed', sql.Bit, false)
+              .query(`
+                INSERT INTO Level (name, description, parentId, startDate, endDate, completed)
+                OUTPUT INSERTED.*
+                VALUES (@name, @description, @parentId, @startDate, @endDate, @completed)
+              `);
+            
+            const childId = childResult.recordset[0].id;
+            
+            // Create grandchildren if templates has children
+            if (template.children && template.children.length > 0) {
+              await createChildren(childId, template.children);
+            }
+          }
+        }
+      };
+
+      await createChildren(rootId, data.templates);
+      await tx.commit();
+
+      return { id: rootId, message: 'Hierarquia criada com sucesso' };
+    } catch (err) {
+      await tx.rollback().catch(() => {});
+      throw err;
+    }
+  }
+
   async getLevels(filter = {}) {
     const pool = await getConnection();
     let query = `

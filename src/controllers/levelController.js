@@ -10,6 +10,15 @@ class LevelController {
     }
   }
 
+  async createHierarchy(req, res) {
+    try {
+      const levels = await levelService.createHierarchy(req.body);
+      res.status(201).json(levels);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   async getAll(req, res) {
     try {
       const { parentId } = req.query || {};

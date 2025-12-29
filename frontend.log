@@ -1,10 +1,10 @@
+nohup: ignoring input
 
 > frontend@0.0.0 dev
 > vite
 
 
-  VITE v7.3.0  ready in 361 ms
+  VITE v7.3.0  ready in 387 ms
 
   ➜  Local:   http://localhost:5173/
-  ➜  Network: http://10.0.1.222:5173/
-  ➜  press h + enter to show help
+  ➜  Network: http://10.0.1.131:5173/

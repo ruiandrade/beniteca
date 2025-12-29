@@ -80,7 +80,8 @@ export default function Planeamento() {
         const next = new Set();
         data.forEach((r) => {
           const day = (r.day || '').slice(0, 10);
-          if (day) next.add(`${r.userId}::${day}`);
+          const period = r.period || 'm';
+          if (day) next.add(`${r.userId}::${day}::${period}`);
         });
         setSelected(next);
       }
@@ -108,8 +109,8 @@ export default function Planeamento() {
     await loadSchedule(fromVal, toVal);
   };
 
-  const toggleCell = (userId, day) => {
-    const key = `${userId}::${day}`;
+  const toggleCell = (userId, day, period) => {
+    const key = `${userId}::${day}::${period}`;
     const next = new Set(selected);
     if (next.has(key)) next.delete(key);
     else next.add(key);
@@ -125,8 +126,8 @@ export default function Planeamento() {
     setError('');
     try {
       const entries = Array.from(selected).map((k) => {
-        const [userId, day] = k.split('::');
-        return { userId: parseInt(userId, 10), day };
+        const [userId, day, period] = k.split('::');
+        return { userId: parseInt(userId, 10), day, period };
       });
       const res = await fetch(`/api/level-user-days/level/${id}`, {
         method: 'POST',
@@ -195,25 +196,34 @@ export default function Planeamento() {
                       <div className="pl-user-meta">{u.email}</div>
                     </td>
                     {days.map((d) => {
-                      const key = `${u.id}::${d}`;
-                      const active = selected.has(key);
+                      const keyMorning = `${u.id}::${d}::m`;
+                      const keyAfternoon = `${u.id}::${d}::a`;
+                      const morningActive = selected.has(keyMorning);
+                      const afternoonActive = selected.has(keyAfternoon);
                       const isPast = d < todayIso;
                       const dow = new Date(d).getDay();
                       const isWeekend = dow === 0 || dow === 6;
                       const classes = ['pl-cell'];
-                      if (active) classes.push('active');
                       if (isPast) classes.push('past');
                       if (isWeekend) classes.push('weekend');
                       return (
-                        <td
-                          key={key}
-                          className={classes.join(' ')}
-                          onClick={() => {
-                            if (isPast) return;
-                            toggleCell(u.id, d);
-                          }}
-                        >
-                          {active ? '✔' : ''}
+                        <td key={`${u.id}::${d}`} className={classes.join(' ')}>
+                          <div className="pl-cell-periods">
+                            <div 
+                              className={`pl-period ${morningActive ? 'active' : ''} ${isPast ? 'disabled' : ''}`}
+                              onClick={() => !isPast && toggleCell(u.id, d, 'm')}
+                              title="Manhã"
+                            >
+                              {morningActive ? '✔' : ''}
+                            </div>
+                            <div 
+                              className={`pl-period ${afternoonActive ? 'active' : ''} ${isPast ? 'disabled' : ''}`}
+                              onClick={() => !isPast && toggleCell(u.id, d, 'a')}
+                              title="Tarde"
+                            >
+                              {afternoonActive ? '✔' : ''}
+                            </div>
+                          </div>
                         </td>
                       );
                     })}
@@ -251,10 +261,25 @@ export default function Planeamento() {
         .pl-user-cell { text-align: left; min-width: 180px; }
         .pl-user-name { font-weight: 600; color: #1e293b; }
         .pl-user-meta { color: #94a3b8; font-size: 0.9rem; }
-        .pl-cell { cursor: pointer; min-width: 64px; transition: background 0.15s; }
-        .pl-cell.active { background: #dcfce7; color: #166534; font-weight: 700; }
+        .pl-cell { min-width: 80px; padding: 4px !important; }
         .pl-cell.weekend { background: #f8fafc; }
-        .pl-cell.past { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
+        .pl-cell.past { background: #f1f5f9; }
+        .pl-cell-periods { display: flex; gap: 4px; justify-content: center; align-items: center; }
+        .pl-period { 
+          flex: 1; 
+          min-height: 32px; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          border: 1px solid #e2e8f0; 
+          border-radius: 6px; 
+          cursor: pointer; 
+          transition: all 0.15s;
+          font-weight: 600;
+        }
+        .pl-period:hover:not(.disabled) { background: #f1f5f9; }
+        .pl-period.active { background: #dcfce7; color: #166534; border-color: #86efac; }
+        .pl-period.disabled { cursor: not-allowed; opacity: 0.5; }
         .pl-apply-bar { margin-top: 16px; display: flex; justify-content: flex-end; }
         .pl-empty { color: #94a3b8; padding: 12px 0; }
       `}</style>
