@@ -4,3 +4,68 @@ Loaded environment from .env.development
 ✅ Server running on port 3000 in development mode
 📊 Database: Connected
 📦 Blob Storage: Connected
+Erro na conexão SQL: ConnectionError: Failed to connect to beniteca.database.windows.net:1433 in 15000ms
+    at /workspaces/beniteca/node_modules/mssql/lib/tedious/connection-pool.js:85:17
+    at Connection.onConnect (/workspaces/beniteca/node_modules/tedious/lib/connection.js:874:9)
+    at Object.onceWrapper (node:events:623:26)
+    at Connection.emit (node:events:508:28)
+    at Connection.emit (/workspaces/beniteca/node_modules/tedious/lib/connection.js:1009:18)
+    at /workspaces/beniteca/node_modules/tedious/lib/connection.js:892:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:84:11) {
+  code: 'ETIMEOUT',
+  originalError: ConnectionError: Failed to connect to beniteca.database.windows.net:1433 in 15000ms
+      at Timeout.<anonymous> (/workspaces/beniteca/node_modules/tedious/lib/connection.js:1037:31)
+      at listOnTimeout (node:internal/timers:605:17)
+      at process.processTimers (node:internal/timers:541:7) {
+    code: 'ETIMEOUT'
+  }
+}
+Erro na conexão SQL: ConnectionError: Failed to connect to beniteca.database.windows.net:1433 in 15000ms
+    at /workspaces/beniteca/node_modules/mssql/lib/tedious/connection-pool.js:85:17
+    at Connection.onConnect (/workspaces/beniteca/node_modules/tedious/lib/connection.js:874:9)
+    at Object.onceWrapper (node:events:623:26)
+    at Connection.emit (node:events:508:28)
+    at Connection.emit (/workspaces/beniteca/node_modules/tedious/lib/connection.js:1009:18)
+    at /workspaces/beniteca/node_modules/tedious/lib/connection.js:892:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:84:11) {
+  code: 'ETIMEOUT',
+  originalError: ConnectionError: Failed to connect to beniteca.database.windows.net:1433 in 15000ms
+      at Timeout.<anonymous> (/workspaces/beniteca/node_modules/tedious/lib/connection.js:1037:31)
+      at listOnTimeout (node:internal/timers:605:17)
+      at process.processTimers (node:internal/timers:541:7) {
+    code: 'ETIMEOUT'
+  }
+}
+Erro na conexão SQL: ConnectionError: Failed to connect to beniteca.database.windows.net:1433 in 15000ms
+    at /workspaces/beniteca/node_modules/mssql/lib/tedious/connection-pool.js:85:17
+    at Connection.onConnect (/workspaces/beniteca/node_modules/tedious/lib/connection.js:874:9)
+    at Object.onceWrapper (node:events:623:26)
+    at Connection.emit (node:events:508:28)
+    at Connection.emit (/workspaces/beniteca/node_modules/tedious/lib/connection.js:1009:18)
+    at /workspaces/beniteca/node_modules/tedious/lib/connection.js:892:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:84:11) {
+  code: 'ETIMEOUT',
+  originalError: ConnectionError: Failed to connect to beniteca.database.windows.net:1433 in 15000ms
+      at Timeout.<anonymous> (/workspaces/beniteca/node_modules/tedious/lib/connection.js:1037:31)
+      at listOnTimeout (node:internal/timers:605:17)
+      at process.processTimers (node:internal/timers:541:7) {
+    code: 'ETIMEOUT'
+  }
+}
+Erro na conexão SQL: ConnectionError: Failed to connect to beniteca.database.windows.net:1433 in 15000ms
+    at /workspaces/beniteca/node_modules/mssql/lib/tedious/connection-pool.js:85:17
+    at Connection.onConnect (/workspaces/beniteca/node_modules/tedious/lib/connection.js:874:9)
+    at Object.onceWrapper (node:events:623:26)
+    at Connection.emit (node:events:508:28)
+    at Connection.emit (/workspaces/beniteca/node_modules/tedious/lib/connection.js:1009:18)
+    at /workspaces/beniteca/node_modules/tedious/lib/connection.js:892:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:84:11) {
+  code: 'ETIMEOUT',
+  originalError: ConnectionError: Failed to connect to beniteca.database.windows.net:1433 in 15000ms
+      at Timeout.<anonymous> (/workspaces/beniteca/node_modules/tedious/lib/connection.js:1037:31)
+      at listOnTimeout (node:internal/timers:605:17)
+      at process.processTimers (node:internal/timers:541:7) {
+    code: 'ETIMEOUT'
+  }
+}
+Conectado ao Azure SQL ✅

@@ -8,3 +8,8 @@ nohup: ignoring input
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://10.0.1.131:5173/
+4:38:30 PM [vite] (client) hmr update /src/pages/CreateWork.jsx
+4:39:06 PM [vite] (client) hmr update /src/pages/CreateWork.jsx
+4:39:11 PM [vite] (client) hmr update /src/pages/CreateWork.jsx
+4:40:59 PM [vite] (client) hmr update /src/pages/CreateWork.jsx
+4:41:05 PM [vite] (client) hmr update /src/pages/CreateWork.jsx
