@@ -11,6 +11,8 @@ export default function WorkerSchedule() {
   const [selectedLevels, setSelectedLevels] = useState([]);
   const [slotFilter, setSlotFilter] = useState('both');
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [openUsersDropdown, setOpenUsersDropdown] = useState(false);
+  const [openLevelsDropdown, setOpenLevelsDropdown] = useState(false);
 
   useEffect(() => {
     const today = new Date();
@@ -219,48 +221,62 @@ export default function WorkerSchedule() {
               <option value="afternoon">Só Tarde</option>
             </select>
           </div>
-          <div className="ws-field ws-levels">
-            <label>Colaboradores (todos por defeito)</label>
-            <div className="ws-levels-box">
-              <label className="ws-check">
-                <input type="checkbox" checked={allUsersSelected} onChange={handleSelectAllUsers} />
-                <span>Selecionar todos</span>
-              </label>
-              <div className="ws-level-list">
-                {userOptions.length === 0 && <span className="ws-level-empty">Sem colaboradores no intervalo</span>}
-                {userOptions.map((u) => (
-                  <label key={u.id} className="ws-check">
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.includes(u.id)}
-                      onChange={() => toggleUser(u.id)}
-                    />
-                    <span>{u.name}</span>
+          <div className="ws-field ws-dropdown-field">
+            <label>Colaboradores</label>
+            <div className="ws-dropdown">
+              <button className="ws-dropdown-btn" onClick={() => setOpenUsersDropdown(!openUsersDropdown)}>
+                {selectedUsers.length === 0 ? 'Todos' : `${selectedUsers.length} selecionado(s)`}
+              </button>
+              {openUsersDropdown && (
+                <div className="ws-dropdown-menu">
+                  <label className="ws-check">
+                    <input type="checkbox" checked={allUsersSelected} onChange={handleSelectAllUsers} />
+                    <span>Selecionar todos</span>
                   </label>
-                ))}
-              </div>
+                  <div className="ws-dropdown-items">
+                    {userOptions.length === 0 && <span className="ws-level-empty">Sem colaboradores</span>}
+                    {userOptions.map((u) => (
+                      <label key={u.id} className="ws-check">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.includes(u.id)}
+                          onChange={() => toggleUser(u.id)}
+                        />
+                        <span>{u.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          <div className="ws-field ws-levels">
-            <label>Obras (todas por defeito)</label>
-            <div className="ws-levels-box">
-              <label className="ws-check">
-                <input type="checkbox" checked={allLevelsSelected} onChange={handleSelectAllLevels} />
-                <span>Selecionar todas</span>
-              </label>
-              <div className="ws-level-list">
-                {levelOptions.length === 0 && <span className="ws-level-empty">Sem obras no intervalo</span>}
-                {levelOptions.map((lvl) => (
-                  <label key={lvl.id} className="ws-check">
-                    <input
-                      type="checkbox"
-                      checked={selectedLevels.includes(lvl.id)}
-                      onChange={() => toggleLevel(lvl.id)}
-                    />
-                    <span>{lvl.name}</span>
+          <div className="ws-field ws-dropdown-field">
+            <label>Obras</label>
+            <div className="ws-dropdown">
+              <button className="ws-dropdown-btn" onClick={() => setOpenLevelsDropdown(!openLevelsDropdown)}>
+                {selectedLevels.length === 0 ? 'Todas' : `${selectedLevels.length} selecionada(s)`}
+              </button>
+              {openLevelsDropdown && (
+                <div className="ws-dropdown-menu">
+                  <label className="ws-check">
+                    <input type="checkbox" checked={allLevelsSelected} onChange={handleSelectAllLevels} />
+                    <span>Selecionar todas</span>
                   </label>
-                ))}
-              </div>
+                  <div className="ws-dropdown-items">
+                    {levelOptions.length === 0 && <span className="ws-level-empty">Sem obras</span>}
+                    {levelOptions.map((lvl) => (
+                      <label key={lvl.id} className="ws-check">
+                        <input
+                          type="checkbox"
+                          checked={selectedLevels.includes(lvl.id)}
+                          onChange={() => toggleLevel(lvl.id)}
+                        />
+                        <span>{lvl.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -365,7 +381,7 @@ export default function WorkerSchedule() {
         }
         .ws-filters {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
           gap: 12px;
           margin-bottom: 12px;
           align-items: start;
@@ -385,6 +401,48 @@ export default function WorkerSchedule() {
           border: 1px solid #e2e8f0;
           border-radius: 8px;
           font-size: 0.95rem;
+        }
+        .ws-dropdown-field {
+          position: relative;
+        }
+        .ws-dropdown {
+          position: relative;
+        }
+        .ws-dropdown-btn {
+          width: 100%;
+          padding: 8px 10px;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          font-size: 0.95rem;
+          background: #fff;
+          cursor: pointer;
+          text-align: left;
+          transition: border-color 0.2s;
+        }
+        .ws-dropdown-btn:hover {
+          border-color: #cbd5e1;
+        }
+        .ws-dropdown-menu {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          margin-top: 4px;
+          padding: 8px;
+          z-index: 100;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          min-width: 200px;
+        }
+        .ws-dropdown-items {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          margin-top: 6px;
+          max-height: 200px;
+          overflow-y: auto;
         }
         .ws-levels {
           grid-column: 1 / -1;

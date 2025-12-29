@@ -104,20 +104,29 @@ export default function Dashboard() {
 
   const getBarColor = (level) => {
     if (level.completed) return "#16a34a"; // finished
-    if (level.startDate) return "#f59e0b"; // on going
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = level.startDate ? new Date(level.startDate) : null;
+    if (startDate && startDate > today) return "#9ca3af"; // not started yet (grey)
+    if (level.startDate) return "#f59e0b"; // on going (orange)
     return "#9ca3af"; // not started
   };
 
   const getBarBgColor = (level) => {
     if (level.completed) return "#dcfce7";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = level.startDate ? new Date(level.startDate) : null;
+    if (startDate && startDate > today) return "#e5e7eb"; // not started yet (grey)
     if (level.startDate) return "#fef3c7";
     return "#e5e7eb";
   };
 
   const getChildRatio = (level) => {
     if (!level.childrenCount) return "—";
+    const totalChildren = level.childrenCount || 0;
     const completed = level.completedChildren || 0;
-    return `${completed}/${level.childrenCount}`;
+    return totalChildren > 0 ? `${completed}/${totalChildren}` : "—";
   };
 
   const calculateWeeks = (startDate, endDate) => {
@@ -433,13 +442,7 @@ export default function Dashboard() {
                             <div className="level-name">
                               <button
                                 className="link-btn"
-                              onClick={() => {
-                                if (row.depth === 0) {
-                                  navigate(`/works/${row.id}/levels`);
-                                } else {
-                                  handleObraClick(row);
-                                }
-                              }}
+                                onClick={() => navigate(`/works/${row.id}/levels`)}
                               >
                                 {row.name}
                               </button>
@@ -456,9 +459,7 @@ export default function Dashboard() {
                               className="gantt-bar"
                               style={getBarStyle(row, weeks, selectedObra)}
                               onClick={() => {
-                                if (row.depth === 0) {
-                                  navigate(`/works/${row.id}/levels`);
-                                } else {
+                                if (row.depth > 0) {
                                   handleObraClick(row);
                                 }
                               }}
@@ -496,13 +497,7 @@ export default function Dashboard() {
                     >
                       <button
                         className="link-btn"
-                        onClick={() => {
-                          if (row.depth === 0) {
-                            navigate(`/works/${row.id}/levels`);
-                          } else {
-                            handleObraClick(row);
-                          }
-                        }}
+                        onClick={() => navigate(`/works/${row.id}/levels`)}
                       >
                         {row.name}
                       </button>
