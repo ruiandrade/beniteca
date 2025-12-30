@@ -1,9 +1,16 @@
 import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Layout() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="layout">
@@ -12,7 +19,15 @@ export default function Layout() {
       </button>
       <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <h2>Beniteca</h2>
+          <div className="header-top">
+            <h2>Beniteca</h2>
+          </div>
+          {user && (
+            <div className="user-info">
+              <div className="user-name">{user.name || user.email}</div>
+              <button className="logout-btn" onClick={handleLogout}>Sair</button>
+            </div>
+          )}
         </div>
         <nav className="sidebar-nav" onClick={() => setMenuOpen(false)}>
           <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
@@ -74,11 +89,40 @@ export default function Layout() {
           padding: 24px 20px;
           border-bottom: 1px solid #334155;
         }
+        .header-top {
+          margin-bottom: 12px;
+        }
         .sidebar-header h2 {
           font-size: 1.5rem;
           font-weight: 700;
           margin: 0;
           color: #fff;
+        }
+        .user-info {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding-top: 12px;
+          border-top: 1px solid #334155;
+        }
+        .user-name {
+          font-size: 0.875rem;
+          color: #cbd5e1;
+          font-weight: 500;
+        }
+        .logout-btn {
+          background: #ef4444;
+          color: #fff;
+          border: none;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .logout-btn:hover {
+          background: #dc2626;
         }
         .sidebar-nav {
           display: flex;

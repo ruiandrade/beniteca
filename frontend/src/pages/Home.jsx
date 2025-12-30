@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { getMyWorks } from '../services/permissionService';
 import WorkerSchedule from './WorkerSchedule';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState('list');
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -11,17 +14,21 @@ export default function Home() {
 
   useEffect(() => {
     loadLevels();
-  }, []);
+  }, [token]);
 
   const loadLevels = async () => {
+    if (!token) {
+      setLevels([]);
+      return;
+    }
+    
     setLoading(true);
     try {
-      const res = await fetch('/api/levels?parentId=');
-      if (!res.ok) throw new Error('Erro ao carregar obras');
-      const data = await res.json();
+      const data = await getMyWorks(token);
       setLevels(data.filter(l => !l.completed));
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao carregar obras:', err);
+      alert(`Erro ao carregar obras: ${err.message}`);
     } finally {
       setLoading(false);
     }

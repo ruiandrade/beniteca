@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from '../context/AuthContext';
+import { getMyWorks } from '../services/permissionService';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   const [obras, setObras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,7 +17,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchObras();
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (selectedObra) {
@@ -43,15 +46,19 @@ export default function Dashboard() {
   };
 
   const fetchObras = async () => {
+    if (!token) {
+      setObras([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await fetch("/api/levels?parentId=");
-      if (res.ok) {
-        const data = await res.json();
-        setObras(data.filter(obra => !obra.completed && !obra.hidden));
-      }
+      const data = await getMyWorks(token);
+      setObras(data.filter(obra => !obra.completed && !obra.hidden));
     } catch (err) {
       console.error("Erro ao carregar obras:", err);
+      alert(`Erro ao carregar obras: ${err.message}`);
     } finally {
       setLoading(false);
     }
