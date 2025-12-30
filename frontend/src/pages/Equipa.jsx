@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Equipa() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { token } = useAuth();
   const [work, setWork] = useState(null);
   const [users, setUsers] = useState([]);
   const [levelUsers, setLevelUsers] = useState([]);
@@ -30,7 +32,9 @@ export default function Equipa() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users');
+      const res = await fetch('/api/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setUsers(data);
@@ -42,7 +46,9 @@ export default function Equipa() {
 
   const fetchLevelUsers = async () => {
     try {
-      const res = await fetch(`/api/level-users/level/${id}`);
+      const res = await fetch(`/api/level-users/level/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setLevelUsers(data);
@@ -58,7 +64,10 @@ export default function Equipa() {
     try {
       const res = await fetch('/api/level-users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ levelId: id, userId: selectedUserId })
       });
       if (res.ok) {
@@ -75,7 +84,10 @@ export default function Equipa() {
   const handleRemoveLevelUser = async (assocId) => {
     if (!confirm('Remover associação?')) return;
     try {
-      const res = await fetch(`/api/level-users/${assocId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/level-users/${assocId}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         await fetchLevelUsers();
       } else {

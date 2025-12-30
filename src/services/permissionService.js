@@ -142,6 +142,31 @@ class PermissionService {
       throw err;
     }
   }
+
+  /**
+   * Get users associated with a specific level/obra (from LevelUser table)
+   * with their permissions
+   * @param {number} levelId 
+   * @returns {Promise<Array>}
+   */
+  async getUsersByLevelWithPermissions(levelId) {
+    try {
+      const pool = await getConnection();
+      const result = await pool.request()
+        .input('levelId', sql.Int, levelId)
+        .query(`
+          SELECT u.id, u.name, u.email, u.status
+          FROM [User] u
+          INNER JOIN [LevelUser] lu ON u.id = lu.userId
+          WHERE lu.levelId = @levelId
+          ORDER BY u.name ASC
+        `);
+      return result.recordset;
+    } catch (err) {
+      console.error('Erro ao obter utilizadores da obra:', err);
+      throw err;
+    }
+  }
 }
 
 module.exports = new PermissionService();

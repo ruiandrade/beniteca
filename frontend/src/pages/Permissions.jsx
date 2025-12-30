@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-const OBJECT_TYPES = ['LEVELS', 'MATERIALS', 'NOTES', 'PHOTOS', 'DOCUMENTS'];
+const OBJECT_TYPES = ['LEVELS', 'MATERIALS', 'NOTES', 'PHOTOS', 'DOCUMENTS', 'DASHBOARD'];
 const PERMISSION_LEVELS = [
   { value: 'N', label: 'Sem Acesso', color: '#ef4444' },
   { value: 'R', label: 'Leitura', color: '#f59e0b' },
@@ -42,14 +42,6 @@ export default function Permissions() {
       if (!obrasRes.ok) throw new Error('Erro ao carregar obras');
       const obrasData = await obrasRes.json();
       setObras(obrasData.filter(o => !o.completed));
-
-      // Carregar todos os utilizadores
-      const usersRes = await fetch('/api/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!usersRes.ok) throw new Error('Erro ao carregar utilizadores');
-      const usersData = await usersRes.json();
-      setUsers(usersData);
     } catch (err) {
       setError(`Erro ao carregar dados: ${err.message}`);
     } finally {
@@ -59,6 +51,7 @@ export default function Permissions() {
 
   const loadPermissions = async (levelId) => {
     try {
+      // Carregar permissões da obra
       const res = await fetch(`/api/permissions/level/${levelId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -72,9 +65,18 @@ export default function Permissions() {
         permMap[p.userId][p.objectType] = p.permissionLevel;
       });
       
+      // Carregar apenas os users associados a esta obra
+      const usersRes = await fetch(`/api/permissions/level/${levelId}/users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!usersRes.ok) throw new Error('Erro ao carregar utilizadores da obra');
+      const usersData = await usersRes.json();
+      setUsers(usersData);
+      
       setPermissions(permMap);
       setSelectedObra(levelId);
       setExpandedObra(levelId);
+      setSelectedUsers([]); // Limpar seleção de users
     } catch (err) {
       setError(`Erro ao carregar permissões: ${err.message}`);
     }

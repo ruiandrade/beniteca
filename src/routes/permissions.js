@@ -11,5 +11,6 @@ router.get('/level/:levelId', permissionController.getByLevel);
 // Authenticated routes
 router.get('/my-works', authenticate, permissionController.getMyWorks);
 router.get('/work/:levelId', authenticate, permissionController.getWorkPermission);
+router.get('/level/:levelId/users', authenticate, permissionController.getLevelUsers);
 
 module.exports = router;

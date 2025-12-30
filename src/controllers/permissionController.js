@@ -79,6 +79,19 @@ class PermissionController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  /**
+   * Get users associated with a level/obra with their permissions
+   */
+  async getLevelUsers(req, res) {
+    try {
+      const { levelId } = req.params;
+      const users = await permissionService.getUsersByLevelWithPermissions(levelId);
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 module.exports = new PermissionController();
