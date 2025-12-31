@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("gantt");
   const [hierarchyTree, setHierarchyTree] = useState(null);
   const [navigationStack, setNavigationStack] = useState([]);
+  const [expandedNodes, setExpandedNodes] = useState(new Set());
 
   useEffect(() => {
     fetchObras();
@@ -23,6 +24,8 @@ export default function Dashboard() {
     if (selectedObra) {
       fetchObraChildren(selectedObra.id);
       buildHierarchy(selectedObra.id);
+      // Expandir automaticamente a raiz
+      setExpandedNodes(new Set([selectedObra.id]));
     }
   }, [selectedObra]);
 
@@ -136,6 +139,99 @@ export default function Dashboard() {
     return totalChildren > 0 ? `${completed}/${totalChildren}` : "—";
   };
 
+  // Calcular rácio baseado em toda a descendência folha (níveis sem filhos)
+  const getLeafNodeRatio = (levelId) => {
+    const countLeafNodes = (node) => {
+      if (!node || !node.children || node.children.length === 0) {
+        // É uma folha
+        return {
+          total: 1,
+          completed: node.level.completed ? 1 : 0
+        };
+      }
+      
+      // Não é folha, processar filhos
+      let total = 0;
+      let completed = 0;
+      
+      node.children.forEach(child => {
+        const result = countLeafNodes(child);
+        total += result.total;
+        completed += result.completed;
+      });
+      
+      return { total, completed };
+    };
+
+    // Encontrar o nó da árvore que corresponde ao levelId
+    const findNode = (node, id) => {
+      if (!node) return null;
+      if (node.level.id === id) return node;
+      
+      if (node.children) {
+        for (let child of node.children) {
+          const found = findNode(child, id);
+          if (found) return found;
+        }
+      }
+      
+      return null;
+    };
+
+    if (!hierarchyTree) return "—";
+    
+    const node = findNode(hierarchyTree, levelId);
+    if (!node) return "—";
+    
+    const result = countLeafNodes(node);
+    return result.total > 0 ? `${result.completed}/${result.total}` : "—";
+  };
+
+  // Calcular percentagem de conclusão para a barra visual
+  const getCompletionPercentage = (levelId) => {
+    const countLeafNodes = (node) => {
+      if (!node || !node.children || node.children.length === 0) {
+        return {
+          total: 1,
+          completed: node.level.completed ? 1 : 0
+        };
+      }
+      
+      let total = 0;
+      let completed = 0;
+      
+      node.children.forEach(child => {
+        const result = countLeafNodes(child);
+        total += result.total;
+        completed += result.completed;
+      });
+      
+      return { total, completed };
+    };
+
+    const findNode = (node, id) => {
+      if (!node) return null;
+      if (node.level.id === id) return node;
+      
+      if (node.children) {
+        for (let child of node.children) {
+          const found = findNode(child, id);
+          if (found) return found;
+        }
+      }
+      
+      return null;
+    };
+
+    if (!hierarchyTree) return 0;
+    
+    const node = findNode(hierarchyTree, levelId);
+    if (!node) return 0;
+    
+    const result = countLeafNodes(node);
+    return result.total > 0 ? Math.round((result.completed / result.total) * 100) : 0;
+  };
+
   const calculateWeeks = (startDate, endDate) => {
     if (!startDate || !endDate) return [];
     const start = new Date(startDate);
@@ -187,11 +283,28 @@ export default function Dashboard() {
 
   const flattenTree = (node, depth = 0) => {
     if (!node) return [];
-    const rows = [{ ...node.level, depth }];
-    node.children.forEach((child) => {
-      rows.push(...flattenTree(child, depth + 1));
-    });
+    const rows = [{ ...node.level, depth, hasChildren: node.children && node.children.length > 0 }];
+    
+    // Só incluir filhos se o nó estiver expandido
+    if (expandedNodes.has(node.level.id)) {
+      node.children.forEach((child) => {
+        rows.push(...flattenTree(child, depth + 1));
+      });
+    }
+    
     return rows;
+  };
+
+  const toggleNode = (nodeId) => {
+    setExpandedNodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
+      }
+      return newSet;
+    });
   };
 
   const ganttRows = hierarchyTree ? flattenTree(hierarchyTree) : [
@@ -263,8 +376,8 @@ export default function Dashboard() {
 
                     <div className="dashboard-kpi-row">
                       <div className="dashboard-kpi-item">
-                        <span className="dashboard-kpi-label">Filhos</span>
-                        <span className="dashboard-kpi-value">{getChildRatio(obra)}</span>
+                        <span className="dashboard-kpi-label">Rácio</span>
+                        <span className="dashboard-kpi-value">{getLeafNodeRatio(obra.id)}</span>
                       </div>
                     </div>
                   </div>
@@ -447,6 +560,25 @@ export default function Dashboard() {
                             }}
                           >
                             <div className="level-name">
+                              {row.hasChildren && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleNode(row.id);
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    marginRight: '6px',
+                                    fontSize: '14px',
+                                    padding: '0 4px'
+                                  }}
+                                >
+                                  {expandedNodes.has(row.id) ? '−' : '+'}
+                                </button>
+                              )}
                               <button
                                 className="link-btn"
                                 onClick={() => navigate(`/works/${row.id}/levels`)}
@@ -454,7 +586,7 @@ export default function Dashboard() {
                                 {row.name}
                               </button>
                             </div>
-                            <div className="level-ratio">{getChildRatio(row)}</div>
+                            <div className="level-ratio">{getLeafNodeRatio(row.id)}</div>
                           </div>
                         </td>
                         <td
@@ -485,6 +617,7 @@ export default function Dashboard() {
             <div className="hierarchy-table">
               <div className="hierarchy-header">
                 <span>Nível</span>
+                <span>Progresso</span>
                 <span>Filhos</span>
                 <span>Datas</span>
               </div>
@@ -500,8 +633,28 @@ export default function Dashboard() {
                   >
                     <div
                       className="hierarchy-name"
-                      style={{ paddingLeft: `${row.depth * 18 + 8}px` }}
+                      style={{ paddingLeft: `${row.depth * 18 + 8}px`, display: 'flex', alignItems: 'center', gap: '8px' }}
                     >
+                      {row.hasChildren && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleNode(row.id);
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            fontSize: '14px',
+                            padding: '0 4px',
+                            minWidth: '20px'
+                          }}
+                        >
+                          {expandedNodes.has(row.id) ? '−' : '+'}
+                        </button>
+                      )}
+                      {!row.hasChildren && <span style={{ minWidth: '20px' }}></span>}
                       <button
                         className="link-btn"
                         onClick={() => navigate(`/works/${row.id}/levels`)}
@@ -509,7 +662,26 @@ export default function Dashboard() {
                         {row.name}
                       </button>
                     </div>
-                    <div className="hierarchy-ratio">{getChildRatio(row)}</div>
+                    <div className="hierarchy-progress">
+                      <div style={{
+                        width: '100px',
+                        height: '20px',
+                        background: '#e5e7eb',
+                        borderRadius: '4px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${getCompletionPercentage(row.id)}%`,
+                          background: getBarColor(row),
+                          transition: 'width 0.3s'
+                        }} />
+                      </div>
+                      <span style={{ fontSize: '12px', fontWeight: '600', minWidth: '30px' }}>
+                        {getCompletionPercentage(row.id)}%
+                      </span>
+                    </div>
+                    <div className="hierarchy-ratio">{getLeafNodeRatio(row.id)}</div>
                     <div className="hierarchy-dates">
                       <span>{row.startDate ? new Date(row.startDate).toLocaleDateString("pt-PT") : "—"}</span>
                       <span>→</span>

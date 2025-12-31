@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-const OBJECT_TYPES = ['LEVELS', 'MATERIALS', 'NOTES', 'PHOTOS', 'DOCUMENTS', 'DASHBOARD'];
+const OBJECT_TYPES = ['LEVELS', 'MATERIALS', 'NOTES', 'PHOTOS', 'DOCUMENTS', 'DASHBOARD', 'CALENDAR'];
 const PERMISSION_LEVELS = [
   { value: 'N', label: 'Sem Acesso', color: '#ef4444' },
   { value: 'R', label: 'Leitura', color: '#f59e0b' },

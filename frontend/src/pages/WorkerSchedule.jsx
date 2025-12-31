@@ -161,7 +161,7 @@ export default function WorkerSchedule() {
   }, [allocations, selectedLevels, slotFilter, days]);
 
   const pivotData = useMemo(() => {
-    const users = new Map();
+    const levels = new Map();
     filteredAllocations.forEach((alloc) => {
       const userId = alloc.userId || 'sem-id';
       const userName = alloc.name || 'Colaborador';
@@ -170,25 +170,29 @@ export default function WorkerSchedule() {
       const day = (alloc.day || '').slice(0, 10);
       const period = alloc.period === 'a' ? 'a' : 'm';
 
-      if (!users.has(userId)) {
-        users.set(userId, { userName, levels: new Map() });
+      if (!levels.has(levelId)) {
+        levels.set(levelId, { levelName, users: new Map() });
       }
-      const userEntry = users.get(userId);
+      const levelEntry = levels.get(levelId);
 
-      if (!userEntry.levels.has(levelId)) {
-        userEntry.levels.set(levelId, { levelName, slots: {} });
+      if (!levelEntry.users.has(userId)) {
+        levelEntry.users.set(userId, { userName, slots: {} });
       }
-      const levelEntry = userEntry.levels.get(levelId);
+      const userEntry = levelEntry.users.get(userId);
 
-      if (!levelEntry.slots[day]) {
-        levelEntry.slots[day] = { m: false, a: false };
+      if (!userEntry.slots[day]) {
+        userEntry.slots[day] = { m: false, a: false };
       }
-      levelEntry.slots[day][period] = true;
+      userEntry.slots[day][period] = true;
     });
 
-    return Array.from(users.entries())
-      .map(([id, value]) => ({ id, ...value, levels: Array.from(value.levels.entries()).map(([levelId, levelVal]) => ({ levelId, ...levelVal })) }))
-      .sort((a, b) => a.userName.localeCompare(b.userName));
+    return Array.from(levels.entries())
+      .map(([id, value]) => ({ 
+        id, 
+        ...value, 
+        users: Array.from(value.users.entries()).map(([userId, userVal]) => ({ userId, ...userVal })) 
+      }))
+      .sort((a, b) => a.levelName.localeCompare(b.levelName));
   }, [filteredAllocations]);
 
   return (
@@ -293,8 +297,8 @@ export default function WorkerSchedule() {
             <table className="ws-table">
               <thead>
                 <tr>
-                  <th className="sticky-col col-user" rowSpan={2}>Colaborador</th>
                   <th className="sticky-col col-level" rowSpan={2}>Obra</th>
+                  <th className="sticky-col col-user" rowSpan={2}>Colaborador</th>
                   {days.map((day) => (
                     <th key={day} colSpan={slotFilter === 'both' ? 2 : 1} className="day-header">{day}</th>
                   ))}
@@ -313,15 +317,15 @@ export default function WorkerSchedule() {
                 </tr>
               </thead>
               <tbody>
-                {pivotData.map((user) => (
-                  user.levels.map((lvl, idx) => (
-                    <tr key={`${user.id}-${lvl.levelId}`}>
+                {pivotData.map((level) => (
+                  level.users.map((user, idx) => (
+                    <tr key={`${level.id}-${user.userId}`}>
                       {idx === 0 && (
-                        <td className="sticky-col col-user" rowSpan={user.levels.length}>{user.userName}</td>
+                        <td className="sticky-col col-level" rowSpan={level.users.length}>{level.levelName}</td>
                       )}
-                      <td className="sticky-col col-level">{lvl.levelName}</td>
+                      <td className="sticky-col col-user">{user.userName}</td>
                       {days.map((day) => {
-                        const slot = lvl.slots[day] || { m: false, a: false };
+                        const slot = user.slots[day] || { m: false, a: false };
                         const renderCell = (period) => (
                           <td key={`${day}-${period}`} className={`cell ${slot[period] ? 'on' : 'off'}`}>
                             {slot[period] ? '✓' : ''}
@@ -528,10 +532,21 @@ export default function WorkerSchedule() {
           left: 0;
           background: #fff;
           z-index: 2;
+          padding: 8px 12px;
         }
-        .col-level { left: 140px; z-index: 1; }
-        .col-user { left: 0; min-width: 140px; text-align: left; }
-        .col-level { min-width: 180px; text-align: left; }
+        .col-level { 
+          left: 0; 
+          min-width: 200px; 
+          text-align: left; 
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+        .col-user { 
+          left: 200px; 
+          min-width: 140px; 
+          text-align: left;
+          z-index: 1;
+        }
         .cell.on {
           background: #dcfce7;
           color: #166534;
