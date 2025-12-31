@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 
 export default function ManageLevels() {
   const { id } = useParams();
@@ -43,6 +44,10 @@ export default function ManageLevels() {
   const [materialDeliveryStatus, setMaterialDeliveryStatus] = useState("Not requested");
   const [materialAssemblyStatus, setMaterialAssemblyStatus] = useState("Not started");
   const [materialErrors, setMaterialErrors] = useState({});
+
+  // Import/export hierarchy via Excel
+  const [importingHierarchy, setImportingHierarchy] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Formulário de nota
   const [noteText, setNoteText] = useState("");
@@ -358,6 +363,105 @@ export default function ManageLevels() {
       setMaterialErrors({ submit: err.message });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const downloadHierarchyTemplate = () => {
+    const template = [
+      {
+        "Path": "Fase 1",
+        "Description (optional)": "",
+        "Start Date (YYYY-MM-DD)": "2025-01-10",
+        "End Date (YYYY-MM-DD)": "2025-02-10"
+      },
+      {
+        "Path": "Fase 1/Fundação",
+        "Description (optional)": "",
+        "Start Date (YYYY-MM-DD)": "2025-01-12",
+        "End Date (YYYY-MM-DD)": "2025-01-25"
+      },
+      {
+        "Path": "Fase 1/Fundação/Betonagem",
+        "Description (optional)": "",
+        "Start Date (YYYY-MM-DD)": "2025-01-15",
+        "End Date (YYYY-MM-DD)": "2025-01-18"
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(template);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Hierarquia");
+    XLSX.writeFile(workbook, "hierarquia-template.xlsx");
+  };
+
+  const parseHierarchyFile = async (file) => {
+    setImportingHierarchy(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+
+      const entries = rows
+        .map((row) => ({
+          path: String(row["Path"] || "").trim(),
+          description: String(row["Description (optional)"] || "").trim(),
+          startDate: String(row["Start Date (YYYY-MM-DD)"] || "").trim(),
+          endDate: String(row["End Date (YYYY-MM-DD)"] || "").trim(),
+        }))
+        .filter((r) => r.path.length > 0);
+
+      if (entries.length === 0) {
+        alert("O ficheiro está vazio ou sem coluna Path");
+        return;
+      }
+
+      const pathMap = new Map();
+      // Root corresponds to current level id
+      pathMap.set("__ROOT__", parseInt(id, 10));
+
+      const sorted = entries.sort((a, b) => {
+        const da = a.path.split("/").length;
+        const db = b.path.split("/").length;
+        return da - db;
+      });
+
+      for (const entry of sorted) {
+        const parts = entry.path.split("/").map((p) => p.trim()).filter(Boolean);
+        if (parts.length === 0) continue;
+        const parentKey = parts.slice(0, -1).join("/") || "__ROOT__";
+        const parentId = pathMap.get(parentKey);
+        if (!parentId) {
+          throw new Error(`Parent path não encontrado: ${parentKey}`);
+        }
+
+        const res = await fetch("/api/levels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: parts[parts.length - 1],
+            description: entry.description || parts[parts.length - 1],
+            parentId,
+            startDate: entry.startDate || null,
+            endDate: entry.endDate || null,
+          }),
+        });
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(`Erro ao criar nível ${entry.path}: ${msg}`);
+        }
+        const created = await res.json();
+        const currentKey = parts.join("/");
+        pathMap.set(currentKey, created.id);
+      }
+
+      await fetchSublevels();
+      alert("Hierarquia criada com sucesso!");
+    } catch (err) {
+      alert(`Erro ao importar hierarquia: ${err.message}`);
+    } finally {
+      setImportingHierarchy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -1037,6 +1141,29 @@ export default function ManageLevels() {
               <button onClick={() => setShowSublevelForm(!showSublevelForm)} className="ml-add-btn">
                 {showSublevelForm ? "Cancelar" : "+ Adicionar Subnível"}
               </button>
+            </div>
+
+            <div className="ml-import-row">
+              <button onClick={downloadHierarchyTemplate} className="ml-btn-secondary">
+                Descarregar template Excel
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="ml-btn-secondary"
+                disabled={importingHierarchy}
+              >
+                {importingHierarchy ? "A importar..." : "Importar hierarquia via Excel"}
+              </button>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                style={{ display: "none" }}
+                ref={fileInputRef}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) parseHierarchyFile(file);
+                }}
+              />
             </div>
 
             {showSublevelForm && (
@@ -1945,6 +2072,26 @@ export default function ManageLevels() {
         }
         .ml-add-btn:hover {
           transform: scale(1.05);
+        }
+        .ml-import-row {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-bottom: 16px;
+        }
+        .ml-btn-secondary {
+          background: #e2e8f0;
+          color: #0f172a;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          padding: 10px 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.2s, transform 0.2s;
+        }
+        .ml-btn-secondary:hover {
+          background: #cbd5e1;
+          transform: translateY(-1px);
         }
         .ml-form {
           background: #fff;
