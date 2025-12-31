@@ -465,6 +465,91 @@ export default function ManageLevels() {
     }
   };
 
+  const [importingMaterials, setImportingMaterials] = useState(false);
+  const materialFileInputRef = useRef(null);
+
+  const downloadMaterialsTemplate = () => {
+    const template = [
+      {
+        "Description": "Cimento Portland",
+        "Quantity": 100,
+        "Unit": "kg",
+        "Brand": "Lafarge",
+        "Manufacturer": "Lafarge",
+        "Type": "CP II",
+        "Estimated Value (€)": 500,
+        "Real Value (€)": "",
+        "Delivery Status": "Not requested",
+        "Assembly Status": "Not started"
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(template);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Materiais");
+    XLSX.writeFile(workbook, "materiais-template.xlsx");
+  };
+
+  const parseMaterialsFile = async (file) => {
+    setImportingMaterials(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+
+      const materials = rows
+        .map((row) => ({
+          description: String(row["Description"] || "").trim(),
+          quantity: parseFloat(row["Quantity"] || 0),
+          unit: String(row["Unit"] || "").trim(),
+          brand: String(row["Brand"] || "").trim(),
+          manufacturer: String(row["Manufacturer"] || "").trim(),
+          type: String(row["Type"] || "").trim(),
+          estimatedValue: row["Estimated Value (€)"] ? parseFloat(row["Estimated Value (€)"]) : null,
+          realValue: row["Real Value (€)"] ? parseFloat(row["Real Value (€)"]) : null,
+          deliveryStatus: String(row["Delivery Status"] || "Not requested").trim(),
+          assemblyStatus: String(row["Assembly Status"] || "Not started").trim(),
+        }))
+        .filter((m) => m.description.length > 0 && m.quantity > 0);
+
+      if (materials.length === 0) {
+        alert("O ficheiro está vazio ou sem colunas obrigatórias");
+        return;
+      }
+
+      for (const mat of materials) {
+        const res = await fetch("/api/materials", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description: mat.unit.trim() ? `${mat.description} (${mat.unit})` : mat.description,
+            quantity: mat.quantity,
+            estimatedValue: mat.estimatedValue,
+            realValue: mat.realValue,
+            deliveryStatus: mat.deliveryStatus,
+            assemblyStatus: mat.assemblyStatus,
+            brand: mat.brand || null,
+            manufacturer: mat.manufacturer || null,
+            type: mat.type || null,
+            levelId: id,
+          }),
+        });
+        if (!res.ok) {
+          throw new Error(`Erro ao criar material ${mat.description}`);
+        }
+      }
+
+      await fetchMaterials();
+      alert(`${materials.length} material(is) criado(s) com sucesso!`);
+    } catch (err) {
+      alert(`Erro ao importar materiais: ${err.message}`);
+    } finally {
+      setImportingMaterials(false);
+      if (materialFileInputRef.current) materialFileInputRef.current.value = "";
+    }
+  };
+
   const handleDeleteMaterial = async (materialId) => {
     if (!confirm("Tem certeza que deseja deletar este material?")) return;
     try {
@@ -1165,6 +1250,14 @@ export default function ManageLevels() {
                 }}
               />
             </div>
+            <div className="ml-help-box">
+              <p style={{ marginBottom: "8px" }}>
+                <strong>Como usar Excel:</strong> 1) Descarrega o template 2) Preenche <em>Path</em> com hierarquia (ex.: Fase 1/Fundação/Betonagem) 3) Importa para criar automaticamente
+              </p>
+              <p style={{ marginBottom: "0", fontSize: "0.9rem", color: "#475569" }}>
+                <strong>Colunas:</strong> Path (obrigatória) | Description (opcional) | Start Date / End Date (YYYY-MM-DD, opcional)
+              </p>
+            </div>
 
             {showSublevelForm && (
               <form onSubmit={handleCreateSublevel} className="ml-form">
@@ -1343,6 +1436,38 @@ export default function ManageLevels() {
               <button onClick={() => setShowMaterialForm(!showMaterialForm)} className="ml-add-btn">
                 {showMaterialForm ? "Cancelar" : "+ Adicionar Material"}
               </button>
+            </div>
+
+            <div className="ml-import-row">
+              <button onClick={downloadMaterialsTemplate} className="ml-btn-secondary">
+                Descarregar template Excel
+              </button>
+              <button
+                onClick={() => materialFileInputRef.current?.click()}
+                className="ml-btn-secondary"
+                disabled={importingMaterials}
+              >
+                {importingMaterials ? "A importar..." : "Importar materiais via Excel"}
+              </button>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                style={{ display: "none" }}
+                ref={materialFileInputRef}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) parseMaterialsFile(file);
+                }}
+              />
+            </div>
+
+            <div className="ml-help-box">
+              <p style={{ marginBottom: "8px" }}>
+                <strong>Como usar Excel:</strong> 1) Descarrega o template 2) Preenche Description, Quantity, Unit e opcionais (Brand, etc.) 3) Importa para criar automaticamente
+              </p>
+              <p style={{ marginBottom: "0", fontSize: "0.9rem", color: "#475569" }}>
+                <strong>Obrigatórias:</strong> Description, Quantity | <strong>Opcionais:</strong> Unit, Brand, Manufacturer, Type, Valores, Status
+              </p>
             </div>
 
             {showMaterialForm && (
@@ -2092,6 +2217,25 @@ export default function ManageLevels() {
         .ml-btn-secondary:hover {
           background: #cbd5e1;
           transform: translateY(-1px);
+        }
+        .ml-help-box {
+          background: #f0f9ff;
+          border: 1px solid #bfdbfe;
+          border-radius: 8px;
+          padding: 14px 16px;
+          margin: 0 auto 20px auto;
+          max-width: 600px;
+          color: #0f172a;
+          line-height: 1.5;
+          font-size: 0.95rem;
+          text-align: center;
+        }
+        .ml-help-box strong {
+          font-weight: 700;
+        }
+        .ml-help-box em {
+          font-style: italic;
+          color: #1e40af;
         }
         .ml-form {
           background: #fff;
