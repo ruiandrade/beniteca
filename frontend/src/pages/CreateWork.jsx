@@ -104,6 +104,90 @@ export default function CreateWork() {
     setTemplates(newTemplates);
   };
 
+  // Recursive functions for unlimited depth
+  const addNestedChild = (templates, path) => {
+    const newTemplates = JSON.parse(JSON.stringify(templates));
+    let current = newTemplates;
+    for (let i = 0; i < path.length; i++) {
+      current = current[path[i]].children;
+    }
+    current.push({ name: '', count: 1, children: [] });
+    return newTemplates;
+  };
+
+  const removeNestedChild = (templates, path) => {
+    const newTemplates = JSON.parse(JSON.stringify(templates));
+    let current = newTemplates;
+    for (let i = 0; i < path.length - 1; i++) {
+      current = current[path[i]].children;
+    }
+    const lastIdx = path[path.length - 1];
+    current.splice(lastIdx, 1);
+    return newTemplates;
+  };
+
+  const updateNestedChild = (templates, path, field, value) => {
+    const newTemplates = JSON.parse(JSON.stringify(templates));
+    let current = newTemplates;
+    for (let i = 0; i < path.length; i++) {
+      current = current[path[i]];
+    }
+    current[field] = field === 'count' ? parseInt(value) || 1 : value;
+    return newTemplates;
+  };
+
+  // Render function for nested templates
+  const renderTemplate = (template, path, depth = 0) => {
+    const indent = depth > 0 ? `indent-${Math.min(depth, 5)}` : '';
+    return (
+      <div key={path.join('-')} className={depth === 0 ? 'cw-template-group' : depth === 1 ? 'cw-template-child' : 'cw-template-nested'}>
+        <div className={`cw-template-header ${indent}`}>
+          <input 
+            type="text"
+            placeholder={`Nome (nível ${depth + 1})`}
+            value={template.name}
+            onChange={(e) => setTemplates(updateNestedChild(templates, path, 'name', e.target.value))}
+            className="cw-template-name"
+          />
+          <input 
+            type="number"
+            min="1"
+            max="999"
+            placeholder="Qtd"
+            value={template.count}
+            onChange={(e) => setTemplates(updateNestedChild(templates, path, 'count', e.target.value))}
+            className="cw-template-count"
+          />
+          <button 
+            type="button"
+            onClick={() => setTemplates(removeNestedChild(templates, path))}
+            className="cw-btn-remove"
+          >
+            ✕
+          </button>
+        </div>
+
+        {template.children && template.children.map((child, idx) => 
+          renderTemplate(child, [...path, idx], depth + 1)
+        )}
+
+        <button 
+          type="button"
+          onClick={() => setTemplates(addNestedChild(templates, path))}
+          className="cw-btn-add-sub"
+        >
+          + Adicionar subnível
+        </button>
+      </div>
+    );
+  };
+
+  const updateGrandchildTemplate = (parentIndex, childIndex, grandchildIndex, field, value) => {
+    const newTemplates = [...templates];
+    newTemplates[parentIndex].children[childIndex].children[grandchildIndex][field] = value;
+    setTemplates(newTemplates);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
@@ -239,113 +323,11 @@ export default function CreateWork() {
 
           {showTemplates && (
             <div className="cw-template-builder">
-              <p className="cw-template-hint">Defina os padrões de subníveis. Ex: "Lote" com 10 unidades, cada uma com 5 "WC", etc.</p>
+              <p className="cw-template-hint">Defina os padrões de subníveis com profundidade ilimitada. Cada nível pode ter múltiplos subníveis.</p>
               
-              {templates.map((template, idx) => (
-                <div key={idx} className="cw-template-group">
-                  <div className="cw-template-header">
-                    <input 
-                      type="text"
-                      placeholder="Nome do padrão (ex: Lote)"
-                      value={template.name}
-                      onChange={(e) => updateTemplate(idx, 'name', e.target.value)}
-                      className="cw-template-name"
-                    />
-                    <input 
-                      type="number"
-                      min="1"
-                      max="999"
-                      placeholder="Quantidade"
-                      value={template.count}
-                      onChange={(e) => updateTemplate(idx, 'count', parseInt(e.target.value) || 1)}
-                      className="cw-template-count"
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => removeTemplate(idx)}
-                      className="cw-btn-remove"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  {/* Children Templates */}
-                  {template.children && template.children.map((child, cIdx) => (
-                    <div key={cIdx} className="cw-template-child">
-                      <div className="cw-template-header indent-1">
-                        <input 
-                          type="text"
-                          placeholder="Nome (ex: WC)"
-                          value={child.name}
-                          onChange={(e) => updateChildTemplate(idx, cIdx, 'name', e.target.value)}
-                          className="cw-template-name"
-                        />
-                        <input 
-                          type="number"
-                          min="1"
-                          placeholder="Qtd"
-                          value={child.count}
-                          onChange={(e) => updateChildTemplate(idx, cIdx, 'count', parseInt(e.target.value) || 1)}
-                          className="cw-template-count"
-                        />
-                        <button 
-                          type="button"
-                          onClick={() => removeChildTemplate(idx, cIdx)}
-                          className="cw-btn-remove"
-                        >
-                          ✕
-                        </button>
-                      </div>
-
-                      {/* Grandchildren Templates */}
-                      {child.children && child.children.map((grandchild, gIdx) => (
-                        <div key={gIdx} className="cw-template-grandchild">
-                          <div className="cw-template-header indent-2">
-                            <input 
-                              type="text"
-                              placeholder="Nome (ex: Lavatório)"
-                              value={grandchild.name}
-                              onChange={(e) => updateGrandchildTemplate(idx, cIdx, gIdx, 'name', e.target.value)}
-                              className="cw-template-name"
-                            />
-                            <input 
-                              type="number"
-                              min="1"
-                              placeholder="Qtd"
-                              value={grandchild.count}
-                              onChange={(e) => updateGrandchildTemplate(idx, cIdx, gIdx, 'count', parseInt(e.target.value) || 1)}
-                              className="cw-template-count"
-                            />
-                            <button 
-                              type="button"
-                              onClick={() => removeGrandchildTemplate(idx, cIdx, gIdx)}
-                              className="cw-btn-remove"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-
-                      <button 
-                        type="button"
-                        onClick={() => addGrandchildTemplate(idx, cIdx)}
-                        className="cw-btn-add-sub"
-                      >
-                        + Adicionar subnível
-                      </button>
-                    </div>
-                  ))}
-
-                  <button 
-                    type="button"
-                    onClick={() => addChildTemplate(idx)}
-                    className="cw-btn-add"
-                  >
-                    + Adicionar subnível a cada "{template.name}"
-                  </button>
-                </div>
-              ))}
+              {templates.map((template, idx) => 
+                renderTemplate(template, [idx])
+              )}
 
               <button 
                 type="button"
@@ -627,6 +609,24 @@ export default function CreateWork() {
           padding-left: 12px;
           margin-bottom: 4px;
         }
+        .cw-template-header.indent-3 {
+          margin-left: 72px;
+          border-left: 3px solid #a5f3fc;
+          padding-left: 12px;
+          margin-bottom: 4px;
+        }
+        .cw-template-header.indent-4 {
+          margin-left: 96px;
+          border-left: 3px solid #86efac;
+          padding-left: 12px;
+          margin-bottom: 4px;
+        }
+        .cw-template-header.indent-5 {
+          margin-left: 120px;
+          border-left: 3px solid #fde047;
+          padding-left: 12px;
+          margin-bottom: 4px;
+        }
         .cw-template-name {
           flex: 1;
           padding: 8px 12px;
@@ -655,7 +655,7 @@ export default function CreateWork() {
         .cw-btn-remove:hover {
           background: #fecaca;
         }
-        .cw-template-child, .cw-template-grandchild {
+        .cw-template-child, .cw-template-grandchild, .cw-template-nested {
           margin-bottom: 8px;
         }
         .cw-btn-add {
