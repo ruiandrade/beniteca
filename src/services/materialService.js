@@ -4,9 +4,31 @@ class MaterialService {
   async createMaterial(data) {
     const pool = await getConnection();
     const insertQuery = `
-      INSERT INTO Material (levelId, description, quantity, estimatedValue, realValue, deliveryStatus, assemblyStatus)
+      INSERT INTO Material (
+        levelId,
+        description,
+        quantity,
+        estimatedValue,
+        realValue,
+        deliveryStatus,
+        assemblyStatus,
+        brand,
+        manufacturer,
+        [type]
+      )
       OUTPUT INSERTED.*
-      VALUES (@levelId, @description, @quantity, @estimatedValue, @realValue, @deliveryStatus, @assemblyStatus)
+      VALUES (
+        @levelId,
+        @description,
+        @quantity,
+        @estimatedValue,
+        @realValue,
+        @deliveryStatus,
+        @assemblyStatus,
+        @brand,
+        @manufacturer,
+        @type
+      )
     `;
     const result = await pool.request()
       .input('levelId', sql.Int, data.levelId)
@@ -14,8 +36,11 @@ class MaterialService {
       .input('quantity', sql.Float, data.quantity)
       .input('estimatedValue', sql.Float, data.estimatedValue)
       .input('realValue', sql.Float, data.realValue)
-        .input('deliveryStatus', sql.NVarChar, data.deliveryStatus || null)
-        .input('assemblyStatus', sql.NVarChar, data.assemblyStatus || null)
+      .input('deliveryStatus', sql.NVarChar, data.deliveryStatus || null)
+      .input('assemblyStatus', sql.NVarChar, data.assemblyStatus || null)
+      .input('brand', sql.NVarChar, data.brand || null)
+      .input('manufacturer', sql.NVarChar, data.manufacturer || null)
+      .input('type', sql.NVarChar, data.type || null)
       .query(insertQuery);
     return result.recordset[0];
   }
@@ -32,9 +57,17 @@ class MaterialService {
     const pool = await getConnection();
     const updateQuery = `
       UPDATE Material
-      SET levelId = @levelId, description = @description, quantity = @quantity, 
-          estimatedValue = @estimatedValue, realValue = @realValue,
-          deliveryStatus = @deliveryStatus, assemblyStatus = @assemblyStatus, updatedAt = GETDATE()
+        SET levelId = @levelId,
+          description = @description,
+          quantity = @quantity,
+          estimatedValue = @estimatedValue,
+          realValue = @realValue,
+          deliveryStatus = @deliveryStatus,
+          assemblyStatus = @assemblyStatus,
+          brand = @brand,
+          manufacturer = @manufacturer,
+          [type] = @type,
+          updatedAt = GETDATE()
       OUTPUT INSERTED.*
       WHERE id = @id
     `;
@@ -45,8 +78,11 @@ class MaterialService {
       .input('quantity', sql.Float, data.quantity)
       .input('estimatedValue', sql.Float, data.estimatedValue)
       .input('realValue', sql.Float, data.realValue)
-        .input('deliveryStatus', sql.NVarChar, data.deliveryStatus || null)
-        .input('assemblyStatus', sql.NVarChar, data.assemblyStatus || null)
+      .input('deliveryStatus', sql.NVarChar, data.deliveryStatus || null)
+      .input('assemblyStatus', sql.NVarChar, data.assemblyStatus || null)
+      .input('brand', sql.NVarChar, data.brand || null)
+      .input('manufacturer', sql.NVarChar, data.manufacturer || null)
+      .input('type', sql.NVarChar, data.type || null)
       .query(updateQuery);
     return result.recordset[0];
   }

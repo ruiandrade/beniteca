@@ -33,6 +33,9 @@ export default function ManageLevels() {
 
   // Formulário de material
   const [materialName, setMaterialName] = useState("");
+  const [materialBrand, setMaterialBrand] = useState("");
+  const [materialManufacturer, setMaterialManufacturer] = useState("");
+  const [materialType, setMaterialType] = useState("");
   const [materialQuantity, setMaterialQuantity] = useState("");
   const [materialUnit, setMaterialUnit] = useState("");
   const [materialEstimated, setMaterialEstimated] = useState("");
@@ -66,6 +69,13 @@ export default function ManageLevels() {
   const [editEnd, setEditEnd] = useState("");
   const [editCover, setEditCover] = useState(null);
   const [editErrors, setEditErrors] = useState({});
+
+  // Estado para mover level (mudar parentId)
+  const [moveMode, setMoveMode] = useState(false);
+  const [newParentId, setNewParentId] = useState("");
+  const [levelTree, setLevelTree] = useState(null);
+  const [expandedNodes, setExpandedNodes] = useState(new Set());
+  const [moveErrors, setMoveErrors] = useState({});
 
   // Estado para editar material
   const [editingMaterial, setEditingMaterial] = useState(null);
@@ -319,6 +329,9 @@ export default function ManageLevels() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description,
+          brand: materialBrand || null,
+          manufacturer: materialManufacturer || null,
+          type: materialType || null,
           quantity: parseFloat(materialQuantity),
           estimatedValue: materialEstimated ? parseFloat(materialEstimated) : null,
           realValue: materialReal ? parseFloat(materialReal) : null,
@@ -330,6 +343,9 @@ export default function ManageLevels() {
       if (!res.ok) throw new Error("Erro ao criar material");
       await fetchMaterials();
       setMaterialName("");
+      setMaterialBrand("");
+      setMaterialManufacturer("");
+      setMaterialType("");
       setMaterialQuantity("");
       setMaterialUnit("");
       setMaterialEstimated("");
@@ -363,6 +379,9 @@ export default function ManageLevels() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description: mat.description,
+          brand: mat.brand || null,
+          manufacturer: mat.manufacturer || null,
+          type: mat.type || null,
           quantity: parseFloat(mat.quantity),
           estimatedValue: mat.estimatedValue ? parseFloat(mat.estimatedValue) : null,
           realValue: mat.realValue ? parseFloat(mat.realValue) : null,
@@ -611,6 +630,190 @@ export default function ManageLevels() {
     }
   };
 
+  const buildLevelTree = async () => {
+    try {
+      // Encontrar a obra mãe (top-level parent) do nível atual
+      let topLevelParent = work;
+      
+      while (topLevelParent.parentId !== null && topLevelParent.parentId !== undefined) {
+        const parentRes = await fetch(`/api/levels/${topLevelParent.parentId}`);
+        if (!parentRes.ok) break;
+        topLevelParent = await parentRes.json();
+      }
+
+      // Recursivamente construir árvore com filhos
+      const buildTreeNode = async (levelId) => {
+        const levelRes = await fetch(`/api/levels/${levelId}`);
+        if (!levelRes.ok) return null;
+        const levelData = await levelRes.json();
+
+        const childrenRes = await fetch(`/api/levels?parentId=${levelId}`);
+        const children = childrenRes.ok ? await childrenRes.json() : [];
+
+        const childNodes = [];
+        for (const child of children) {
+          const childNode = await buildTreeNode(child.id);
+          if (childNode) childNodes.push(childNode);
+        }
+
+        return {
+          id: levelData.id,
+          name: levelData.name,
+          children: childNodes
+        };
+      };
+
+      // Obter descendentes do level atual para excluir
+      const getDescendantIds = async (levelId) => {
+        const res = await fetch(`/api/levels?parentId=${levelId}`);
+        if (!res.ok) return [];
+        const subs = await res.json();
+        let ids = subs.map(s => s.id);
+        for (const sub of subs) {
+          const deeper = await getDescendantIds(sub.id);
+          ids = [...ids, ...deeper];
+        }
+        return ids;
+      };
+
+      const descendantIds = await getDescendantIds(id);
+
+      // Filtrar a árvore para remover o nível atual e seus descendentes
+      const filterTree = (node) => {
+        if (node.id === parseInt(id) || descendantIds.includes(node.id)) {
+          return null;
+        }
+        return {
+          ...node,
+          children: node.children.map(filterTree).filter(Boolean)
+        };
+      };
+
+      const tree = await buildTreeNode(topLevelParent.id);
+      const filteredTree = filterTree(tree);
+      
+      setLevelTree(filteredTree);
+      setExpandedNodes(new Set([filteredTree.id])); // Expandir raiz por padrão
+    } catch (err) {
+      console.error('Erro ao construir árvore:', err);
+      setMoveErrors({ fetch: err.message });
+    }
+  };
+
+  const handleMoveLevel = async () => {
+    const errors = {};
+    if (!newParentId) {
+      errors.parent = "Selecione um nível de destino";
+    }
+
+    setMoveErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    if (!confirm(`Tem certeza que deseja mover este nível? Toda a hierarquia descendente será movida junto.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        parentId: parseInt(newParentId)
+      };
+
+      const res = await fetch(`/api/levels/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!res.ok) throw new Error("Erro ao mover nível");
+      
+      await fetchWork();
+      await buildBreadcrumb();
+      setMoveMode(false);
+      setNewParentId('');
+      setMoveErrors({});
+      
+      // Redirecionar para o nível movido
+      window.location.reload();
+    } catch (err) {
+      setMoveErrors({ submit: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenMoveMode = async () => {
+    setMoveMode(true);
+    await buildLevelTree();
+  };
+
+  const toggleNode = (nodeId) => {
+    setExpandedNodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
+      }
+      return newSet;
+    });
+  };
+
+  const renderTreeNode = (node, depth = 0) => {
+    if (!node) return null;
+    
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = expandedNodes.has(node.id);
+    const isSelected = newParentId === node.id.toString();
+
+    return (
+      <div key={node.id} style={{ marginLeft: `${depth * 20}px` }}>
+        <div 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '8px',
+            cursor: 'pointer',
+            background: isSelected ? '#dbeafe' : 'transparent',
+            borderRadius: '6px',
+            marginBottom: '4px',
+            border: isSelected ? '2px solid #3b82f6' : '2px solid transparent'
+          }}
+        >
+          {hasChildren && (
+            <span 
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleNode(node.id);
+              }}
+              style={{
+                marginRight: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                userSelect: 'none',
+                width: '20px'
+              }}
+            >
+              {isExpanded ? '−' : '+'}
+            </span>
+          )}
+          {!hasChildren && <span style={{ marginRight: '8px', width: '20px' }}></span>}
+          <span 
+            onClick={() => setNewParentId(node.id.toString())}
+            style={{ flex: 1 }}
+          >
+            {node.name}
+          </span>
+        </div>
+        {isExpanded && hasChildren && (
+          <div>
+            {node.children.map(child => renderTreeNode(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="ml-bg">
       <div className="ml-layout">
@@ -734,6 +937,56 @@ export default function ManageLevels() {
                 {loading ? "A guardar..." : "Guardar Alterações"}
               </button>
             </form>
+          </div>
+        )}
+
+        {work && work.parentId !== undefined && (
+          <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+            <button 
+              onClick={() => moveMode ? setMoveMode(false) : handleOpenMoveMode()} 
+              className="ml-move-btn"
+              style={{
+                background: moveMode ? '#f87171' : '#8b5cf6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              {moveMode ? "Cancelar Movimento" : "↕️ Mover na Hierarquia"}
+            </button>
+          </div>
+        )}
+
+        {moveMode && (
+          <div className="ml-edit-section">
+            <h2>Mover Nível para Outro Local</h2>
+            <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+              Esta operação move este nível e toda a sua hierarquia descendente para outro local.
+              Clique em "+" para expandir níveis e selecione o nível de destino.
+            </p>
+            <div className="ml-field">
+              <label>Selecionar Novo Nível Pai *</label>
+              <div style={{
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                padding: '12px',
+                background: '#f9fafb',
+                maxHeight: '400px',
+                overflowY: 'auto'
+              }}>
+                {levelTree ? renderTreeNode(levelTree) : <p>A carregar árvore...</p>}
+              </div>
+              {!newParentId && <span className="ml-error">Por favor, selecione um nível de destino</span>}
+              {moveErrors.parent && <span className="ml-error">{moveErrors.parent}</span>}
+            </div>
+            {moveErrors.fetch && <div className="ml-error">{moveErrors.fetch}</div>}
+            {moveErrors.submit && <div className="ml-error">{moveErrors.submit}</div>}
+            <button type="button" onClick={handleMoveLevel} className="ml-btn" disabled={loading || !newParentId}>
+              {loading ? "A mover..." : "Confirmar Movimento"}
+            </button>
           </div>
         )}
 
@@ -1002,7 +1255,7 @@ export default function ManageLevels() {
                   </div>
                 </div>
                 <div className="ml-field">
-                  <label>Nome *</label>
+                  <label>Descrição *</label>
                   <input
                     type="text"
                     value={materialName}
@@ -1031,27 +1284,53 @@ export default function ManageLevels() {
                     />
                     {materialErrors.unit && <span className="ml-error">{materialErrors.unit}</span>}
                   </div>
-                  <div className="ml-field">
-                    <label>Valor Estimado (€)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={materialEstimated}
-                      onChange={(e) => setMaterialEstimated(e.target.value)}
-                    />
-                  </div>
                 </div>
                 <div className="ml-row">
                   <div className="ml-field">
-                    <label>Valor Real (€)</label>
+                    <label>Marca (opcional)</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={materialReal}
-                      onChange={(e) => setMaterialReal(e.target.value)}
+                      type="text"
+                      value={materialBrand}
+                      onChange={(e) => setMaterialBrand(e.target.value)}
+                    />
+                  </div>
+                  <div className="ml-field">
+                    <label>Fabricante (opcional)</label>
+                    <input
+                      type="text"
+                      value={materialManufacturer}
+                      onChange={(e) => setMaterialManufacturer(e.target.value)}
+                    />
+                  </div>
+                  <div className="ml-field">
+                    <label>Tipo (opcional)</label>
+                    <input
+                      type="text"
+                      value={materialType}
+                      onChange={(e) => setMaterialType(e.target.value)}
                     />
                   </div>
                 </div>
+                  <div className="ml-row">
+                    <div className="ml-field">
+                      <label>Valor Estimado (€) (opcional)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={materialEstimated}
+                        onChange={(e) => setMaterialEstimated(e.target.value)}
+                      />
+                    </div>
+                    <div className="ml-field">
+                      <label>Valor Real (€) (opcional)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={materialReal}
+                        onChange={(e) => setMaterialReal(e.target.value)}
+                      />
+                    </div>
+                  </div>
                 {materialErrors.submit && <div className="ml-error">{materialErrors.submit}</div>}
                 <button type="submit" className="ml-btn" disabled={loading}>
                   {loading ? "A criar..." : "Criar Material"}
@@ -1111,6 +1390,32 @@ export default function ManageLevels() {
                         </div>
                         <div className="ml-row">
                           <div className="ml-field">
+                            <label>Marca (opcional)</label>
+                            <input
+                              type="text"
+                              value={editingMaterial.brand || ''}
+                              onChange={(e) => setEditingMaterial({...editingMaterial, brand: e.target.value})}
+                            />
+                          </div>
+                          <div className="ml-field">
+                            <label>Fabricante (opcional)</label>
+                            <input
+                              type="text"
+                              value={editingMaterial.manufacturer || ''}
+                              onChange={(e) => setEditingMaterial({...editingMaterial, manufacturer: e.target.value})}
+                            />
+                          </div>
+                          <div className="ml-field">
+                            <label>Tipo (opcional)</label>
+                            <input
+                              type="text"
+                              value={editingMaterial.type || ''}
+                              onChange={(e) => setEditingMaterial({...editingMaterial, type: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                        <div className="ml-row">
+                          <div className="ml-field">
                             <label>Quantidade</label>
                             <input
                               type="number"
@@ -1119,8 +1424,10 @@ export default function ManageLevels() {
                               onChange={(e) => setEditingMaterial({...editingMaterial, quantity: e.target.value})}
                             />
                           </div>
+                        </div>
+                        <div className="ml-row">
                           <div className="ml-field">
-                            <label>Valor Estimado (€)</label>
+                            <label>Valor Estimado (€) (opcional)</label>
                             <input
                               type="number"
                               step="0.01"
@@ -1129,7 +1436,7 @@ export default function ManageLevels() {
                             />
                           </div>
                           <div className="ml-field">
-                            <label>Valor Real (€)</label>
+                            <label>Valor Real (€) (opcional)</label>
                             <input
                               type="number"
                               step="0.01"
@@ -1151,15 +1458,14 @@ export default function ManageLevels() {
                             <span className="ml-badge">Assembly: {mat.assemblyStatus || 'Not started'}</span>
                           </div>
                           <h3>{mat.description}</h3>
-                          <p>
-                            Quantidade: {mat.quantity} {" "}
-                            {mat.estimatedValue != null && (
-                              <span>• Estimado: €{Number(mat.estimatedValue).toFixed(2)} </span>
-                            )}
-                            {mat.realValue != null && (
-                              <span>• Real: €{Number(mat.realValue).toFixed(2)}</span>
-                            )}
-                          </p>
+                          <p>Quantidade: {mat.quantity}</p>
+                          {(mat.brand || mat.manufacturer || mat.type) && (
+                            <p>
+                              {mat.brand && <span>Marca: {mat.brand} </span>}
+                              {mat.manufacturer && <span>• Fabricante: {mat.manufacturer} </span>}
+                              {mat.type && <span>• Tipo: {mat.type}</span>}
+                            </p>
+                          )}
                         </div>
                         <div className="ml-item-actions">
                           <button
@@ -1167,6 +1473,9 @@ export default function ManageLevels() {
                               ...mat,
                               deliveryStatus: mat.deliveryStatus || "Not requested",
                               assemblyStatus: mat.assemblyStatus || "Not started",
+                              brand: mat.brand || "",
+                              manufacturer: mat.manufacturer || "",
+                              type: mat.type || "",
                             })}
                             className="ml-btn-view"
                           >

@@ -293,6 +293,11 @@ export default function Users() {
           color: #92400e;
         }
 
+        .role-client {
+          background: #e9f8ec; /* soft green for client */
+          color: #166534;
+        }
+
         .btn-delete {
           background: #ef4444;
           color: white;
@@ -378,6 +383,7 @@ export default function Users() {
                 <label>Role</label>
                 <select name="status" value={formData.status} onChange={handleInputChange}>
                   <option value="O">Others (Utilizador Normal)</option>
+                  <option value="C">Client (Cliente)</option>
                   <option value="A">Admin (Administrador)</option>
                 </select>
               </div>
@@ -412,8 +418,8 @@ export default function Users() {
                 <td>{u.email}</td>
                 <td>{u.name}</td>
                 <td>
-                  <span className={`role-badge role-${u.status === 'A' ? 'admin' : 'other'}`}>
-                    {u.status === 'A' ? 'Admin' : 'Utilizador'}
+                  <span className={`role-badge role-${u.status === 'A' ? 'admin' : u.status === 'C' ? 'client' : 'other'}`}>
+                    {u.status === 'A' ? 'Admin' : u.status === 'C' ? 'Cliente' : 'Utilizador'}
                   </span>
                 </td>
                 <td>{new Date(u.createdAt).toLocaleDateString('pt-PT')}</td>
