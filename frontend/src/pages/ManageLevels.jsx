@@ -485,6 +485,31 @@ export default function ManageLevels() {
     ];
 
     const worksheet = XLSX.utils.json_to_sheet(template);
+    
+    // Add column widths
+    worksheet['!cols'] = [
+      { wch: 20 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 18 },
+      { wch: 16 }
+    ];
+
+    // Add instructions as a comment in header row
+    const deliveryComment = "Opções: Not requested | Requested | Delivered";
+    const assemblyComment = "Opções: Not started | Started | Finished";
+    
+    if (!worksheet['I1']) worksheet['I1'] = { t: 's', v: 'Delivery Status' };
+    if (!worksheet['J1']) worksheet['J1'] = { t: 's', v: 'Assembly Status' };
+    
+    worksheet['I1'].c = [{ a: 'User', t: deliveryComment, r: deliveryComment }];
+    worksheet['J1'].c = [{ a: 'User', t: assemblyComment, r: assemblyComment }];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Materiais");
     XLSX.writeFile(workbook, "materiais-template.xlsx");
@@ -498,19 +523,39 @@ export default function ManageLevels() {
       const sheetName = workbook.SheetNames[0];
       const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
 
+      const deliveryStatusOptions = ["Not requested", "Requested", "Delivered"];
+      const assemblyStatusOptions = ["Not started", "Started", "Finished"];
+
       const materials = rows
-        .map((row) => ({
-          description: String(row["Description"] || "").trim(),
-          quantity: parseFloat(row["Quantity"] || 0),
-          unit: String(row["Unit"] || "").trim(),
-          brand: String(row["Brand"] || "").trim(),
-          manufacturer: String(row["Manufacturer"] || "").trim(),
-          type: String(row["Type"] || "").trim(),
-          estimatedValue: row["Estimated Value (€)"] ? parseFloat(row["Estimated Value (€)"]) : null,
-          realValue: row["Real Value (€)"] ? parseFloat(row["Real Value (€)"]) : null,
-          deliveryStatus: String(row["Delivery Status"] || "Not requested").trim(),
-          assemblyStatus: String(row["Assembly Status"] || "Not started").trim(),
-        }))
+        .map((row, idx) => {
+          const desc = String(row["Description"] || "").trim();
+          const qty = parseFloat(row["Quantity"] || 0);
+          const delivery = String(row["Delivery Status"] || "Not requested").trim();
+          const assembly = String(row["Assembly Status"] || "Not started").trim();
+
+          // Validate delivery status
+          if (!deliveryStatusOptions.includes(delivery)) {
+            throw new Error(`Linha ${idx + 2}: Delivery Status "${delivery}" inválido. Use: ${deliveryStatusOptions.join(", ")}`);
+          }
+
+          // Validate assembly status
+          if (!assemblyStatusOptions.includes(assembly)) {
+            throw new Error(`Linha ${idx + 2}: Assembly Status "${assembly}" inválido. Use: ${assemblyStatusOptions.join(", ")}`);
+          }
+
+          return {
+            description: desc,
+            quantity: qty,
+            unit: String(row["Unit"] || "").trim(),
+            brand: String(row["Brand"] || "").trim(),
+            manufacturer: String(row["Manufacturer"] || "").trim(),
+            type: String(row["Type"] || "").trim(),
+            estimatedValue: row["Estimated Value (€)"] ? parseFloat(row["Estimated Value (€)"]) : null,
+            realValue: row["Real Value (€)"] ? parseFloat(row["Real Value (€)"]) : null,
+            deliveryStatus: delivery,
+            assemblyStatus: assembly,
+          };
+        })
         .filter((m) => m.description.length > 0 && m.quantity > 0);
 
       if (materials.length === 0) {
