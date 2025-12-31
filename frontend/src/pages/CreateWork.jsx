@@ -182,12 +182,6 @@ export default function CreateWork() {
     );
   };
 
-  const updateGrandchildTemplate = (parentIndex, childIndex, grandchildIndex, field, value) => {
-    const newTemplates = [...templates];
-    newTemplates[parentIndex].children[childIndex].children[grandchildIndex][field] = value;
-    setTemplates(newTemplates);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
