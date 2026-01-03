@@ -140,15 +140,6 @@ export default function ArchivedWorks() {
                       👥 Equipa
                     </button>
                     <button
-                      className="btn-secondary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/works/${obra.id}/planeamento`);
-                      }}
-                    >
-                      📆 Planeamento
-                    </button>
-                    <button
                       className="btn-unarchive"
                       onClick={(e) => {
                         e.stopPropagation();

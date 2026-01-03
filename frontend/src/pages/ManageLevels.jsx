@@ -1006,11 +1006,11 @@ export default function ManageLevels() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            padding: '8px',
+            padding: '4px 6px',
             cursor: 'pointer',
             background: isSelected ? '#dbeafe' : 'transparent',
             borderRadius: '6px',
-            marginBottom: '4px',
+            marginBottom: '2px',
             border: isSelected ? '2px solid #3b82f6' : '2px solid transparent'
           }}
         >
@@ -1021,20 +1021,21 @@ export default function ManageLevels() {
                 toggleNode(node.id);
               }}
               style={{
-                marginRight: '8px',
+                marginRight: '6px',
                 cursor: 'pointer',
                 fontWeight: 'bold',
                 userSelect: 'none',
-                width: '20px'
+                width: '20px',
+                fontSize: '0.9rem'
               }}
             >
               {isExpanded ? '−' : '+'}
             </span>
           )}
-          {!hasChildren && <span style={{ marginRight: '8px', width: '20px' }}></span>}
+          {!hasChildren && <span style={{ marginRight: '6px', width: '20px' }}></span>}
           <span 
             onClick={() => setNewParentId(node.id.toString())}
-            style={{ flex: 1 }}
+            style={{ flex: 1, fontSize: '0.9rem' }}
           >
             {node.name}
           </span>
@@ -2002,17 +2003,22 @@ export default function ManageLevels() {
       )}
 
       <style>{`
+        * {
+          box-sizing: border-box;
+        }
         .ml-bg {
           min-height: 100vh;
-          background: #f8fafc;
-          padding: 20px;
+          background: #f0fdf9;
+          padding: 16px;
+          overflow-x: hidden;
         }
         .ml-layout {
           width: 100%;
+          max-width: 100%;
           margin: 0;
           display: grid;
           grid-template-columns: 280px 1fr;
-          gap: 20px;
+          gap: 16px;
           align-items: start;
         }
         @media (max-width: 1100px) {
@@ -2023,14 +2029,17 @@ export default function ManageLevels() {
         .ml-tree-panel {
           background: #fff;
           border-radius: 12px;
-          box-shadow: 0 2px 16px #0001;
+          box-shadow: 0 1px 8px rgba(1, 163, 131, 0.08);
           padding: 16px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #d1fae5;
+          max-width: 100%;
+          overflow-x: hidden;
         }
         .ml-tree-panel h3 {
           margin-bottom: 12px;
           font-size: 1.1rem;
-          color: #1e293b;
+          color: #01a383;
+          font-weight: 600;
         }
         .ml-tree-list {
           list-style: none;
@@ -2038,42 +2047,48 @@ export default function ManageLevels() {
           margin: 0;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 3px;
         }
         .ml-tree-item button {
           width: 100%;
           text-align: left;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 8px 10px;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          padding: 4px 8px;
           cursor: pointer;
-          color: #334155;
-          transition: background 0.2s, border-color 0.2s;
+          color: #374151;
+          font-size: 0.9rem;
+          transition: all 0.2s ease;
         }
         .ml-tree-item button:hover {
-          background: #e2e8f0;
+          background: #d1fae5;
+          border-color: #01a383;
         }
         .ml-tree-item.ml-tree-child button {
-          padding-left: 18px;
+          padding-left: 16px;
         }
         .ml-tree-item.ml-tree-current button {
-          background: #e0e7ff;
-          border-color: #c7d2fe;
+          background: #d1fae5;
+          border-color: #01a383;
+          color: #01a383;
           font-weight: 700;
         }
         .ml-tree-children-title {
-          margin-top: 8px;
-          font-size: 0.9rem;
-          color: #94a3b8;
+          margin-top: 4px;
+          margin-bottom: 2px;
+          font-size: 0.8rem;
+          color: #6b7280;
         }
         .ml-container {
           width: 100%;
+          max-width: 100%;
           margin: 0;
           background: #fff;
           border-radius: 12px;
-          box-shadow: 0 2px 16px #0001;
-          padding: 32px;
+          box-shadow: 0 1px 8px rgba(1, 163, 131, 0.08);
+          padding: 24px;
+          overflow-x: hidden;
         }
         .ml-header {
           margin-bottom: 32px;
@@ -2104,13 +2119,13 @@ export default function ManageLevels() {
         .ml-title {
           font-size: 2rem;
           font-weight: 700;
-          color: #1e293b;
+          color: #01a383;
           margin-bottom: 8px;
         }
         .ml-breadcrumb-link {
           background: none;
           border: none;
-          color: #2563eb;
+          color: #01a383;
           font-size: 2rem;
           font-weight: 700;
           cursor: pointer;
@@ -2119,14 +2134,14 @@ export default function ManageLevels() {
           transition: color 0.2s;
         }
         .ml-breadcrumb-link:hover {
-          color: #1d4ed8;
+          color: #018568;
         }
         .ml-breadcrumb-current {
           color: #1e293b;
         }
         .ml-edit-btn {
-          background: #e0e7ff;
-          color: #4338ca;
+          background: #d1fae5;
+          color: #01a383;
           border: none;
           border-radius: 6px;
           padding: 8px 16px;
@@ -2134,10 +2149,10 @@ export default function ManageLevels() {
           font-size: 0.95rem;
           font-weight: 600;
           margin-top: 12px;
-          transition: background 0.2s;
+          transition: all 0.2s ease;
         }
         .ml-edit-btn:hover {
-          background: #c7d2fe;
+          background: #a7f3d0;
         }
         .ml-complete-btn {
           background: #dcfce7;
@@ -2193,6 +2208,8 @@ export default function ManageLevels() {
           gap: 8px;
           border-bottom: 2px solid #e2e8f0;
           margin-bottom: 24px;
+          max-width: 100%;
+          overflow-x: auto;
         }
         .ml-tab {
           background: none;
@@ -2201,19 +2218,21 @@ export default function ManageLevels() {
           padding: 12px 24px;
           font-size: 1rem;
           font-weight: 600;
-          color: #64748b;
+          color: #6b7280;
           cursor: pointer;
-          transition: color 0.2s, border-color 0.2s;
+          transition: all 0.2s ease;
         }
         .ml-tab:hover {
-          color: #1e293b;
+          color: #01a383;
         }
         .ml-tab-active {
-          color: #2563eb;
-          border-bottom-color: #2563eb;
+          color: #01a383;
+          border-bottom-color: #01a383;
         }
         .ml-tab-content {
           animation: fadeIn 0.3s;
+          max-width: 100%;
+          overflow-x: hidden;
         }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(8px); }
@@ -2228,20 +2247,22 @@ export default function ManageLevels() {
         .ml-section-header h2 {
           font-size: 1.5rem;
           font-weight: 700;
-          color: #1e293b;
+          color: #01a383;
         }
         .ml-add-btn {
-          background: linear-gradient(90deg, #6366f1 0%, #2563eb 100%);
+          background: #01a383;
           color: #fff;
           border: none;
           border-radius: 8px;
           padding: 10px 20px;
           font-weight: 600;
           cursor: pointer;
-          transition: transform 0.2s;
+          transition: all 0.2s ease;
         }
         .ml-add-btn:hover {
-          transform: scale(1.05);
+          background: #018568;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(1, 163, 131, 0.2);
         }
         .ml-import-row {
           display: flex;
@@ -2288,6 +2309,8 @@ export default function ManageLevels() {
           padding: 24px;
           margin-bottom: 24px;
           border: 1px solid #e2e8f0;
+          max-width: 100%;
+          overflow-x: hidden;
         }
         .ml-field {
           margin-bottom: 16px;
@@ -2358,27 +2381,29 @@ export default function ManageLevels() {
         .ml-btn {
           width: 100%;
           padding: 12px;
-          background: linear-gradient(90deg, #6366f1 0%, #2563eb 100%);
+          background: #01a383;
           color: #fff;
           border: none;
           border-radius: 8px;
           font-weight: 600;
           font-size: 1rem;
           cursor: pointer;
-          transition: opacity 0.2s;
+          transition: all 0.2s ease;
           margin-top: 8px;
         }
         .ml-btn:disabled {
-          opacity: 0.6;
+          opacity: 0.5;
           cursor: not-allowed;
         }
         .ml-btn:hover:not(:disabled) {
-          opacity: 0.9;
+          background: #018568;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(1, 163, 131, 0.2);
         }
         .ml-list {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 6px;
         }
         .ml-empty {
           text-align: center;
@@ -2390,34 +2415,40 @@ export default function ManageLevels() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          background: #f8fafc;
+          background: #f9fafb;
           border-radius: 8px;
-          padding: 16px 20px;
-          border: 1px solid #e2e8f0;
-          transition: box-shadow 0.2s;
+          padding: 8px 12px;
+          border: 1px solid #e5e7eb;
+          transition: all 0.2s ease;
         }
         .ml-item:hover {
-          box-shadow: 0 2px 8px #0001;
+          box-shadow: 0 2px 8px rgba(1, 163, 131, 0.12);
+          border-color: #a7f3d0;
         }
         .ml-item-info {
           flex: 1;
         }
         .ml-item-info h3 {
-          font-size: 1.1rem;
+          font-size: 1rem;
           font-weight: 600;
           color: #1e293b;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
+          margin-top: 0;
         }
         .ml-item-info p {
           color: #64748b;
-          font-size: 0.95rem;
+          font-size: 0.9rem;
+          margin: 2px 0;
         }
         .ml-item-completed {
           opacity: 0.75;
           background: #f0fdf4;
         }
         .ml-sublist {
-          margin-bottom: 20px;
+          margin-bottom: 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
         }
         .ml-sublist-hidden {
           opacity: 0.6;
@@ -2427,25 +2458,25 @@ export default function ManageLevels() {
           border-color: #d4d4d8;
         }
         .ml-sublevels-header {
-          font-size: 1rem;
+          font-size: 0.95rem;
           font-weight: 700;
-          color: #1e293b;
-          margin-top: 24px;
-          margin-bottom: 12px;
-          padding: 8px 0;
-          border-bottom: 2px solid #e2e8f0;
+          color: #01a383;
+          margin-top: 12px;
+          margin-bottom: 6px;
+          padding: 4px 0;
+          border-bottom: 2px solid #d1fae5;
         }
         .ml-sublevels-header-hidden {
           color: #94a3b8;
           border-bottom-color: #cbd5e1;
         }
         .ml-btn-show {
-          padding: 8px 16px;
+          padding: 4px 8px;
           border: none;
           border-radius: 6px;
           font-weight: 600;
           cursor: pointer;
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           transition: background 0.2s;
           background: #dbeafe;
           color: #0284c7;
@@ -2483,15 +2514,15 @@ export default function ManageLevels() {
         }
         .ml-item-actions {
           display: flex;
-          gap: 8px;
+          gap: 4px;
         }
         .ml-btn-delete {
-          padding: 8px 16px;
+          padding: 4px 8px;
           border: none;
           border-radius: 6px;
           font-weight: 600;
           cursor: pointer;
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           transition: background 0.2s;
           background: #fee2e2;
           color: #dc2626;
@@ -2513,9 +2544,10 @@ export default function ManageLevels() {
           color: #64748b;
           border: none;
           border-radius: 6px;
-          padding: 8px 14px;
+          padding: 4px 8px;
           cursor: pointer;
           font-weight: 600;
+          font-size: 0.85rem;
           transition: background 0.2s;
         }
         .ml-btn-incomplete:hover {
@@ -2526,9 +2558,10 @@ export default function ManageLevels() {
           color: #fff;
           border: none;
           border-radius: 6px;
-          padding: 8px 14px;
+          padding: 4px 8px;
           cursor: pointer;
           font-weight: 600;
+          font-size: 0.85rem;
           transition: background 0.2s;
         }
         .ml-btn-completed:hover {
@@ -2553,10 +2586,11 @@ export default function ManageLevels() {
           margin-top: 8px;
         }
         .ml-sublevel-ratio {
-          font-size: 0.9rem;
+          font-size: 0.8rem;
           color: #16a34a;
           font-weight: 600;
-          margin-top: 6px;
+          margin-top: 2px;
+          margin-bottom: 0;
         }
         .ml-photo-grid {
           display: grid;

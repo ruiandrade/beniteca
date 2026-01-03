@@ -147,15 +147,6 @@ export default function Home() {
                           👥 Equipa
                         </button>
                         <button
-                          className="btn-secondary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/works/${level.id}/planeamento`);
-                          }}
-                        >
-                          📆 Planeamento
-                        </button>
-                        <button
                           className="btn-danger"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -179,7 +170,7 @@ export default function Home() {
       <style>{`
         .home-page {
           padding: 20px;
-          background: #f8fafc;
+          background: #f0fdf9;
           min-height: 100vh;
         }
         .home-header {
@@ -190,24 +181,27 @@ export default function Home() {
           padding: 24px 32px;
           background: #fff;
           border-radius: 12px;
-          box-shadow: 0 2px 16px #0001;
+          box-shadow: 0 1px 8px rgba(1, 163, 131, 0.08);
+          border: 1px solid #d1fae5;
         }
         .home-title {
           margin: 0;
           font-size: 2rem;
-          color: #1e293b;
-          font-weight: 800;
+          color: #01a383;
+          font-weight: 700;
+          letter-spacing: -0.02em;
         }
         .home-subtitle {
           margin: 4px 0 0 0;
-          color: #64748b;
+          color: #047857;
           font-size: 1rem;
+          font-weight: 500;
         }
         .home-tabs {
           display: flex;
           gap: 8px;
           margin-bottom: 20px;
-          border-bottom: 2px solid #e2e8f0;
+          border-bottom: 2px solid #d1fae5;
           padding-bottom: 0;
         }
         .tab {
@@ -216,25 +210,26 @@ export default function Home() {
           padding: 12px 20px;
           font-size: 1rem;
           font-weight: 600;
-          color: #64748b;
+          color: #6b7280;
           cursor: pointer;
           border-bottom: 3px solid transparent;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
           margin-bottom: -2px;
         }
         .tab:hover {
-          color: #1e293b;
-          background: #f1f5f9;
+          color: #01a383;
+          background: #f0fdf9;
         }
         .tab.active {
-          color: #2563eb;
-          border-bottom-color: #2563eb;
+          color: #01a383;
+          border-bottom-color: #01a383;
         }
         .home-content {
           background: #fff;
           border-radius: 12px;
-          box-shadow: 0 2px 16px #0001;
+          box-shadow: 0 1px 8px rgba(1, 163, 131, 0.08);
           padding: 20px;
+          border: 1px solid #f0fdf9;
         }
         .home-search {
           margin-bottom: 24px;
@@ -243,15 +238,16 @@ export default function Home() {
           width: 100%;
           padding: 14px 20px;
           font-size: 1rem;
-          border: 2px solid #e2e8f0;
+          border: 2px solid #d1fae5;
           border-radius: 10px;
           background: #fff;
-          transition: border-color 0.2s;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 8px rgba(1, 163, 131, 0.04);
         }
         .home-search-input:focus {
           outline: none;
-          border-color: #2563eb;
+          border-color: #01a383;
+          box-shadow: 0 0 0 3px rgba(1, 163, 131, 0.1);
         }
         .works-list {
           min-height: 400px;
@@ -344,7 +340,7 @@ export default function Home() {
           border-top: 1px solid #e2e8f0;
         }
         .btn-primary {
-          background: #2563eb;
+          background: #01a383;
           color: #fff;
           border: none;
           border-radius: 8px;
@@ -352,12 +348,12 @@ export default function Home() {
           font-weight: 600;
           font-size: 1rem;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
         }
         .btn-primary:hover {
-          background: #1d4ed8;
+          background: #018568;
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+          box-shadow: 0 4px 12px rgba(1, 163, 131, 0.3);
         }
         .btn-secondary {
           background: #f1f5f9;

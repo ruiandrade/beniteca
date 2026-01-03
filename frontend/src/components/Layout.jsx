@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -6,6 +6,20 @@ export default function Layout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('');
+
+  useEffect(() => {
+    const fetchLogo = async () => {
+      try {
+        const res = await fetch('/api/logo');
+        const data = await res.json();
+        setLogoUrl(data.url);
+      } catch (error) {
+        console.error('Failed to load logo:', error);
+      }
+    };
+    fetchLogo();
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -20,7 +34,19 @@ export default function Layout() {
       <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="header-top">
-            <h2>Beniteca</h2>
+            {logoUrl ? (
+              <img 
+                src={logoUrl} 
+                alt="Beniteca Logo" 
+                className="logo"
+                onError={(e) => {
+                  console.error('Logo failed to load');
+                  e.target.style.display = 'none';
+                }}
+              />
+            ) : (
+              <h2 style={{ color: '#01a383', fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>Beniteca</h2>
+            )}
           </div>
           {user && (
             <div className="user-info">
@@ -35,6 +61,9 @@ export default function Layout() {
           </NavLink>
           <NavLink to="/obras" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
             🏗️ As Minhas Obras
+          </NavLink>
+          <NavLink to="/planeamento-global" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+            📅 Planeamento Global
           </NavLink>
           <NavLink to="/archived" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
             📦 Obras Arquivadas
@@ -55,7 +84,7 @@ export default function Layout() {
         .layout {
           display: flex;
           min-height: 100vh;
-          background: #f8fafc;
+          background: #f0fdf9;
         }
         .hamburger {
           display: none;
@@ -63,7 +92,7 @@ export default function Layout() {
           top: 16px;
           left: 16px;
           z-index: 1001;
-          background: #1e293b;
+          background: #01a383;
           color: #fff;
           border: none;
           border-radius: 8px;
@@ -71,12 +100,17 @@ export default function Layout() {
           height: 44px;
           font-size: 1.5rem;
           cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+          box-shadow: 0 4px 12px rgba(1, 163, 131, 0.2);
+          transition: all 0.2s ease;
+        }
+        .hamburger:hover {
+          background: #018568;
+          transform: translateY(-1px);
         }
         .sidebar {
           width: 260px;
-          background: #1e293b;
-          color: #fff;
+          background: #fff;
+          color: #1f2937;
           display: flex;
           flex-direction: column;
           position: fixed;
@@ -84,45 +118,58 @@ export default function Layout() {
           overflow-y: auto;
           z-index: 1000;
           transition: transform 0.3s ease;
+          border-right: 1px solid #d1fae5;
+          box-shadow: 2px 0 12px rgba(1, 163, 131, 0.06);
         }
         .sidebar-header {
           padding: 24px 20px;
-          border-bottom: 1px solid #334155;
+          border-bottom: 1px solid #d1fae5;
+          background: linear-gradient(135deg, #d1fae5 0%, #f0fdf9 100%);
         }
         .header-top {
           margin-bottom: 12px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        .logo {
+          width: 100%;
+          max-width: 180px;
+          height: auto;
+          object-fit: contain;
         }
         .sidebar-header h2 {
           font-size: 1.5rem;
           font-weight: 700;
           margin: 0;
-          color: #fff;
+          color: #01a383;
         }
         .user-info {
           display: flex;
           flex-direction: column;
           gap: 8px;
           padding-top: 12px;
-          border-top: 1px solid #334155;
+          border-top: 1px solid #a7f3d0;
         }
         .user-name {
           font-size: 0.875rem;
-          color: #cbd5e1;
+          color: #047857;
           font-weight: 500;
         }
         .logout-btn {
-          background: #ef4444;
-          color: #fff;
+          background: #fee2e2;
+          color: #dc2626;
           border: none;
           padding: 8px 12px;
           border-radius: 6px;
           font-size: 0.875rem;
           font-weight: 600;
           cursor: pointer;
-          transition: background 0.2s;
+          transition: all 0.2s ease;
         }
         .logout-btn:hover {
-          background: #dc2626;
+          background: #fecaca;
+          transform: translateY(-1px);
         }
         .sidebar-nav {
           display: flex;
@@ -133,21 +180,23 @@ export default function Layout() {
           display: flex;
           align-items: center;
           padding: 12px 20px;
-          color: #cbd5e1;
+          color: #6b7280;
           text-decoration: none;
           font-size: 1rem;
           font-weight: 500;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
           border-left: 3px solid transparent;
         }
         .nav-link:hover {
-          background: #334155;
-          color: #fff;
+          background: #f0fdf9;
+          color: #01a383;
+          border-left-color: #a7f3d0;
         }
         .nav-link.active {
-          background: #334155;
-          color: #fff;
-          border-left-color: #6366f1;
+          background: #d1fae5;
+          color: #01a383;
+          border-left-color: #01a383;
+          font-weight: 600;
         }
         .main-content {
           margin-left: 260px;

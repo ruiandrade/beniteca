@@ -13,5 +13,6 @@ router.use('/upload', require('./upload'));
 router.use('/level-users', require('./levelUsers'));
 router.use('/level-user-days', require('./levelUserDays'));
 router.use('/auth', require('./auth'));
+router.use('/logo', require('./logo'));
 
 module.exports = router;

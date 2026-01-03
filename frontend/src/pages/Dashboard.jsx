@@ -132,6 +132,20 @@ export default function Dashboard() {
     return "#e5e7eb";
   };
 
+  // Cores para os nomes baseadas no nível de profundidade
+  const getNameColor = (depth) => {
+    const depthColors = [
+      '#01a383',  // depth 0 - verde empresa
+      '#0ea5e9',  // depth 1 - azul céu
+      '#8b5cf6',  // depth 2 - roxo
+      '#f59e0b',  // depth 3 - laranja
+      '#ec4899',  // depth 4 - rosa
+      '#14b8a6',  // depth 5 - teal
+      '#6366f1',  // depth 6+ - indigo
+    ];
+    return depthColors[Math.min(depth, depthColors.length - 1)];
+  };
+
   const getChildRatio = (level) => {
     if (!level.childrenCount) return "—";
     const totalChildren = level.childrenCount || 0;
@@ -354,7 +368,7 @@ export default function Dashboard() {
                   <div className="dashboard-card-header" style={{
                     background: getBarBgColor(obra)
                   }}>
-                    <h2 className="dashboard-card-title">{obra.name}</h2>
+                    <h2 className="dashboard-card-title" style={{ color: getNameColor(0) }}>{obra.name}</h2>
                     <p className="dashboard-card-manager">{obra.constructionManagerName || "Sem responsável"}</p>
                   </div>
 
@@ -560,6 +574,13 @@ export default function Dashboard() {
                             }}
                           >
                             <div className="level-name">
+                              <button
+                                className="link-btn"
+                                onClick={() => navigate(`/works/${row.id}/levels`)}
+                                style={{ color: getNameColor(row.depth || 0) }}
+                              >
+                                {row.name}
+                              </button>
                               {row.hasChildren && (
                                 <button
                                   onClick={(e) => {
@@ -571,7 +592,7 @@ export default function Dashboard() {
                                     border: 'none',
                                     cursor: 'pointer',
                                     fontWeight: 'bold',
-                                    marginRight: '6px',
+                                    marginLeft: '6px',
                                     fontSize: '14px',
                                     padding: '0 4px'
                                   }}
@@ -579,12 +600,6 @@ export default function Dashboard() {
                                   {expandedNodes.has(row.id) ? '−' : '+'}
                                 </button>
                               )}
-                              <button
-                                className="link-btn"
-                                onClick={() => navigate(`/works/${row.id}/levels`)}
-                              >
-                                {row.name}
-                              </button>
                             </div>
                             <div className="level-ratio">{getLeafNodeRatio(row.id)}</div>
                           </div>
@@ -635,6 +650,13 @@ export default function Dashboard() {
                       className="hierarchy-name"
                       style={{ paddingLeft: `${row.depth * 18 + 8}px`, display: 'flex', alignItems: 'center', gap: '8px' }}
                     >
+                      <button
+                        className="link-btn"
+                        onClick={() => navigate(`/works/${row.id}/levels`)}
+                        style={{ color: getNameColor(row.depth || 0) }}
+                      >
+                        {row.name}
+                      </button>
                       {row.hasChildren && (
                         <button
                           onClick={(e) => {
@@ -654,13 +676,6 @@ export default function Dashboard() {
                           {expandedNodes.has(row.id) ? '−' : '+'}
                         </button>
                       )}
-                      {!row.hasChildren && <span style={{ minWidth: '20px' }}></span>}
-                      <button
-                        className="link-btn"
-                        onClick={() => navigate(`/works/${row.id}/levels`)}
-                      >
-                        {row.name}
-                      </button>
                     </div>
                     <div className="hierarchy-progress">
                       <div style={{

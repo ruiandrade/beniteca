@@ -8,7 +8,7 @@ import ArchivedWorks from './pages/ArchivedWorks';
 import CreateWork from './pages/CreateWork';
 import ManageLevels from './pages/ManageLevels';
 import Equipa from './pages/Equipa';
-import Planeamento from './pages/Planeamento';
+import PlaneamentoGlobal from './pages/PlaneamentoGlobal';
 import Users from './pages/Users';
 import Permissions from './pages/Permissions';
 import Login from './pages/Login';
@@ -35,11 +35,11 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="report/:id" element={<ProjectReport />} />
             <Route path="obras" element={<Home />} />
+            <Route path="planeamento-global" element={<PlaneamentoGlobal />} />
             <Route path="archived" element={<ArchivedWorks />} />
             <Route path="create" element={<CreateWork />} />
             <Route path="works/:id/levels" element={<ManageLevels />} />
             <Route path="works/:id/equipa" element={<Equipa />} />
-            <Route path="works/:id/planeamento" element={<Planeamento />} />
             <Route path="users" element={<Users />} />
             <Route path="permissions" element={<Permissions />} />
           </Route>

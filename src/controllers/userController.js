@@ -13,8 +13,10 @@ class UserController {
   async getAll(req, res) {
     try {
       const users = await userService.getUsers();
+      console.log('📋 getAll - Retornando', users.length, 'users');
       res.json(users);
     } catch (error) {
+      console.error('❌ Erro em getAll:', error.message);
       res.status(500).json({ error: error.message });
     }
   }

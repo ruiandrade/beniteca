@@ -89,7 +89,36 @@ class LevelUserDayService {
       }
 
       const inserted = [];
+      const conflicts = [];
+      
       for (const ent of uniqueEntries) {
+        // Check if user is already allocated to another obra at this time
+        const conflictCheck = await new sql.Request(tx)
+          .input('userId', sql.Int, ent.userId)
+          .input('day', sql.Date, ent.day)
+          .input('period', sql.Char, ent.period)
+          .input('levelId', sql.Int, parseInt(levelId))
+          .query(`
+            SELECT lud.levelId, l.name as obraName
+            FROM LevelUserDay lud
+            INNER JOIN Level l ON l.id = lud.levelId
+            WHERE lud.userId = @userId 
+              AND lud.[day] = @day 
+              AND lud.period = @period
+              AND lud.levelId != @levelId
+          `);
+        
+        if (conflictCheck.recordset.length > 0) {
+          const conflict = conflictCheck.recordset[0];
+          conflicts.push({
+            userId: ent.userId,
+            day: ent.day,
+            period: ent.period,
+            conflictingObra: conflict.obraName
+          });
+          continue; // Skip this entry
+        }
+        
         const ins = await new sql.Request(tx)
           .input('levelId', sql.Int, parseInt(levelId))
           .input('userId', sql.Int, ent.userId)
@@ -107,7 +136,13 @@ class LevelUserDayService {
       }
 
       await tx.commit();
-      return inserted;
+      
+      if (conflicts.length > 0) {
+        const errorMsg = `Conflitos detectados: ${conflicts.length} alocações ignoradas porque os utilizadores já estão noutras obras.`;
+        return { inserted, conflicts, error: errorMsg };
+      }
+      
+      return { inserted, conflicts: [] };
     } catch (err) {
       await tx.rollback().catch(() => {});
       throw err;

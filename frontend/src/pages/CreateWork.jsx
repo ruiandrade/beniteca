@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function CreateWork() {
+  const { token } = useAuth();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [coverImage, setCoverImage] = useState(null);
@@ -23,13 +25,22 @@ export default function CreateWork() {
 
   const fetchConstructionManagers = async () => {
     try {
-      const res = await fetch("/api/users");
+      console.log('🔄 Fetching construction managers...');
+      const res = await fetch("/api/users/managers", {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log('📡 Response status:', res.status);
       if (res.ok) {
         const data = await res.json();
+        console.log('✅ Managers received:', data.length, data);
         setConstructionManagers(data);
+      } else {
+        console.error("❌ Erro ao carregar responsáveis:", res.status);
       }
     } catch (err) {
-      console.error("Erro ao carregar responsáveis:", err);
+      console.error("❌ Erro ao carregar responsáveis:", err);
     }
   };
 

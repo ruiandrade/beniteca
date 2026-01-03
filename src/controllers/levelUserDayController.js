@@ -28,8 +28,18 @@ class LevelUserDayController {
       const { from, to, entries } = req.body;
       if (!from || !to) return res.status(400).json({ error: 'from and to are required' });
 
-      const saved = await levelUserDayService.setRange(levelId, from, to, entries || []);
-      res.status(200).json({ saved: saved.length });
+      const result = await levelUserDayService.setRange(levelId, from, to, entries || []);
+      
+      if (result.conflicts && result.conflicts.length > 0) {
+        return res.status(200).json({ 
+          saved: result.inserted.length,
+          conflicts: result.conflicts.length,
+          message: result.error,
+          conflictDetails: result.conflicts
+        });
+      }
+      
+      res.status(200).json({ saved: result.inserted.length });
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
