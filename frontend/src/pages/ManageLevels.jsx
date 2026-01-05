@@ -85,6 +85,10 @@ export default function ManageLevels() {
   // Estado para editar material
   const [editingMaterial, setEditingMaterial] = useState(null);
 
+  // Estado para expandir/colapsar seção de importação Excel
+  const [showExcelImport, setShowExcelImport] = useState(false);
+  const [showExcelImportMaterials, setShowExcelImportMaterials] = useState(false);
+
   useEffect(() => {
     fetchWork();
     fetchSublevels();
@@ -214,7 +218,6 @@ export default function ManageLevels() {
     e.preventDefault();
     const errors = {};
     if (!sublevelName.trim()) errors.name = "Nome é obrigatório";
-    if (!sublevelDesc.trim()) errors.description = "Descrição é obrigatória";
     // Imagem é obrigatória apenas em obras principais (parentId === null)
     // Para subníveis, imagem é opcional
     setSublevelErrors(errors);
@@ -799,7 +802,7 @@ export default function ManageLevels() {
   const handleUpdateLevel = async () => {
     const errors = {};
     if (!editName.trim()) errors.name = "Nome é obrigatório";
-    if (!editDesc.trim()) errors.description = "Descrição é obrigatória";
+    // Descrição agora é opcional
 
     // Validar datas contra o pai se houver
     if (work && work.parentId && (editStart || editEnd)) {
@@ -1132,7 +1135,7 @@ export default function ManageLevels() {
                 {editErrors.name && <span className="ml-error">{editErrors.name}</span>}
               </div>
               <div className="ml-field">
-                <label>Descrição *</label>
+                <label>Descrição</label>
                 <textarea
                   value={editDesc}
                   onChange={(e) => setEditDesc(e.target.value)}
@@ -1274,37 +1277,6 @@ export default function ManageLevels() {
               </button>
             </div>
 
-            <div className="ml-import-row">
-              <button onClick={downloadHierarchyTemplate} className="ml-btn-secondary">
-                Descarregar template Excel
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="ml-btn-secondary"
-                disabled={importingHierarchy}
-              >
-                {importingHierarchy ? "A importar..." : "Importar hierarquia via Excel"}
-              </button>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                style={{ display: "none" }}
-                ref={fileInputRef}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) parseHierarchyFile(file);
-                }}
-              />
-            </div>
-            <div className="ml-help-box">
-              <p style={{ marginBottom: "8px" }}>
-                <strong>Como usar Excel:</strong> 1) Descarrega o template 2) Preenche <em>Path</em> com hierarquia (ex.: Fase 1/Fundação/Betonagem) 3) Importa para criar automaticamente
-              </p>
-              <p style={{ marginBottom: "0", fontSize: "0.9rem", color: "#475569" }}>
-                <strong>Colunas:</strong> Path (obrigatória) | Description (opcional) | Start Date / End Date (YYYY-MM-DD, opcional)
-              </p>
-            </div>
-
             {showSublevelForm && (
               <form onSubmit={handleCreateSublevel} className="ml-form">
                 <div className="ml-field">
@@ -1317,7 +1289,7 @@ export default function ManageLevels() {
                   {sublevelErrors.name && <span className="ml-error">{sublevelErrors.name}</span>}
                 </div>
                 <div className="ml-field">
-                  <label>Descrição *</label>
+                  <label>Descrição</label>
                   <textarea
                     value={sublevelDesc}
                     onChange={(e) => setSublevelDesc(e.target.value)}
@@ -1471,6 +1443,51 @@ export default function ManageLevels() {
                 </>
               )}
             </div>
+
+            {/* Criar Níveis via Template de Excel */}
+            <div style={{ marginTop: "24px" }}>
+              <h3 
+                className="ml-sublevels-header" 
+                onClick={() => setShowExcelImport(!showExcelImport)}
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+              >
+                {showExcelImport ? '▼' : '▶'} 📊 Criar Níveis via Template de Excel
+              </h3>
+              {showExcelImport && (
+                <div className="ml-sublist" style={{ padding: '16px' }}>
+                  <div className="ml-import-row" style={{ marginBottom: '12px' }}>
+                    <button onClick={downloadHierarchyTemplate} className="ml-btn-secondary">
+                      Descarregar template Excel
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="ml-btn-secondary"
+                      disabled={importingHierarchy}
+                    >
+                      {importingHierarchy ? "A importar..." : "Importar hierarquia via Excel"}
+                    </button>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      style={{ display: "none" }}
+                      ref={fileInputRef}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) parseHierarchyFile(file);
+                      }}
+                    />
+                  </div>
+                  <div className="ml-help-box">
+                    <p style={{ marginBottom: "8px" }}>
+                      <strong>Como usar Excel:</strong> 1) Descarrega o template 2) Preenche <em>Path</em> com hierarquia (ex.: Fase 1/Fundação/Betonagem) 3) Importa para criar automaticamente
+                    </p>
+                    <p style={{ marginBottom: "0", fontSize: "0.9rem", color: "#475569" }}>
+                      <strong>Colunas:</strong> Path (obrigatória) | Description (opcional) | Start Date / End Date (YYYY-MM-DD, opcional)
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1482,38 +1499,6 @@ export default function ManageLevels() {
               <button onClick={() => setShowMaterialForm(!showMaterialForm)} className="ml-add-btn">
                 {showMaterialForm ? "Cancelar" : "+ Adicionar Material"}
               </button>
-            </div>
-
-            <div className="ml-import-row">
-              <button onClick={downloadMaterialsTemplate} className="ml-btn-secondary">
-                Descarregar template Excel
-              </button>
-              <button
-                onClick={() => materialFileInputRef.current?.click()}
-                className="ml-btn-secondary"
-                disabled={importingMaterials}
-              >
-                {importingMaterials ? "A importar..." : "Importar materiais via Excel"}
-              </button>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                style={{ display: "none" }}
-                ref={materialFileInputRef}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) parseMaterialsFile(file);
-                }}
-              />
-            </div>
-
-            <div className="ml-help-box">
-              <p style={{ marginBottom: "8px" }}>
-                <strong>Como usar Excel:</strong> 1) Descarrega o template 2) Preenche Description, Quantity, Unit e opcionais (Brand, etc.) 3) Importa para criar automaticamente
-              </p>
-              <p style={{ marginBottom: "0", fontSize: "0.9rem", color: "#475569" }}>
-                <strong>Obrigatórias:</strong> Description, Quantity | <strong>Opcionais:</strong> Unit, Brand, Manufacturer, Type, Valores, Status
-              </p>
             </div>
 
             {showMaterialForm && (
@@ -1785,6 +1770,51 @@ export default function ManageLevels() {
                     )}
                   </div>
                 ))
+              )}
+            </div>
+
+            {/* Criar Materiais via Template de Excel */}
+            <div style={{ marginTop: "24px" }}>
+              <h3 
+                className="ml-sublevels-header" 
+                onClick={() => setShowExcelImportMaterials(!showExcelImportMaterials)}
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+              >
+                {showExcelImportMaterials ? '▼' : '▶'} 📊 Criar Materiais via Template de Excel
+              </h3>
+              {showExcelImportMaterials && (
+                <div className="ml-sublist" style={{ padding: '16px' }}>
+                  <div className="ml-import-row" style={{ marginBottom: '12px' }}>
+                    <button onClick={downloadMaterialsTemplate} className="ml-btn-secondary">
+                      Descarregar template Excel
+                    </button>
+                    <button
+                      onClick={() => materialFileInputRef.current?.click()}
+                      className="ml-btn-secondary"
+                      disabled={importingMaterials}
+                    >
+                      {importingMaterials ? "A importar..." : "Importar materiais via Excel"}
+                    </button>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      style={{ display: "none" }}
+                      ref={materialFileInputRef}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) parseMaterialsFile(file);
+                      }}
+                    />
+                  </div>
+                  <div className="ml-help-box">
+                    <p style={{ marginBottom: "8px" }}>
+                      <strong>Como usar Excel:</strong> 1) Descarrega o template 2) Preenche Description, Quantity, Unit e opcionais (Brand, etc.) 3) Importa para criar automaticamente
+                    </p>
+                    <p style={{ marginBottom: "0", fontSize: "0.9rem", color: "#475569" }}>
+                      <strong>Obrigatórias:</strong> Description, Quantity | <strong>Opcionais:</strong> Unit, Brand, Manufacturer, Type, Valores, Status
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
