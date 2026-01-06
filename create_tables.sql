@@ -22,11 +22,13 @@ CREATE TABLE [Level] (
   notes NVARCHAR(MAX),
   coverImage NVARCHAR(MAX), -- For root levels
   constructionManagerId INT,
+  siteDirectorId INT,
   [order] INT NOT NULL DEFAULT 0,
   createdAt DATETIME2 DEFAULT GETDATE(),
   updatedAt DATETIME2 DEFAULT GETDATE(),
   FOREIGN KEY (parentId) REFERENCES [Level](id),
-  FOREIGN KEY (constructionManagerId) REFERENCES [User](id)
+  FOREIGN KEY (constructionManagerId) REFERENCES [User](id),
+  FOREIGN KEY (siteDirectorId) REFERENCES [User](id)
 );
 
 -- Material table

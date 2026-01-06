@@ -20,6 +20,8 @@ class LevelService {
     const parentId = (data.parentId === undefined || data.parentId === null || data.parentId === 'null')
       ? null
       : parseInt(data.parentId);
+    const constructionManagerId = data.constructionManagerId ? parseInt(data.constructionManagerId) : null;
+    const siteDirectorId = data.siteDirectorId ? parseInt(data.siteDirectorId) : null;
     // Check if parent exists if provided
     if (parentId) {
       const parentResult = await pool.request()
@@ -30,9 +32,9 @@ class LevelService {
     const orderValue = data.order !== undefined ? data.order : await this.getNextOrderValue(pool, parentId);
     // Insert new level
     const insertQuery = `
-      INSERT INTO Level (name, description, parentId, startDate, endDate, completed, notes, coverImage, constructionManagerId, [order])
+      INSERT INTO Level (name, description, parentId, startDate, endDate, completed, notes, coverImage, constructionManagerId, siteDirectorId, [order])
       OUTPUT INSERTED.*
-      VALUES (@name, @description, @parentId, @startDate, @endDate, @completed, @notes, @coverImage, @constructionManagerId, @order)
+      VALUES (@name, @description, @parentId, @startDate, @endDate, @completed, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order)
     `;
     const result = await pool.request()
       .input('name', sql.NVarChar, data.name)
@@ -43,7 +45,8 @@ class LevelService {
       .input('completed', sql.Bit, data.completed || false)
       .input('notes', sql.NVarChar, data.notes)
       .input('coverImage', sql.NVarChar, data.coverImage)
-      .input('constructionManagerId', sql.Int, data.constructionManagerId)
+      .input('constructionManagerId', sql.Int, constructionManagerId)
+      .input('siteDirectorId', sql.Int, siteDirectorId)
       .input('order', sql.Int, orderValue)
       .query(insertQuery);
     return result.recordset[0];
@@ -70,12 +73,13 @@ class LevelService {
         .input('completed', sql.Bit, data.root.completed || false)
         .input('notes', sql.NVarChar, data.root.notes)
         .input('coverImage', sql.NVarChar, data.root.coverImage)
-        .input('constructionManagerId', sql.Int, data.root.constructionManagerId)
+        .input('constructionManagerId', sql.Int, data.root.constructionManagerId ? parseInt(data.root.constructionManagerId) : null)
+        .input('siteDirectorId', sql.Int, data.root.siteDirectorId ? parseInt(data.root.siteDirectorId) : null)
         .input('order', sql.Int, rootOrder)
         .query(`
-          INSERT INTO Level (name, description, parentId, startDate, endDate, completed, notes, coverImage, constructionManagerId, [order])
+          INSERT INTO Level (name, description, parentId, startDate, endDate, completed, notes, coverImage, constructionManagerId, siteDirectorId, [order])
           OUTPUT INSERTED.*
-          VALUES (@name, @description, NULL, @startDate, @endDate, @completed, @notes, @coverImage, @constructionManagerId, @order)
+          VALUES (@name, @description, NULL, @startDate, @endDate, @completed, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order)
         `);
       
       const rootId = rootResult.recordset[0].id;
@@ -184,15 +188,18 @@ class LevelService {
   async getLevels(filter = {}) {
     const pool = await getConnection();
     let query = `
-      SELECT l.*, 
-             p.name as parentName,
-             cm.name as constructionManagerName,
-             cm.email as constructionManagerEmail,
-             (SELECT COUNT(*) FROM Level WHERE parentId = l.id) as childrenCount,
-             (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND completed = 1) as completedChildren
-      FROM Level l
-      LEFT JOIN Level p ON l.parentId = p.id
-      LEFT JOIN [User] cm ON l.constructionManagerId = cm.id`;
+         SELECT l.*, 
+           p.name as parentName,
+           cm.name as constructionManagerName,
+           cm.email as constructionManagerEmail,
+           sd.name as siteDirectorName,
+           sd.email as siteDirectorEmail,
+           (SELECT COUNT(*) FROM Level WHERE parentId = l.id) as childrenCount,
+           (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND completed = 1) as completedChildren
+          FROM Level l
+          LEFT JOIN Level p ON l.parentId = p.id
+          LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
+          LEFT JOIN [User] sd ON l.siteDirectorId = sd.id`;
 
     const req = pool.request();
     if (Object.prototype.hasOwnProperty.call(filter, 'parentId')) {
@@ -215,15 +222,18 @@ class LevelService {
   async getLevelChildren(parentId) {
     const pool = await getConnection();
     const query = `
-      SELECT l.*, 
-             p.name as parentName,
-             cm.name as constructionManagerName,
-             cm.email as constructionManagerEmail,
-             (SELECT COUNT(*) FROM Level WHERE parentId = l.id) as childrenCount,
-             (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND completed = 1) as completedChildren
-      FROM Level l
-      LEFT JOIN Level p ON l.parentId = p.id
-      LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
+            SELECT l.*, 
+              p.name as parentName,
+              cm.name as constructionManagerName,
+              cm.email as constructionManagerEmail,
+              sd.name as siteDirectorName,
+              sd.email as siteDirectorEmail,
+              (SELECT COUNT(*) FROM Level WHERE parentId = l.id) as childrenCount,
+              (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND completed = 1) as completedChildren
+            FROM Level l
+            LEFT JOIN Level p ON l.parentId = p.id
+            LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
+            LEFT JOIN [User] sd ON l.siteDirectorId = sd.id
       WHERE l.parentId = @parentId
       ORDER BY ISNULL(l.[order], l.id), l.id
     `;
@@ -314,7 +324,11 @@ class LevelService {
     }
     if (data.constructionManagerId !== undefined) {
       fields.push('constructionManagerId = @constructionManagerId');
-      request.input('constructionManagerId', sql.Int, data.constructionManagerId);
+      request.input('constructionManagerId', sql.Int, data.constructionManagerId ? parseInt(data.constructionManagerId) : null);
+    }
+    if (data.siteDirectorId !== undefined) {
+      fields.push('siteDirectorId = @siteDirectorId');
+      request.input('siteDirectorId', sql.Int, data.siteDirectorId ? parseInt(data.siteDirectorId) : null);
     }
     if (data.hidden !== undefined) {
       fields.push('hidden = @hidden');

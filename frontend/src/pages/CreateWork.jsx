@@ -9,6 +9,7 @@ export default function CreateWork() {
   const [coverImage, setCoverImage] = useState(null);
   const [constructionManagerId, setConstructionManagerId] = useState("");
   const [constructionManagers, setConstructionManagers] = useState([]);
+  const [siteDirectorId, setSiteDirectorId] = useState("");
   const [notes, setNotes] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -50,6 +51,7 @@ export default function CreateWork() {
     if (!description.trim()) newErrors.description = "Descrição é obrigatória";
     if (!coverImage) newErrors.coverImage = "Imagem de capa é obrigatória";
     if (!constructionManagerId) newErrors.constructionManagerId = "Responsável é obrigatório";
+    if (!siteDirectorId) newErrors.siteDirectorId = "Diretor de obra é obrigatório";
     if (!startDate) newErrors.startDate = "Data de início é obrigatória";
     if (!endDate) newErrors.endDate = "Data de fim é obrigatória";
     return newErrors;
@@ -139,11 +141,17 @@ export default function CreateWork() {
 
   const updateNestedChild = (templates, path, field, value) => {
     const newTemplates = JSON.parse(JSON.stringify(templates));
-    let current = newTemplates;
-    for (let i = 0; i < path.length; i++) {
-      current = current[path[i]];
+    // Navigate through templates using children arrays per depth
+    let node = newTemplates[path[0]];
+    for (let i = 1; i < path.length; i++) {
+      if (!node || !Array.isArray(node.children)) {
+        return newTemplates; // safety: path invalid
+      }
+      node = node.children[path[i]];
     }
-    current[field] = field === 'count' ? parseInt(value) || 1 : value;
+    if (node) {
+      node[field] = field === 'count' ? (parseInt(value, 10) || 1) : value;
+    }
     return newTemplates;
   };
 
@@ -200,6 +208,8 @@ export default function CreateWork() {
     if (Object.keys(validationErrors).length > 0) return;
     setLoading(true);
     try {
+      const cmId = constructionManagerId ? parseInt(constructionManagerId) : null;
+      const sdId = siteDirectorId ? parseInt(siteDirectorId) : null;
       const formData = new FormData();
       formData.append("file", coverImage);
       const uploadRes = await fetch("/api/upload", {
@@ -216,7 +226,8 @@ export default function CreateWork() {
             name,
             description,
             coverImage: coverImageUrl,
-            constructionManagerId,
+            constructionManagerId: cmId,
+            siteDirectorId: sdId,
             notes,
             startDate,
             endDate,
@@ -239,7 +250,8 @@ export default function CreateWork() {
             name,
             description,
             coverImage: coverImageUrl,
-            constructionManagerId,
+            constructionManagerId: cmId,
+            siteDirectorId: sdId,
             notes,
             startDate,
             endDate,
@@ -297,6 +309,16 @@ export default function CreateWork() {
               ))}
             </select>
             {errors.constructionManagerId && <span className="cw-error">{errors.constructionManagerId}</span>}
+          </div>
+          <div className="cw-field cw-label-top cw-field-short">
+            <label htmlFor="cw-director" className="cw-label-top-label">Diretor de Obra *</label>
+            <select id="cw-director" value={siteDirectorId} onChange={e => setSiteDirectorId(e.target.value)} required>
+              <option value="">Selecione o diretor...</option>
+              {constructionManagers.map(mgr => (
+                <option key={mgr.id} value={mgr.id}>{mgr.name}</option>
+              ))}
+            </select>
+            {errors.siteDirectorId && <span className="cw-error">{errors.siteDirectorId}</span>}
           </div>
           <div className="cw-field cw-label-top cw-field-short">
             <label htmlFor="cw-start" className="cw-label-top-label">Data de Início *</label>
@@ -431,10 +453,11 @@ export default function CreateWork() {
           display: flex;
           gap: 32px;
           margin-bottom: 24px;
+          flex-wrap: wrap;
         }
         .cw-field-short {
           min-width: 180px;
-          max-width: 240px;
+          max-width: 280px;
         }
         .cw-row-2 {
           display: flex;
