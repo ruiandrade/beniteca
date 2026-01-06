@@ -3,10 +3,12 @@ const router = express.Router();
 const levelController = require('../controllers/levelController');
 
 router.get('/', levelController.getAll);
-router.get('/:id', levelController.getById);
 router.get('/tree/:id', levelController.getTree);
-router.post('/', levelController.create);
+router.put('/reorder', levelController.reorder);
 router.post('/hierarchy/create', levelController.createHierarchy);
+router.post('/hierarchy/import-excel', levelController.createHierarchyFromExcel);
+router.post('/', levelController.create);
+router.get('/:id', levelController.getById);
 router.put('/:id', levelController.update);
 router.delete('/:id', levelController.delete);
 router.post('/:id/complete', levelController.complete);

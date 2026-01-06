@@ -5,5 +5,6 @@ const levelUserDayController = require('../controllers/levelUserDayController');
 router.get('/', levelUserDayController.getAll);
 router.get('/level/:levelId', levelUserDayController.getByLevel);
 router.post('/level/:levelId', levelUserDayController.setForLevel);
+router.put('/:id', levelUserDayController.update);
 
 module.exports = router;

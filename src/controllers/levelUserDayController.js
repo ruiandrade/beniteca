@@ -44,6 +44,27 @@ class LevelUserDayController {
       res.status(400).json({ error: error.message });
     }
   }
+
+  async update(req, res) {
+    try {
+      const { id } = req.params;
+      const { appeared, observations } = req.body;
+      
+      if (!appeared || !['yes', 'no'].includes(appeared)) {
+        return res.status(400).json({ error: 'appeared must be "yes" or "no"' });
+      }
+
+      const result = await levelUserDayService.update(parseInt(id), appeared, observations || '');
+      
+      if (!result) {
+        return res.status(404).json({ error: 'Record not found' });
+      }
+
+      res.json({ success: true, updated: result });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 module.exports = new LevelUserDayController();

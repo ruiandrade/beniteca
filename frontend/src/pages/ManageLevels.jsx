@@ -9,6 +9,9 @@ export default function ManageLevels() {
   const [work, setWork] = useState(null);
   const [breadcrumb, setBreadcrumb] = useState([]);
   const [sublevels, setSublevels] = useState([]);
+  const [draggingSublevelId, setDraggingSublevelId] = useState(null);
+  const [dragOverSublevelId, setDragOverSublevelId] = useState(null);
+  const [reorderingSublevels, setReorderingSublevels] = useState(false);
   const [materials, setMaterials] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [notes, setNotes] = useState([]);
@@ -60,7 +63,7 @@ export default function ManageLevels() {
 
   // Formulário de foto
   const [photoFile, setPhotoFile] = useState(null);
-  const [photoType, setPhotoType] = useState("inicio");
+  const [photoType, setPhotoType] = useState("issue");
   const [photoDesc, setPhotoDesc] = useState("");
   const [photoRole, setPhotoRole] = useState("B");
   const [photoErrors, setPhotoErrors] = useState({});
@@ -85,9 +88,84 @@ export default function ManageLevels() {
   // Estado para editar material
   const [editingMaterial, setEditingMaterial] = useState(null);
 
+  // Estado para filtro de tipo de material
+  const [materialTypeFilter, setMaterialTypeFilter] = useState("");
+
   // Estado para expandir/colapsar seção de importação Excel
   const [showExcelImport, setShowExcelImport] = useState(false);
   const [showExcelImportMaterials, setShowExcelImportMaterials] = useState(false);
+
+  // Estado para modal de notificação
+  const [modal, setModal] = useState({ type: null, title: '', message: '', onConfirm: null });
+
+  // Helper para confirmação com modal
+  const confirmWithModal = (title, message, onConfirm) => {
+    setModal({
+      type: 'confirm',
+      title,
+      message,
+      onConfirm,
+    });
+  };
+
+  // Helpers: hierarchy operations (complete/reopen) cascading upwards
+  const fetchLevelById = async (levelId) => {
+    const res = await fetch(`/api/levels/${levelId}`);
+    if (!res.ok) return null;
+    return await res.json();
+  };
+
+  // Retorna ids de todos os ancestrais até a raiz (exclui o próprio levelId)
+  const fetchAncestorIds = async (levelId) => {
+    const ancestors = [];
+    let current = await fetchLevelById(levelId);
+    while (current && current.parentId) {
+      ancestors.push(current.parentId);
+      current = await fetchLevelById(current.parentId);
+    }
+    return ancestors;
+  };
+
+  const fetchChildren = async (parentId) => {
+    const res = await fetch(`/api/levels?parentId=${parentId}`);
+    if (!res.ok) return [];
+    return await res.json();
+  };
+
+  const setLevelCompleted = async (levelId, completed) => {
+    await fetch(`/api/levels/${levelId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed })
+    });
+  };
+
+  // If all children of ancestor are completed, complete ancestor, then check its parent (cascade up)
+  const cascadeCompleteUpFrom = async (levelId) => {
+    const level = await fetchLevelById(levelId);
+    if (!level || !level.parentId) return;
+    let currentParentId = level.parentId;
+    // Walk up while each ancestor qualifies to be completed
+    while (currentParentId) {
+      const siblings = await fetchChildren(currentParentId);
+      const allCompleted = siblings.length === 0 ? true : siblings.every(s => s.completed);
+      if (allCompleted) {
+        await setLevelCompleted(currentParentId, true);
+        const parentLevel = await fetchLevelById(currentParentId);
+        currentParentId = parentLevel?.parentId || null;
+      } else {
+        break;
+      }
+    }
+  };
+
+  // When reopening a child, mark all ancestors as not completed (cascade up)
+  const cascadeReopenUpFrom = async (levelId) => {
+    const ancestors = await fetchAncestorIds(levelId);
+    for (const ancestorId of ancestors) {
+      await setLevelCompleted(ancestorId, false);
+    }
+  };
 
   useEffect(() => {
     fetchWork();
@@ -141,21 +219,29 @@ export default function ManageLevels() {
       if (res.ok) {
         const data = await res.json();
         
-        // Fetch children count for each sublevel
+        // Fetch children count for each sublevel (excluding hidden)
         const enrichedData = await Promise.all(
           data.map(async (sub) => {
             const childrenRes = await fetch(`/api/levels?parentId=${sub.id}`);
             if (childrenRes.ok) {
               const children = await childrenRes.json();
-              const completedChildren = children.filter(c => c.completed).length;
-              return { ...sub, childrenCount: children.length, completedChildren };
+              const visibleChildren = children.filter(c => !c.hidden);
+              const completedChildren = visibleChildren.filter(c => c.completed).length;
+              return { ...sub, childrenCount: visibleChildren.length, completedChildren };
             }
             return { ...sub, childrenCount: 0, completedChildren: 0 };
           })
         );
         
-        setSublevels(enrichedData);
-        const completed = enrichedData.filter(sub => sub.completed).length;
+        const sortedData = [...enrichedData].sort((a, b) => {
+          const orderA = a.order ?? a.id;
+          const orderB = b.order ?? b.id;
+          if (orderA === orderB) return a.id - b.id;
+          return orderA - orderB;
+        });
+
+        setSublevels(sortedData);
+        const completed = sortedData.filter(sub => sub.completed).length;
         setCompletedCount(completed);
       }
     } catch (err) {
@@ -214,6 +300,75 @@ export default function ManageLevels() {
   // Equipa-related fetches removed; handled in Equipa page
 
   // ========== SUBNÍVEIS ==========
+  const buildReorderedSublevels = (sourceId, targetId) => {
+    const visible = sublevels.filter((s) => !s.completed && !s.hidden);
+    const sourceIndex = visible.findIndex((s) => s.id === sourceId);
+    const targetIndex = visible.findIndex((s) => s.id === targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return null;
+
+    const reorderedVisible = [...visible];
+    const [moved] = reorderedVisible.splice(sourceIndex, 1);
+    reorderedVisible.splice(targetIndex, 0, moved);
+
+    const merged = [];
+    let cursor = 0;
+
+    for (const item of sublevels) {
+      if (!item.completed && !item.hidden) {
+        merged.push(reorderedVisible[cursor]);
+        cursor += 1;
+      } else {
+        merged.push(item);
+      }
+    }
+
+    const orderedIds = merged.map((item) => item.id);
+    return { nextSublevels: merged, orderedIds };
+  };
+
+  const handleDropOnSublevel = async (targetId) => {
+    if (!draggingSublevelId || draggingSublevelId === targetId) {
+      setDraggingSublevelId(null);
+      setDragOverSublevelId(null);
+      return;
+    }
+
+    const result = buildReorderedSublevels(draggingSublevelId, targetId);
+    if (!result) {
+      setDraggingSublevelId(null);
+      setDragOverSublevelId(null);
+      return;
+    }
+
+    const { nextSublevels, orderedIds } = result;
+    setSublevels(nextSublevels);
+    setReorderingSublevels(true);
+
+    try {
+      const res = await fetch('/api/levels/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentId: id, orderedIds }),
+      });
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || 'Erro ao guardar ordem');
+      }
+    } catch (err) {
+      alert(`Erro ao reordenar níveis: ${err.message}`);
+      await fetchSublevels();
+    } finally {
+      setDraggingSublevelId(null);
+      setDragOverSublevelId(null);
+      setReorderingSublevels(false);
+    }
+  };
+
+  const handleDragEndSublevel = () => {
+    setDraggingSublevelId(null);
+    setDragOverSublevelId(null);
+  };
+
   const handleCreateSublevel = async (e) => {
     e.preventDefault();
     const errors = {};
@@ -254,7 +409,20 @@ export default function ManageLevels() {
         }),
       });
       if (!res.ok) throw new Error("Erro ao criar subnível");
+      
+      // Se o nível atual ou algum ancestral estava concluído, reabrir todos
+      const ancestors = await fetchAncestorIds(id);
+      const targetsToReopen = work?.completed ? [id, ...ancestors] : ancestors;
+      for (const ancestorId of targetsToReopen) {
+        await fetch(`/api/levels/${ancestorId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ completed: false }),
+        });
+      }
+      
       await fetchSublevels();
+      await fetchWork();
       setSublevelName("");
       setSublevelDesc("");
       setSublevelCover(null);
@@ -262,25 +430,57 @@ export default function ManageLevels() {
       setSublevelEnd(work?.endDate ? work.endDate.split('T')[0] : "");
       setShowSublevelForm(false);
       setSublevelErrors({});
+      setModal({
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Subnível criado com sucesso!',
+        onConfirm: null,
+      });
     } catch (err) {
       setSublevelErrors({ submit: err.message });
+      setModal({
+        type: 'error',
+        title: 'Erro ao Criar Subnível',
+        message: err.message,
+        onConfirm: null,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteSublevel = async (sublevelId) => {
-    if (!confirm("Tem certeza que deseja ocultar este subnível? Pode ser mostrado novamente a qualquer momento.")) return;
-    try {
-      const res = await fetch(`/api/levels/${sublevelId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hidden: true }),
-      });
-      if (res.ok) await fetchSublevels();
-    } catch (err) {
-      alert("Erro ao ocultar subnível");
-    }
+    confirmWithModal(
+      'Ocultar Subnível',
+      'Tem certeza que deseja ocultar este subnível? Pode ser mostrado novamente a qualquer momento.',
+      async () => {
+        try {
+          const res = await fetch(`/api/levels/${sublevelId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hidden: true }),
+          });
+          if (res.ok) {
+            await fetchSublevels();
+            setModal({
+              type: 'success',
+              title: 'Sucesso',
+              message: 'Subnível ocultado com sucesso!',
+              onConfirm: null,
+            });
+          } else {
+            throw new Error('Erro ao ocultar subnível');
+          }
+        } catch (err) {
+          setModal({
+            type: 'error',
+            title: 'Erro',
+            message: 'Erro ao ocultar subnível',
+            onConfirm: null,
+          });
+        }
+      }
+    );
   };
 
   const handleShowSublevel = async (sublevelId) => {
@@ -290,34 +490,127 @@ export default function ManageLevels() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hidden: false }),
       });
-      if (res.ok) await fetchSublevels();
+      if (res.ok) {
+        await fetchSublevels();
+        setModal({
+          type: 'success',
+          title: 'Sucesso',
+          message: 'Subnível mostrado com sucesso!',
+          onConfirm: null,
+        });
+      } else {
+        throw new Error('Erro ao mostrar subnível');
+      }
     } catch (err) {
-      alert("Erro ao mostrar subnível");
+      setModal({
+        type: 'error',
+        title: 'Erro',
+        message: 'Erro ao mostrar subnível',
+        onConfirm: null,
+      });
     }
   };
 
+  const handleRemoveSublevel = async (sublevelId) => {
+    confirmWithModal(
+      'Remover Subnível Permanentemente',
+      'ATENÇÃO: Esta ação é irreversível! Tem certeza que deseja remover este subnível e toda a sua hierarquia descendente permanentemente?',
+      async () => {
+        try {
+          const res = await fetch(`/api/levels/${sublevelId}`, {
+            method: "DELETE",
+          });
+          if (res.ok) {
+            await fetchSublevels();
+            setModal({
+              type: 'success',
+              title: 'Sucesso',
+              message: 'Subnível removido permanentemente!',
+              onConfirm: null,
+            });
+          } else {
+            throw new Error('Erro ao remover subnível');
+          }
+        } catch (err) {
+          setModal({
+            type: 'error',
+            title: 'Erro',
+            message: 'Erro ao remover subnível',
+            onConfirm: null,
+          });
+        }
+      }
+    );
+  };
+
   const handleToggleComplete = async (sublevelId, currentStatus) => {
+    const title = currentStatus ? "Marcar como Não Concluído" : "Marcar como Concluído";
+    
+    // Se tentando marcar como concluído, verificar se há filhos por encerrar
+    if (!currentStatus) {
+      const childrenRes = await fetch(`/api/levels?parentId=${sublevelId}`);
+      if (childrenRes.ok) {
+        const children = await childrenRes.json();
+        const incompletedChildren = children.filter(c => !c.completed);
+        
+        if (incompletedChildren.length > 0) {
+          setModal({
+            type: 'error',
+            title: 'Não é Possível Encerrar',
+            message: `Este nível ainda tem ${incompletedChildren.length} filho(s) por encerrar. Encerre todos os filhos antes de encerrar o pai.`,
+            onConfirm: null,
+          });
+          return;
+        }
+      }
+    }
+    
     const message = currentStatus 
       ? "Tem certeza que deseja marcar como não concluído?" 
       : "Tem certeza que deseja marcar como concluído?";
-    if (!confirm(message)) return;
     
-    try {
-      const res = await fetch(`/api/levels/${sublevelId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: !currentStatus }),
-      });
-      if (res.ok) {
-        // If completing the main work level, refresh its state
-        if (sublevelId == id) {
+    confirmWithModal(title, message, async () => {
+      try {
+        const res = await fetch(`/api/levels/${sublevelId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ completed: !currentStatus }),
+        });
+        if (res.ok) {
+          // If completing the main work level, refresh its state
+          if (sublevelId == id) {
+            await fetchWork();
+          }
+          
+          // Se marcou como concluído, verificar se pode marcar o pai também
+          if (!currentStatus) {
+            // Cascade: se todos os irmãos concluídos, completa pai e continua a subir
+            await cascadeCompleteUpFrom(sublevelId);
+          } else {
+            // Se reabriu, garantir que todos os ancestrais ficam como não concluídos
+            await cascadeReopenUpFrom(sublevelId);
+          }
+          
+          await fetchSublevels();
           await fetchWork();
+          setModal({
+            type: 'success',
+            title: 'Sucesso',
+            message: currentStatus ? 'Marcado como não concluído!' : 'Marcado como concluído!',
+            onConfirm: null,
+          });
+        } else {
+          throw new Error('Erro ao alterar estado de conclusão');
         }
-        await fetchSublevels();
+      } catch (err) {
+        setModal({
+          type: 'error',
+          title: 'Erro',
+          message: 'Erro ao alterar estado de conclusão',
+          onConfirm: null,
+        });
       }
-    } catch (err) {
-      alert("Erro ao alterar estado de conclusão");
-    }
+    });
   };
 
   // ========== MATERIAIS ==========
@@ -415,53 +708,44 @@ export default function ManageLevels() {
         .filter((r) => r.path.length > 0);
 
       if (entries.length === 0) {
-        alert("O ficheiro está vazio ou sem coluna Path");
+        setModal({
+          type: 'error',
+          title: 'Ficheiro Vazio',
+          message: 'O ficheiro está vazio ou sem coluna Path',
+          onConfirm: null,
+        });
         return;
       }
 
-      const pathMap = new Map();
-      // Root corresponds to current level id
-      pathMap.set("__ROOT__", parseInt(id, 10));
-
-      const sorted = entries.sort((a, b) => {
-        const da = a.path.split("/").length;
-        const db = b.path.split("/").length;
-        return da - db;
+      // Send all entries in one request for transactional processing
+      const res = await fetch("/api/levels/hierarchy/import-excel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rootId: parseInt(id, 10),
+          entries: entries,
+        }),
       });
 
-      for (const entry of sorted) {
-        const parts = entry.path.split("/").map((p) => p.trim()).filter(Boolean);
-        if (parts.length === 0) continue;
-        const parentKey = parts.slice(0, -1).join("/") || "__ROOT__";
-        const parentId = pathMap.get(parentKey);
-        if (!parentId) {
-          throw new Error(`Parent path não encontrado: ${parentKey}`);
-        }
-
-        const res = await fetch("/api/levels", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: parts[parts.length - 1],
-            description: entry.description || parts[parts.length - 1],
-            parentId,
-            startDate: entry.startDate || null,
-            endDate: entry.endDate || null,
-          }),
-        });
-        if (!res.ok) {
-          const msg = await res.text();
-          throw new Error(`Erro ao criar nível ${entry.path}: ${msg}`);
-        }
-        const created = await res.json();
-        const currentKey = parts.join("/");
-        pathMap.set(currentKey, created.id);
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(`Erro ao importar hierarquia: ${msg}`);
       }
 
       await fetchSublevels();
-      alert("Hierarquia criada com sucesso!");
+      setModal({
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Hierarquia criada com sucesso!',
+        onConfirm: null,
+      });
     } catch (err) {
-      alert(`Erro ao importar hierarquia: ${err.message}`);
+      setModal({
+        type: 'error',
+        title: 'Erro ao Importar',
+        message: err.message,
+        onConfirm: null,
+      });
     } finally {
       setImportingHierarchy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -562,7 +846,12 @@ export default function ManageLevels() {
         .filter((m) => m.description.length > 0 && m.quantity > 0);
 
       if (materials.length === 0) {
-        alert("O ficheiro está vazio ou sem colunas obrigatórias");
+        setModal({
+          type: 'error',
+          title: 'Ficheiro Inválido',
+          message: 'O ficheiro está vazio ou sem colunas obrigatórias',
+          onConfirm: null,
+        });
         return;
       }
 
@@ -589,9 +878,19 @@ export default function ManageLevels() {
       }
 
       await fetchMaterials();
-      alert(`${materials.length} material(is) criado(s) com sucesso!`);
+      setModal({
+        type: 'success',
+        title: 'Sucesso',
+        message: `${materials.length} material(is) criado(s) com sucesso!`,
+        onConfirm: null,
+      });
     } catch (err) {
-      alert(`Erro ao importar materiais: ${err.message}`);
+      setModal({
+        type: 'error',
+        title: 'Erro ao Importar Materiais',
+        message: err.message,
+        onConfirm: null,
+      });
     } finally {
       setImportingMaterials(false);
       if (materialFileInputRef.current) materialFileInputRef.current.value = "";
@@ -599,13 +898,33 @@ export default function ManageLevels() {
   };
 
   const handleDeleteMaterial = async (materialId) => {
-    if (!confirm("Tem certeza que deseja deletar este material?")) return;
-    try {
-      const res = await fetch(`/api/materials/${materialId}`, { method: "DELETE" });
-      if (res.ok) await fetchMaterials();
-    } catch (err) {
-      alert("Erro ao deletar material");
-    }
+    confirmWithModal(
+      'Deletar Material',
+      'Tem certeza que deseja deletar este material?',
+      async () => {
+        try {
+          const res = await fetch(`/api/materials/${materialId}`, { method: "DELETE" });
+          if (res.ok) {
+            await fetchMaterials();
+            setModal({
+              type: 'success',
+              title: 'Sucesso',
+              message: 'Material deletado com sucesso!',
+              onConfirm: null,
+            });
+          } else {
+            throw new Error('Erro ao deletar material');
+          }
+        } catch (err) {
+          setModal({
+            type: 'error',
+            title: 'Erro',
+            message: 'Erro ao deletar material',
+            onConfirm: null,
+          });
+        }
+      }
+    );
   };
 
   const handleUpdateMaterial = async (mat) => {
@@ -631,7 +950,12 @@ export default function ManageLevels() {
       await fetchMaterials();
       setEditingMaterial(null);
     } catch (err) {
-      alert("Erro ao atualizar material: " + err.message);
+      setModal({
+        type: 'error',
+        title: 'Erro ao Atualizar Material',
+        message: err.message,
+        onConfirm: null,
+      });
     } finally {
       setLoading(false);
     }
@@ -683,13 +1007,33 @@ export default function ManageLevels() {
   // Equipa-related handlers removed; handled in Equipa page
 
   const handleDeleteDocument = async (docId) => {
-    if (!confirm("Tem certeza que deseja deletar este documento?")) return;
-    try {
-      const res = await fetch(`/api/documents/${docId}`, { method: "DELETE" });
-      if (res.ok) await fetchDocuments();
-    } catch (err) {
-      alert("Erro ao deletar documento");
-    }
+    confirmWithModal(
+      'Deletar Documento',
+      'Tem certeza que deseja deletar este documento?',
+      async () => {
+        try {
+          const res = await fetch(`/api/documents/${docId}`, { method: "DELETE" });
+          if (res.ok) {
+            await fetchDocuments();
+            setModal({
+              type: 'success',
+              title: 'Sucesso',
+              message: 'Documento deletado com sucesso!',
+              onConfirm: null,
+            });
+          } else {
+            throw new Error('Erro ao deletar documento');
+          }
+        } catch (err) {
+          setModal({
+            type: 'error',
+            title: 'Erro',
+            message: 'Erro ao deletar documento',
+            onConfirm: null,
+          });
+        }
+      }
+    );
   };
 
   // ========== NOTAS ==========
@@ -720,13 +1064,33 @@ export default function ManageLevels() {
   };
 
   const handleDeleteNote = async (noteId) => {
-    if (!confirm("Tem certeza que deseja deletar esta nota?")) return;
-    try {
-      const res = await fetch(`/api/permissions/${noteId}`, { method: "DELETE" });
-      if (res.ok) await fetchNotes();
-    } catch (err) {
-      alert("Erro ao deletar nota");
-    }
+    confirmWithModal(
+      'Deletar Nota',
+      'Tem certeza que deseja deletar esta nota?',
+      async () => {
+        try {
+          const res = await fetch(`/api/permissions/${noteId}`, { method: "DELETE" });
+          if (res.ok) {
+            await fetchNotes();
+            setModal({
+              type: 'success',
+              title: 'Sucesso',
+              message: 'Nota deletada com sucesso!',
+              onConfirm: null,
+            });
+          } else {
+            throw new Error('Erro ao deletar nota');
+          }
+        } catch (err) {
+          setModal({
+            type: 'error',
+            title: 'Erro',
+            message: 'Erro ao deletar nota',
+            onConfirm: null,
+          });
+        }
+      }
+    );
   };
 
   // ========== FOTOS ==========
@@ -757,12 +1121,13 @@ export default function ManageLevels() {
           type: photoType,
           role: photoRole,
           levelId: id,
+          observacoes: photoDesc || null,
         }),
       });
       if (!res.ok) throw new Error("Erro ao criar foto");
       await fetchPhotos();
       setPhotoFile(null);
-      setPhotoType("inicio");
+      setPhotoType("issue");
       setPhotoRole("B");
       setPhotoDesc("");
       setShowPhotoForm(false);
@@ -775,13 +1140,33 @@ export default function ManageLevels() {
   };
 
   const handleDeletePhoto = async (photoId) => {
-    if (!confirm("Tem certeza que deseja deletar esta foto?")) return;
-    try {
-      const res = await fetch(`/api/photos/${photoId}`, { method: "DELETE" });
-      if (res.ok) await fetchPhotos();
-    } catch (err) {
-      alert("Erro ao deletar foto");
-    }
+    confirmWithModal(
+      'Deletar Foto',
+      'Tem certeza que deseja deletar esta foto?',
+      async () => {
+        try {
+          const res = await fetch(`/api/photos/${photoId}`, { method: "DELETE" });
+          if (res.ok) {
+            await fetchPhotos();
+            setModal({
+              type: 'success',
+              title: 'Sucesso',
+              message: 'Foto deletada com sucesso!',
+              onConfirm: null,
+            });
+          } else {
+            throw new Error('Erro ao deletar foto');
+          }
+        } catch (err) {
+          setModal({
+            type: 'error',
+            title: 'Erro',
+            message: 'Erro ao deletar foto',
+            onConfirm: null,
+          });
+        }
+      }
+    );
   };
 
   const handleTogglePhotoRole = async (photoId, currentRole) => {
@@ -793,9 +1178,19 @@ export default function ManageLevels() {
         body: JSON.stringify({ role: newRole }),
       });
       if (res.ok) await fetchPhotos();
-      else alert("Erro ao alterar visibilidade");
+      else setModal({
+        type: 'error',
+        title: 'Erro',
+        message: 'Erro ao alterar visibilidade',
+        onConfirm: null,
+      });
     } catch (err) {
-      alert("Erro ao alterar visibilidade: " + err.message);
+      setModal({
+        type: 'error',
+        title: 'Erro ao Alterar Visibilidade',
+        message: err.message,
+        onConfirm: null,
+      });
     }
   };
 
@@ -946,37 +1341,51 @@ export default function ManageLevels() {
     setMoveErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    if (!confirm(`Tem certeza que deseja mover este nível? Toda a hierarquia descendente será movida junto.`)) {
-      return;
-    }
+    confirmWithModal(
+      'Mover Nível',
+      'Tem certeza que deseja mover este nível? Toda a hierarquia descendente será movida junto.',
+      async () => {
+        setLoading(true);
+        try {
+          const payload = {
+            parentId: parseInt(newParentId)
+          };
 
-    setLoading(true);
-    try {
-      const payload = {
-        parentId: parseInt(newParentId)
-      };
-
-      const res = await fetch(`/api/levels/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      
-      if (!res.ok) throw new Error("Erro ao mover nível");
-      
-      await fetchWork();
-      await buildBreadcrumb();
-      setMoveMode(false);
-      setNewParentId('');
-      setMoveErrors({});
-      
-      // Redirecionar para o nível movido
-      window.location.reload();
-    } catch (err) {
-      setMoveErrors({ submit: err.message });
-    } finally {
-      setLoading(false);
-    }
+          const res = await fetch(`/api/levels/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          
+          if (!res.ok) throw new Error("Erro ao mover nível");
+          
+          await fetchWork();
+          await buildBreadcrumb();
+          setMoveMode(false);
+          setNewParentId('');
+          setMoveErrors({});
+          setModal({
+            type: 'success',
+            title: 'Sucesso',
+            message: 'Nível movido com sucesso!',
+            onConfirm: null,
+          });
+          
+          // Redirecionar para o nível movido
+          window.location.reload();
+        } catch (err) {
+          setMoveErrors({ submit: err.message });
+          setModal({
+            type: 'error',
+            title: 'Erro',
+            message: err.message,
+            onConfirm: null,
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    );
   };
 
   const handleOpenMoveMode = async () => {
@@ -1052,6 +1461,10 @@ export default function ManageLevels() {
     );
   };
 
+  const visibleNotCompleted = sublevels.filter((s) => !s.completed && !s.hidden);
+  const visibleCompleted = sublevels.filter((s) => s.completed && !s.hidden);
+  const hiddenSublevels = sublevels.filter((s) => s.hidden);
+
   return (
     <div className="ml-bg">
       <div className="ml-layout">
@@ -1065,10 +1478,10 @@ export default function ManageLevels() {
                 </button>
               </li>
             ))}
-            {sublevels.length > 0 && (
+            {sublevels.filter(s => !s.hidden).length > 0 && (
               <li className="ml-tree-children-title">Filhos imediatos</li>
             )}
-            {sublevels.map((child) => (
+            {sublevels.filter(s => !s.hidden).map((child) => (
               <li key={child.id} className="ml-tree-item ml-tree-child">
                 <button onClick={() => navigate(`/works/${child.id}/levels`)}>
                   {child.name}
@@ -1098,22 +1511,12 @@ export default function ManageLevels() {
                   ))
                 : (work?.name || "Obra")}
             </h1>
-            <div className="ml-header-actions">
-              {work && (
-                <button 
-                  onClick={() => handleToggleComplete(work.id, work.completed)} 
-                  className={work.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
-                  title={work.completed ? "Marcar como não concluído" : "Marcar como concluído"}
-                >
-                  {work.completed ? "✓" : "○"}
-                </button>
-              )}
-            </div>
+            <div className="ml-header-actions"></div>
           </div>
           <p className="ml-subtitle">{work?.description}</p>
-          {sublevels.length > 0 && (
+          {sublevels.filter(s => !s.hidden).length > 0 && (
             <p className="ml-completion-ratio">
-              ✓ {completedCount}/{sublevels.length} níveis concluídos
+              ✓ {completedCount}/{sublevels.filter(s => !s.hidden).length} níveis concluídos
             </p>
           )}
           <button onClick={() => setEditMode(!editMode)} className="ml-edit-btn">
@@ -1334,12 +1737,25 @@ export default function ManageLevels() {
               ) : (
                 <>
                   {/* Não Concluídos e Visíveis */}
-                  {sublevels.filter(s => !s.completed && !s.hidden).length > 0 && (
+                  {visibleNotCompleted.length > 0 && (
                     <>
                       <h3 className="ml-sublevels-header">📋 Não Concluídos</h3>
+                      <p className="ml-reorder-hint">
+                        Arraste para reordenar. {reorderingSublevels ? "A guardar ordem..." : ""}
+                      </p>
                       <div className="ml-sublist">
-                        {sublevels.filter(s => !s.completed && !s.hidden).map((sub) => (
-                          <div key={sub.id} className="ml-item">
+                        {visibleNotCompleted.map((sub) => (
+                          <div
+                            key={sub.id}
+                            className={`ml-item ${draggingSublevelId === sub.id ? 'ml-item-dragging' : ''} ${dragOverSublevelId === sub.id ? 'ml-item-drop-target' : ''}`}
+                            draggable
+                            onDragStart={() => setDraggingSublevelId(sub.id)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDragEnter={() => setDragOverSublevelId(sub.id)}
+                            onDrop={() => handleDropOnSublevel(sub.id)}
+                            onDragEnd={handleDragEndSublevel}
+                          >
+                            <div className="ml-drag-handle" title="Arraste para reordenar">⋮⋮</div>
                             <div 
                               className="ml-item-info"
                               onClick={() => navigate(`/works/${sub.id}/levels`)}
@@ -1355,10 +1771,16 @@ export default function ManageLevels() {
                             </div>
                             <div className="ml-item-actions">
                               <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete" title="Ocultar">👁️</button>
+                              <button onClick={() => handleRemoveSublevel(sub.id)} className="ml-btn-remove" title="Remover permanentemente">🗑️</button>
                               <button 
                                 onClick={() => handleToggleComplete(sub.id, sub.completed)} 
                                 className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
-                                title={sub.completed ? "Marcar como não concluído" : "Marcar como concluído"}
+                                title={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.completed ? "Marcar como não concluído" : "Marcar como concluído")}
+                                disabled={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
+                                style={{
+                                  opacity: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
+                                  cursor: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
+                                }}
                               >
                                 {sub.completed ? "✓" : "○"}
                               </button>
@@ -1370,17 +1792,18 @@ export default function ManageLevels() {
                   )}
 
                   {/* Concluídos e Visíveis */}
-                  {sublevels.filter(s => s.completed && !s.hidden).length > 0 && (
+                  {visibleCompleted.length > 0 && (
                     <>
                       <h3 className="ml-sublevels-header">✅ Concluídos</h3>
                       <div className="ml-sublist">
-                        {sublevels.filter(s => s.completed && !s.hidden).map((sub) => (
-                          <div key={sub.id} className="ml-item ml-item-completed">
-                            <div 
-                              className="ml-item-info"
-                              onClick={() => navigate(`/works/${sub.id}/levels`)}
-                              style={{ cursor: 'pointer' }}
-                            >
+                        {visibleCompleted.map((sub) => (
+                          <div 
+                            key={sub.id} 
+                            className="ml-item ml-item-completed"
+                            onClick={() => navigate(`/works/${sub.id}/levels`)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <div className="ml-item-info">
                               <h3>{sub.name} <span className="ml-completed-badge">✓</span></h3>
                               <p>{sub.description}</p>
                               {sub.childrenCount > 0 && (
@@ -1389,12 +1812,18 @@ export default function ManageLevels() {
                                 </p>
                               )}
                             </div>
-                            <div className="ml-item-actions">
+                            <div className="ml-item-actions" onClick={(e) => e.stopPropagation()}>
                               <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete" title="Ocultar">👁️</button>
+                              <button onClick={() => handleRemoveSublevel(sub.id)} className="ml-btn-remove" title="Remover permanentemente">🗑️</button>
                               <button 
                                 onClick={() => handleToggleComplete(sub.id, sub.completed)} 
                                 className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
-                                title={sub.completed ? "Marcar como não concluído" : "Marcar como concluído"}
+                                title={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.completed ? "Marcar como não concluído" : "Marcar como concluído")}
+                                disabled={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
+                                style={{
+                                  opacity: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
+                                  cursor: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
+                                }}
                               >
                                 {sub.completed ? "✓" : "○"}
                               </button>
@@ -1406,17 +1835,18 @@ export default function ManageLevels() {
                   )}
 
                   {/* Ocultos */}
-                  {sublevels.filter(s => s.hidden).length > 0 && (
+                  {hiddenSublevels.length > 0 && (
                     <>
                       <h3 className="ml-sublevels-header ml-sublevels-header-hidden">👻 Ocultos</h3>
                       <div className="ml-sublist ml-sublist-hidden">
-                        {sublevels.filter(s => s.hidden).map((sub) => (
-                          <div key={sub.id} className="ml-item ml-item-hidden">
-                            <div 
-                              className="ml-item-info"
-                              onClick={() => navigate(`/works/${sub.id}/levels`)}
-                              style={{ cursor: 'pointer' }}
-                            >
+                        {hiddenSublevels.map((sub) => (
+                          <div 
+                            key={sub.id} 
+                            className="ml-item ml-item-hidden"
+                            onClick={() => navigate(`/works/${sub.id}/levels`)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <div className="ml-item-info">
                               <h3>{sub.name}</h3>
                               <p>{sub.description}</p>
                               {sub.childrenCount > 0 && (
@@ -1425,12 +1855,18 @@ export default function ManageLevels() {
                                 </p>
                               )}
                             </div>
-                            <div className="ml-item-actions">
+                            <div className="ml-item-actions" onClick={(e) => e.stopPropagation()}>
                               <button onClick={() => handleShowSublevel(sub.id)} className="ml-btn-show" title="Mostrar">👁️‍🗨️</button>
+                              <button onClick={() => handleRemoveSublevel(sub.id)} className="ml-btn-remove" title="Remover permanentemente">🗑️</button>
                               <button 
                                 onClick={() => handleToggleComplete(sub.id, sub.completed)} 
                                 className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
-                                title={sub.completed ? "Marcar como não concluído" : "Marcar como concluído"}
+                                title={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.completed ? "Marcar como não concluído" : "Marcar como concluído")}
+                                disabled={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
+                                style={{
+                                  opacity: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
+                                  cursor: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
+                                }}
                               >
                                 {sub.completed ? "✓" : "○"}
                               </button>
@@ -1621,11 +2057,27 @@ export default function ManageLevels() {
               </form>
             )}
 
+            <div className="ml-field" style={{ marginBottom: '16px', maxWidth: '300px' }}>
+              <label>Filtrar por Tipo</label>
+              <select 
+                value={materialTypeFilter} 
+                onChange={(e) => setMaterialTypeFilter(e.target.value)}
+                className="ml-select"
+              >
+                <option value="">-- Todos os tipos --</option>
+                {[...new Set(materials.map(m => m.type).filter(Boolean))].sort().map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="ml-list">
               {materials.length === 0 ? (
                 <p className="ml-empty">Nenhum material encontrado.</p>
               ) : (
-                materials.map((mat) => (
+                materials
+                  .filter(m => !materialTypeFilter || m.type === materialTypeFilter)
+                  .map((mat) => (
                   <div key={mat.id} className="ml-item">
                     {editingMaterial?.id === mat.id ? (
                       <div className="ml-edit-material">
@@ -1849,7 +2301,12 @@ export default function ManageLevels() {
                   if (res.ok) {
                     await fetchNotes();
                   } else {
-                    alert("Erro ao salvar notas");
+                    setModal({
+                      type: 'error',
+                      title: 'Erro',
+                      message: 'Erro ao salvar notas',
+                      onConfirm: null,
+                    });
                   }
                 }}
               >
@@ -1874,9 +2331,8 @@ export default function ManageLevels() {
                 <div className="ml-field">
                   <label>Tipo de Foto</label>
                   <select value={photoType} onChange={(e) => setPhotoType(e.target.value)}>
-                    <option value="inicio">Início</option>
-                    <option value="durante">Durante</option>
-                    <option value="fim">Fim</option>
+                    <option value="issue">Inconformidade</option>
+                    <option value="others">Outras</option>
                   </select>
                 </div>
                 <div className="ml-field">
@@ -1908,11 +2364,12 @@ export default function ManageLevels() {
                   {photoErrors.file && <span className="ml-error">{photoErrors.file}</span>}
                 </div>
                 <div className="ml-field">
-                  <label>Descrição (opcional)</label>
-                  <input
-                    type="text"
+                  <label>Observações (opcional)</label>
+                  <textarea
+                    rows="3"
                     value={photoDesc}
                     onChange={(e) => setPhotoDesc(e.target.value)}
+                    placeholder="Adicione observações sobre a foto..."
                   />
                 </div>
                 {photoErrors.submit && <div className="ml-error">{photoErrors.submit}</div>}
@@ -1923,10 +2380,10 @@ export default function ManageLevels() {
             )}
 
             <div className="ml-photo-sections">
-              {['inicio','durante','fim'].map(section => (
+              {['issue','others'].map(section => (
                 <div key={section} className="ml-photo-section">
                   <h3 className="ml-photo-section-title">
-                    {section === 'inicio' ? 'Antes' : section === 'durante' ? 'Durante' : 'Depois'}
+                    {section === 'issue' ? 'Inconformidades' : 'Outras'}
                   </h3>
                   <div className="ml-photo-grid">
                     {photos.filter(p => p.type === section).length === 0 ? (
@@ -1951,6 +2408,11 @@ export default function ManageLevels() {
                             </button>
                             <button onClick={() => handleDeletePhoto(photo.id)} className="ml-btn-delete-photo">🗑️</button>
                           </div>
+                          {photo.observacoes && (
+                            <div className="ml-photo-info">
+                              <p><strong>Observações:</strong> {photo.observacoes}</p>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -2028,6 +2490,57 @@ export default function ManageLevels() {
           <div className="ml-modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="ml-modal-close" onClick={() => setSelectedPhoto(null)}>✕</button>
             <img src={selectedPhoto} alt="Preview" className="ml-modal-img" />
+          </div>
+        </div>
+      )}
+
+      {/* Notification Modal */}
+      {modal.type && (
+        <div className="ml-modal-overlay" onClick={() => setModal({ ...modal, type: null })}>
+          <div className="ml-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2 className="ml-modal-title" style={{
+              color: modal.type === 'error' ? '#dc2626' : modal.type === 'success' ? '#059669' : '#1e293b'
+            }}>
+              {modal.type === 'error' && '❌ '}
+              {modal.type === 'success' && '✓ '}
+              {modal.title}
+            </h2>
+            <p className="ml-modal-message">{modal.message}</p>
+            <div className="ml-modal-actions">
+              {modal.type !== 'confirm' && (
+                <button 
+                  className="ml-modal-btn ml-modal-btn-confirm"
+                  style={{
+                    background: modal.type === 'error' ? '#dc2626' : '#059669'
+                  }}
+                  onClick={() => {
+                    if (modal.onConfirm) modal.onConfirm();
+                    setModal({ ...modal, type: null });
+                  }}
+                >
+                  OK
+                </button>
+              )}
+              {modal.type === 'confirm' && (
+                <>
+                  <button 
+                    className="ml-modal-btn ml-modal-btn-cancel"
+                    onClick={() => setModal({ ...modal, type: null })}
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    className="ml-modal-btn ml-modal-btn-danger"
+                    onClick={() => {
+                      if (modal.onConfirm) modal.onConfirm();
+                      setModal({ ...modal, type: null });
+                    }}
+                  >
+                    Confirmar
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -2451,6 +2964,30 @@ export default function ManageLevels() {
           border: 1px solid #e5e7eb;
           transition: all 0.2s ease;
         }
+        .ml-drag-handle {
+          width: 28px;
+          text-align: center;
+          margin-right: 10px;
+          cursor: grab;
+          color: #94a3b8;
+          user-select: none;
+          font-weight: 700;
+          letter-spacing: 1px;
+        }
+        .ml-item-dragging {
+          opacity: 0.75;
+          border-color: #a7f3d0;
+          box-shadow: 0 2px 10px rgba(1, 163, 131, 0.15);
+        }
+        .ml-item-drop-target {
+          border-color: #38bdf8;
+          box-shadow: 0 0 0 2px #bae6fd;
+        }
+        .ml-reorder-hint {
+          margin: -6px 0 10px 0;
+          color: #475569;
+          font-size: 0.85rem;
+        }
         .ml-item:hover {
           box-shadow: 0 2px 8px rgba(1, 163, 131, 0.12);
           border-color: #a7f3d0;
@@ -2559,6 +3096,22 @@ export default function ManageLevels() {
         }
         .ml-btn-delete:hover {
           background: #fecaca;
+        }
+        .ml-btn-remove {
+          padding: 4px 8px;
+          border: none;
+          border-radius: 6px;
+          font-weight: 600;
+          cursor: pointer;
+          font-size: 0.85rem;
+          transition: background 0.2s;
+          background: #fef2f2;
+          color: #dc2626;
+          border: 1px solid #fecaca;
+        }
+        .ml-btn-remove:hover {
+          background: #fee2e2;
+          border-color: #fca5a5;
         }
         .ml-sublist {
           display: flex;
@@ -2799,7 +3352,7 @@ export default function ManageLevels() {
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0, 0, 0, 0.85);
+          background: rgba(0, 0, 0, 0.5);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -2811,8 +3364,22 @@ export default function ManageLevels() {
           max-width: 90vw;
           max-height: 90vh;
           background: #fff;
-          border-radius: 8px;
-          overflow: hidden;
+          border-radius: 12px;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+          padding: 32px;
+          max-width: 500px;
+          width: 90%;
+          animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+          from {
+            transform: translateY(-20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
         }
         .ml-modal-img {
           max-width: 100%;
@@ -2837,6 +3404,57 @@ export default function ManageLevels() {
         }
         .ml-modal-close:hover {
           background: #000;
+        }
+
+        /* Notification Modal Styles */
+        .ml-modal-title {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin: 0 0 12px 0;
+        }
+        .ml-modal-message {
+          color: #64748b;
+          line-height: 1.6;
+          margin: 0 0 24px 0;
+          font-size: 1rem;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+        }
+        .ml-modal-actions {
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+        }
+        .ml-modal-btn {
+          padding: 10px 20px;
+          border-radius: 6px;
+          border: none;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 0.95rem;
+        }
+        .ml-modal-btn-cancel {
+          background: #e2e8f0;
+          color: #475569;
+        }
+        .ml-modal-btn-cancel:hover {
+          background: #cbd5e1;
+        }
+        .ml-modal-btn-confirm {
+          background: #059669;
+          color: white;
+        }
+        .ml-modal-btn-confirm:hover {
+          background: #047857;
+        }
+        .ml-modal-btn-danger {
+          background: #dc2626;
+          color: white;
+        }
+        .ml-modal-btn-danger:hover {
+          background: #b91c1c;
         }
         
         /* Fix form and field overflow */

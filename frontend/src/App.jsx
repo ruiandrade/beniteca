@@ -9,6 +9,7 @@ import CreateWork from './pages/CreateWork';
 import ManageLevels from './pages/ManageLevels';
 import Equipa from './pages/Equipa';
 import PlaneamentoGlobal from './pages/PlaneamentoGlobal';
+import Presencas from './pages/Presencas';
 import Users from './pages/Users';
 import Permissions from './pages/Permissions';
 import Login from './pages/Login';
@@ -40,6 +41,7 @@ function App() {
             <Route path="create" element={<CreateWork />} />
             <Route path="works/:id/levels" element={<ManageLevels />} />
             <Route path="works/:id/equipa" element={<Equipa />} />
+            <Route path="presencas" element={<Presencas />} />
             <Route path="users" element={<Users />} />
             <Route path="permissions" element={<Permissions />} />
           </Route>

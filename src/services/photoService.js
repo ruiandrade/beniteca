@@ -4,15 +4,16 @@ class PhotoService {
   async createPhoto(data) {
     const pool = await getConnection();
     const insertQuery = `
-      INSERT INTO Photo (levelId, type, url, role)
+      INSERT INTO Photo (levelId, type, url, role, observacoes)
       OUTPUT INSERTED.*
-      VALUES (@levelId, @type, @url, @role)
+      VALUES (@levelId, @type, @url, @role, @observacoes)
     `;
     const result = await pool.request()
       .input('levelId', sql.Int, data.levelId)
       .input('type', sql.NVarChar, data.type)
       .input('url', sql.NVarChar, data.url)
       .input('role', sql.Char, data.role || 'B')
+      .input('observacoes', sql.NVarChar, data.observacoes || null)
       .query(insertQuery);
     return result.recordset[0];
   }
@@ -47,6 +48,10 @@ class PhotoService {
     if (data.role !== undefined) {
       fields.push('role = @role');
       request.input('role', sql.Char, data.role);
+    }
+    if (data.observacoes !== undefined) {
+      fields.push('observacoes = @observacoes');
+      request.input('observacoes', sql.NVarChar, data.observacoes);
     }
     
     if (fields.length === 0) {

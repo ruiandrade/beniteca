@@ -65,6 +65,9 @@ export default function Layout() {
           <NavLink to="/planeamento-global" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
             📅 Planeamento Global
           </NavLink>
+          <NavLink to="/presencas" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+            📋 Presenças
+          </NavLink>
           <NavLink to="/archived" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
             📦 Obras Arquivadas
           </NavLink>

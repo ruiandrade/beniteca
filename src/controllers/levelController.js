@@ -19,6 +19,15 @@ class LevelController {
     }
   }
 
+  async createHierarchyFromExcel(req, res) {
+    try {
+      const result = await levelService.createHierarchyFromExcel(req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   async getAll(req, res) {
     try {
       const { parentId } = req.query || {};
@@ -74,6 +83,16 @@ class LevelController {
       res.json(tree);
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  }
+
+  async reorder(req, res) {
+    try {
+      const { parentId, orderedIds } = req.body || {};
+      const result = await levelService.reorderLevels(parentId, orderedIds);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
   }
 }

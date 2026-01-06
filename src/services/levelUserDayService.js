@@ -148,6 +148,21 @@ class LevelUserDayService {
       throw err;
     }
   }
+
+  async update(id, appeared, observations) {
+    const pool = await getConnection();
+    const result = await pool.request()
+      .input('id', sql.Int, id)
+      .input('appeared', sql.NVarChar(3), appeared)
+      .input('observations', sql.NVarChar(sql.MAX), observations)
+      .query(`
+        UPDATE LevelUserDay 
+        SET appeared = @appeared, observations = @observations
+        WHERE id = @id
+      `);
+    
+    return result.rowsAffected[0] > 0;
+  }
 }
 
 module.exports = new LevelUserDayService();
