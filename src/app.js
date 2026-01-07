@@ -8,8 +8,8 @@ const app = express();
 // Enable CORS (more permissive in development, can be restricted in production)
 app.use(cors());
 // Increase body size limits to support large Excel hierarchy imports
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
 // Serve static files from public directory (for legacy assets if any)
 // Disable index so it doesn't take over '/' in production
