@@ -103,12 +103,33 @@ class PermissionService {
       const pool = await getConnection();
       const result = await pool.request()
         .query(`
-          SELECT id, name, description, status, startDate, endDate, 
-                 coverImage, constructionManagerId, createdAt, updatedAt,
-                 (SELECT COUNT(*) FROM [Level] WHERE parentId = [Level].id) as childrenCount
-          FROM [Level]
-          WHERE parentId IS NULL
-          ORDER BY name ASC
+          SELECT 
+            l.id,
+            l.name,
+            l.description,
+            l.status,
+            l.startDate,
+            l.endDate,
+            l.coverImage,
+            l.constructionManagerId,
+            l.createdAt,
+            l.updatedAt,
+            COUNT(c.id) AS childrenCount
+          FROM [Level] l
+          LEFT JOIN [Level] c ON c.parentId = l.id
+          WHERE l.parentId IS NULL
+          GROUP BY 
+            l.id,
+            l.name,
+            l.description,
+            l.status,
+            l.startDate,
+            l.endDate,
+            l.coverImage,
+            l.constructionManagerId,
+            l.createdAt,
+            l.updatedAt
+          ORDER BY l.name ASC
         `);
       return result.recordset;
     } catch (err) {

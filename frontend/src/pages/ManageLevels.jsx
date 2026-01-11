@@ -3786,6 +3786,41 @@ export default function ManageLevels() {
           max-width: 100%;
           box-sizing: border-box;
         }
+        
+        /* Estilos para tabela de anexos */
+        .ml-table {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          background: #fff;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .ml-table thead {
+          background: #f8fafc;
+        }
+        .ml-table th {
+          padding: 12px 16px;
+          text-align: left;
+          font-weight: 600;
+          color: #1e293b;
+          font-size: 0.9rem;
+          border-bottom: 2px solid #e2e8f0;
+          white-space: nowrap;
+        }
+        .ml-table td {
+          padding: 12px 16px;
+          border-bottom: 1px solid #f1f5f9;
+          color: #475569;
+          font-size: 0.9rem;
+        }
+        .ml-table tbody tr:hover {
+          background: #f8fafc;
+        }
+        .ml-table tbody tr:last-child td {
+          border-bottom: none;
+        }
       `}</style>
     </div>
   );

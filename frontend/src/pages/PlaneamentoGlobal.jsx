@@ -55,7 +55,7 @@ export default function PlaneamentoGlobal() {
       });
       if (res.ok) {
         const data = await res.json();
-        const activeObras = data.filter(o => o.status !== 'completed');
+        const activeObras = data.filter(o => o.status === 'active');
         setObras(activeObras);
         
         // Load users for each obra

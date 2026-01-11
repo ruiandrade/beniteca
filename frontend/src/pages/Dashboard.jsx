@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [obraChildren, setObraChildren] = useState([]);
   const [activeTab, setActiveTab] = useState("gantt");
   const [hierarchyTree, setHierarchyTree] = useState(null);
+  const [hierarchyLoading, setHierarchyLoading] = useState(false);
   const [navigationStack, setNavigationStack] = useState([]);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
 
@@ -22,6 +23,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (selectedObra) {
+      // Clear previous data to avoid showing stale data
+      setHierarchyTree(null);
+      setHierarchyLoading(true);
+      
       fetchObraChildren(selectedObra.id);
       buildHierarchy(selectedObra.id);
       // Expandir automaticamente a raiz
@@ -58,7 +63,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
       const data = await getMyWorks(token);
-      setObras(data.filter(obra => obra.status !== 'completed' && !obra.hidden));
+      setObras(data.filter(obra => obra.status === 'active' && !obra.hidden));
     } catch (err) {
       console.error("Erro ao carregar obras:", err);
       alert(`Erro ao carregar obras: ${err.message}`);
@@ -80,35 +85,35 @@ export default function Dashboard() {
     }
   };
 
-  const MAX_DEPTH = 6;
+  const sanitizeHierarchy = (node, depth = 0) => {
+    if (!node || !node.level || node.level.hidden) return null;
+    const children = Array.isArray(node.children)
+      ? node.children.map((child) => sanitizeHierarchy(child, depth + 1)).filter(Boolean)
+      : [];
+    const hasChildren = children.length > 0;
+
+    return {
+      ...node,
+      depth,
+      children,
+      hasChildren,
+      isLeaf: !hasChildren
+    };
+  };
+
   const buildHierarchy = async (levelId) => {
+    setHierarchyLoading(true);
     try {
-      const buildNode = async (id, depth = 0) => {
-        if (depth > MAX_DEPTH) return null;
-
-        const res = await fetch(`/api/levels/${id}`);
-        if (!res.ok) return null;
-        const level = await res.json();
-
-        const childrenRes = await fetch(`/api/levels?parentId=${id}`);
-        const children = childrenRes.ok ? await childrenRes.json() : [];
-
-        const childNodes = [];
-        for (const child of children) {
-          if (!child.hidden) {
-            const node = await buildNode(child.id, depth + 1);
-            if (node) childNodes.push(node);
-          }
-        }
-
-        return { level, children: childNodes };
-      };
-
-      const rootNode = await buildNode(levelId, 0);
-      setHierarchyTree(rootNode);
+      const res = await fetch(`/api/levels/${levelId}/hierarchy`);
+      if (!res.ok) throw new Error('Falha ao carregar hierarquia');
+      const rawTree = await res.json();
+      const cleanTree = sanitizeHierarchy(rawTree, 0);
+      setHierarchyTree(cleanTree);
     } catch (err) {
       console.error("Erro ao construir hierarquia:", err);
       setHierarchyTree(null);
+    } finally {
+      setHierarchyLoading(false);
     }
   };
 
@@ -156,31 +161,28 @@ export default function Dashboard() {
   // Calcular rácio baseado em toda a descendência folha (níveis sem filhos)
   const getLeafNodeRatio = (levelId) => {
     const countLeafNodes = (node) => {
-      if (!node || !node.children || node.children.length === 0) {
-        // É uma folha
+      if (!node) return { total: 0, completed: 0 };
+      const isLeafNode = node.isLeaf || !node.children || node.children.length === 0;
+      if (isLeafNode) {
         return {
           total: 1,
-          completed: node.level.completed ? 1 : 0
+          completed: node.level.status === 'completed' ? 1 : 0
         };
       }
-      
-      // Não é folha, processar filhos
-      let total = 0;
-      let completed = 0;
-      
-      node.children.forEach(child => {
+
+      return node.children.reduce((acc, child) => {
         const result = countLeafNodes(child);
-        total += result.total;
-        completed += result.completed;
-      });
-      
-      return { total, completed };
+        return {
+          total: acc.total + result.total,
+          completed: acc.completed + result.completed
+        };
+      }, { total: 0, completed: 0 });
     };
 
     // Encontrar o nó da árvore que corresponde ao levelId
     const findNode = (node, id) => {
       if (!node) return null;
-      if (node.level.id === id) return node;
+      if (`${node.level.id}` === `${id}`) return node;
       
       if (node.children) {
         for (let child of node.children) {
@@ -204,28 +206,27 @@ export default function Dashboard() {
   // Calcular percentagem de conclusão para a barra visual
   const getCompletionPercentage = (levelId) => {
     const countLeafNodes = (node) => {
-      if (!node || !node.children || node.children.length === 0) {
+      if (!node) return { total: 0, completed: 0 };
+      const isLeafNode = node.isLeaf || !node.children || node.children.length === 0;
+      if (isLeafNode) {
         return {
           total: 1,
           completed: node.level.status === 'completed' ? 1 : 0
         };
       }
-      
-      let total = 0;
-      let completed = 0;
-      
-      node.children.forEach(child => {
+
+      return node.children.reduce((acc, child) => {
         const result = countLeafNodes(child);
-        total += result.total;
-        completed += result.completed;
-      });
-      
-      return { total, completed };
+        return {
+          total: acc.total + result.total,
+          completed: acc.completed + result.completed
+        };
+      }, { total: 0, completed: 0 });
     };
 
     const findNode = (node, id) => {
       if (!node) return null;
-      if (node.level.id === id) return node;
+      if (`${node.level.id}` === `${id}`) return node;
       
       if (node.children) {
         for (let child of node.children) {
@@ -297,15 +298,20 @@ export default function Dashboard() {
 
   const flattenTree = (node, depth = 0) => {
     if (!node) return [];
-    const rows = [{ ...node.level, depth, hasChildren: node.children && node.children.length > 0 }];
-    
+    const rows = [{
+      ...node.level,
+      depth,
+      hasChildren: node.hasChildren,
+      isLeaf: node.isLeaf
+    }];
+
     // Só incluir filhos se o nó estiver expandido
-    if (expandedNodes.has(node.level.id)) {
+    if (node.hasChildren && expandedNodes.has(node.level.id)) {
       node.children.forEach((child) => {
         rows.push(...flattenTree(child, depth + 1));
       });
     }
-    
+
     return rows;
   };
 
@@ -546,7 +552,12 @@ export default function Dashboard() {
 
         {activeTab === "gantt" ? (
           <div className="gantt-container">
-            {ganttRows.length === 0 ? (
+            {hierarchyLoading ? (
+              <div className="loading-overlay">
+                <div className="loading-spinner"></div>
+                <p>A carregar hierarquia...</p>
+              </div>
+            ) : ganttRows.length === 0 ? (
               <div className="empty-state">
                 <p>Não há dados de planeamento para esta obra.</p>
               </div>
@@ -570,7 +581,8 @@ export default function Dashboard() {
                             style={{
                               backgroundColor: getBarBgColor(row),
                               borderLeft: `4px solid ${getBarColor(row)}`,
-                              paddingLeft: `${row.depth * 18 + 12}px`,
+                              marginLeft: `${row.depth * 16}px`,
+                              width: `calc(100% - ${row.depth * 16}px)`,
                             }}
                           >
                             <div className="level-name">
@@ -629,6 +641,12 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="hierarchy-container">
+            {hierarchyLoading ? (
+              <div className="loading-overlay">
+                <div className="loading-spinner"></div>
+                <p>A carregar hierarquia...</p>
+              </div>
+            ) : (
             <div className="hierarchy-table">
               <div className="hierarchy-header">
                 <span>Nível</span>
@@ -644,11 +662,13 @@ export default function Dashboard() {
                     style={{
                       backgroundColor: getBarBgColor(row),
                       borderLeft: `4px solid ${getBarColor(row)}`,
+                      marginLeft: `${row.depth * 16}px`,
+                      width: `calc(100% - ${row.depth * 16}px)`,
                     }}
                   >
                     <div
                       className="hierarchy-name"
-                      style={{ paddingLeft: `${row.depth * 18 + 8}px`, display: 'flex', alignItems: 'center', gap: '8px' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                     >
                       <button
                         className="link-btn"
@@ -706,6 +726,7 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
+            )}
           </div>
         )}
       </div>
@@ -837,16 +858,20 @@ export default function Dashboard() {
           position: sticky;
           left: 0;
           background: #fff;
-          padding: 8px;
-          min-width: 200px;
+          padding: 4px;
+          min-width: 250px;
+          max-width: 250px;
+          width: 250px;
           z-index: 5;
+          overflow: hidden;
         }
         .level-info {
-          padding: 8px 12px;
+          padding: 6px 10px;
           border-radius: 6px;
           display: flex;
           flex-direction: column;
           gap: 2px;
+          overflow: hidden;
         }
         .level-name {
           font-weight: 600;
@@ -943,6 +968,32 @@ export default function Dashboard() {
         }
         .link-btn:hover {
           text-decoration: underline;
+        }
+        
+        /* Loading overlay */
+        .loading-overlay {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 60px 20px;
+          gap: 16px;
+        }
+        .loading-spinner {
+          width: 50px;
+          height: 50px;
+          border: 5px solid #e5e7eb;
+          border-top-color: #01a383;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .loading-overlay p {
+          color: #64748b;
+          font-size: 1rem;
+          font-weight: 500;
         }
       `}</style>
     </div>

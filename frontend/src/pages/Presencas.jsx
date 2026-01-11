@@ -20,8 +20,8 @@ export default function Presencas() {
       const res = await fetch("/api/levels?parentId=null");
       if (res.ok) {
         const data = await res.json();
-        // Excluir obras arquivadas (status = 'completed')
-        setWorks(data.filter(obra => obra.status !== 'completed'));
+        // Mostrar apenas obras ativas (status = 'active')
+        setWorks(data.filter(obra => obra.status === 'active'));
       }
     } catch (err) {
       console.error("Erro ao carregar obras:", err);

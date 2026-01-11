@@ -29,11 +29,11 @@ async function seedDatabase() {
 
     // Inserir níveis
     await sql.query(`
-      INSERT INTO [Level] (name, description, parentId, startDate, endDate, completed, notes, constructionManagerId) VALUES
-      ('Project Alpha', 'Main construction project', NULL, '2024-01-01', '2024-12-31', 0, 'Initial phase', 2),
-      ('Foundation', 'Foundation work', 1, '2024-01-01', '2024-03-31', 1, 'Completed successfully', 2),
-      ('Structure', 'Building structure', 1, '2024-04-01', '2024-08-31', 0, 'In progress', 2),
-      ('Finishing', 'Interior finishing', 1, '2024-09-01', '2024-12-31', 0, 'Planned', 2)
+      INSERT INTO [Level] (name, description, parentId, startDate, endDate, status, notes, constructionManagerId) VALUES
+      ('Project Alpha', 'Main construction project', NULL, '2024-01-01', '2024-12-31', 'active', 'Initial phase', 2),
+      ('Foundation', 'Foundation work', 1, '2024-01-01', '2024-03-31', 'completed', 'Completed successfully', 2),
+      ('Structure', 'Building structure', 1, '2024-04-01', '2024-08-31', 'active', 'In progress', 2),
+      ('Finishing', 'Interior finishing', 1, '2024-09-01', '2024-12-31', 'active', 'Planned', 2)
     `);
     console.log('Levels inserted');
 

@@ -185,15 +185,6 @@ export default function Home() {
                             </div>
                             <div className="card-actions">
                               <button
-                                className="btn-warning"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePause(level.id);
-                                }}
-                              >
-                                ⏸️ Pausar
-                              </button>
-                              <button
                                 className="btn-secondary"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -201,6 +192,15 @@ export default function Home() {
                                 }}
                               >
                                 👥 Equipa
+                              </button>
+                              <button
+                                className="btn-warning"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePause(level.id);
+                                }}
+                              >
+                                ⏸️ Pausar
                               </button>
                               <button
                                 className="btn-danger"
