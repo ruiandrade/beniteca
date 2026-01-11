@@ -17,8 +17,8 @@ export default function ArchivedWorks() {
       const res = await fetch("/api/levels?parentId=");
       if (res.ok) {
         const data = await res.json();
-        // Filter to show only archived works (completed = true)
-        setObras(data.filter(obra => obra.completed === true));
+        // Filter to show only archived works (status = 'completed')
+        setObras(data.filter(obra => obra.status === 'completed'));
       }
     } catch (err) {
       console.error("Erro ao carregar obras arquivadas:", err);
@@ -33,7 +33,7 @@ export default function ArchivedWorks() {
       const res = await fetch(`/api/levels/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: false })
+        body: JSON.stringify({ status: 'active' })
       });
       if (res.ok) {
         await fetchObras();

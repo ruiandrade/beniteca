@@ -25,7 +25,8 @@ export default function Home() {
     setLoading(true);
     try {
       const data = await getMyWorks(token);
-      setLevels(data.filter(l => !l.completed));
+      // Filter out completed works, show active and paused
+      setLevels(data.filter(l => l.status !== 'completed'));
     } catch (err) {
       console.error('Erro ao carregar obras:', err);
       if (err.status === 401) {
@@ -46,7 +47,7 @@ export default function Home() {
       const res = await fetch(`/api/levels/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ completed: true }),
+        body: JSON.stringify({ status: 'completed' }),
       });
       if (!res.ok) throw new Error('Erro ao arquivar');
       loadLevels();
@@ -56,10 +57,45 @@ export default function Home() {
     }
   };
 
+  const handlePause = async (id) => {
+    if (!confirm('Deseja pausar esta obra? Ela não aparecerá nas listagens mas pode ser retomada a qualquer momento.')) return;
+    try {
+      const res = await fetch(`/api/levels/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'paused' }),
+      });
+      if (!res.ok) throw new Error('Erro ao pausar');
+      loadLevels();
+    } catch (err) {
+      alert('Erro ao pausar obra');
+      console.error(err);
+    }
+  };
+
+  const handleResume = async (id) => {
+    try {
+      const res = await fetch(`/api/levels/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active' }),
+      });
+      if (!res.ok) throw new Error('Erro ao retomar');
+      loadLevels();
+    } catch (err) {
+      alert('Erro ao retomar obra');
+      console.error(err);
+    }
+  };
+
   const filteredLevels = levels.filter(level =>
     level.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     level.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Separate active and paused works
+  const activeWorks = filteredLevels.filter(l => l.status === 'active');
+  const pausedWorks = filteredLevels.filter(l => l.status === 'paused');
 
   return (
     <div className="home-page">
@@ -109,62 +145,138 @@ export default function Home() {
                   {searchTerm ? 'Nenhuma obra encontrada com esse termo.' : 'Sem obras ativas. Clique em "Nova Obra" para começar.'}
                 </p>
               ) : (
-                <div className="cards-grid">
-                  {filteredLevels.map((level) => (
-                    <div 
-                      key={level.id} 
-                      className="work-card"
-                      onClick={() => navigate(`/works/${level.id}/levels`)}
-                    >
-                      {level.coverImage && (
-                        <img src={level.coverImage} alt={level.name} className="work-card-img" />
-                      )}
-                      <div className="card-content">
-                        <div className="card-header">
-                          <h3 className="card-title">{level.name}</h3>
-                          {level.childrenCount > 0 && (
-                            <span className="badge info">
-                              {level.childrenCount} {level.childrenCount === 1 ? 'nível' : 'níveis'}
-                            </span>
-                          )}
-                        </div>
-                        {level.description && (
-                          <p className="card-description">{level.description}</p>
-                        )}
-                        {level.startDate && (
-                          <p className="card-date">
-                            📅 {new Date(level.startDate).toLocaleDateString('pt-PT')} - {new Date(level.endDate).toLocaleDateString('pt-PT')}
-                          </p>
-                        )}
-                        {level.constructionManagerName && (
-                          <p className="card-manager">
-                            👷 {level.constructionManagerName}
-                          </p>
-                        )}
-                      </div>
-                      <div className="card-actions">
-                        <button
-                          className="btn-secondary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/works/${level.id}/equipa`);
-                          }}
-                        >
-                          👥 Equipa
-                        </button>
-                        <button
-                          className="btn-danger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleArchive(level.id);
-                          }}
-                        >
-                          📦 Arquivar
-                        </button>
+                <>
+                  {/* Active Works Section */}
+                  {activeWorks.length > 0 && (
+                    <div className="works-section">
+                      <h2 className="section-title">✅ Obras Ativas</h2>
+                      <div className="cards-grid">
+                        {activeWorks.map((level) => (
+                          <div 
+                            key={level.id} 
+                            className="work-card"
+                            onClick={() => navigate(`/works/${level.id}/levels`)}
+                          >
+                            {level.coverImage && (
+                              <img src={level.coverImage} alt={level.name} className="work-card-img" />
+                            )}
+                            <div className="card-content">
+                              <div className="card-header">
+                                <h3 className="card-title">{level.name}</h3>
+                                {level.childrenCount > 0 && (
+                                  <span className="badge info">
+                                    {level.childrenCount} {level.childrenCount === 1 ? 'nível' : 'níveis'}
+                                  </span>
+                                )}
+                              </div>
+                              {level.description && (
+                                <p className="card-description">{level.description}</p>
+                              )}
+                              {level.startDate && (
+                                <p className="card-date">
+                                  📅 {new Date(level.startDate).toLocaleDateString('pt-PT')} - {new Date(level.endDate).toLocaleDateString('pt-PT')}
+                                </p>
+                              )}
+                              {level.constructionManagerName && (
+                                <p className="card-manager">
+                                  👷 {level.constructionManagerName}
+                                </p>
+                              )}
+                            </div>
+                            <div className="card-actions">
+                              <button
+                                className="btn-warning"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePause(level.id);
+                                }}
+                              >
+                                ⏸️ Pausar
+                              </button>
+                              <button
+                                className="btn-secondary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/works/${level.id}/equipa`);
+                                }}
+                              >
+                                👥 Equipa
+                              </button>
+                              <button
+                                className="btn-danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleArchive(level.id);
+                                }}
+                              >
+                                📦 Arquivar
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+
+                  {/* Paused Works Section */}
+                  {pausedWorks.length > 0 && (
+                    <div className="works-section paused-section">
+                      <h2 className="section-title">⏸️ Obras Pausadas</h2>
+                      <div className="cards-grid">
+                        {pausedWorks.map((level) => (
+                          <div 
+                            key={level.id} 
+                            className="work-card paused-card"
+                            onClick={() => navigate(`/works/${level.id}/levels`)}
+                          >
+                            {level.coverImage && (
+                              <img src={level.coverImage} alt={level.name} className="work-card-img grayscale" />
+                            )}
+                            <div className="card-content">
+                              <div className="card-header">
+                                <h3 className="card-title">{level.name}</h3>
+                                <span className="badge warning">Pausada</span>
+                              </div>
+                              {level.description && (
+                                <p className="card-description">{level.description}</p>
+                              )}
+                              {level.startDate && (
+                                <p className="card-date">
+                                  📅 {new Date(level.startDate).toLocaleDateString('pt-PT')} - {new Date(level.endDate).toLocaleDateString('pt-PT')}
+                                </p>
+                              )}
+                              {level.constructionManagerName && (
+                                <p className="card-manager">
+                                  👷 {level.constructionManagerName}
+                                </p>
+                              )}
+                            </div>
+                            <div className="card-actions">
+                              <button
+                                className="btn-success"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleResume(level.id);
+                                }}
+                              >
+                                ▶️ Retomar
+                              </button>
+                              <button
+                                className="btn-danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleArchive(level.id);
+                                }}
+                              >
+                                📦 Arquivar
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </>
@@ -390,6 +502,55 @@ export default function Home() {
         .btn-danger:hover {
           background: #fecaca;
           border-color: #fca5a5;
+        }
+        .btn-warning {
+          background: #fef3c7;
+          color: #92400e;
+          border: 1px solid #fde68a;
+          border-radius: 6px;
+          padding: 6px 10px;
+          font-weight: 600;
+          font-size: 0.75rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-warning:hover {
+          background: #fde68a;
+          border-color: #fcd34d;
+        }
+        .btn-success {
+          background: #d1fae5;
+          color: #065f46;
+          border: 1px solid #a7f3d0;
+          border-radius: 6px;
+          padding: 6px 10px;
+          font-weight: 600;
+          font-size: 0.75rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-success:hover {
+          background: #a7f3d0;
+          border-color: #6ee7b7;
+        }
+        .works-section {
+          margin-bottom: 32px;
+        }
+        .section-title {
+          font-size: 1.5rem;
+          color: #01a383;
+          margin-bottom: 16px;
+          font-weight: 700;
+        }
+        .paused-section .section-title {
+          color: #92400e;
+        }
+        .paused-card {
+          opacity: 0.85;
+          border: 2px dashed #fbbf24;
+        }
+        .grayscale {
+          filter: grayscale(50%);
         }
         @media (max-width: 768px) {
           .home-page {

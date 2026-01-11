@@ -77,7 +77,7 @@ class PermissionService {
       const result = await pool.request()
         .input('userId', sql.Int, userId)
         .query(`
-          SELECT DISTINCT l.id, l.name, l.description, l.completed, l.startDate, l.endDate, 
+          SELECT DISTINCT l.id, l.name, l.description, l.status, l.startDate, l.endDate, 
                  l.coverImage, l.constructionManagerId, l.createdAt, l.updatedAt,
                  (SELECT COUNT(*) FROM [Level] WHERE parentId = l.id) as childrenCount
           FROM [Level] l
@@ -103,7 +103,7 @@ class PermissionService {
       const pool = await getConnection();
       const result = await pool.request()
         .query(`
-          SELECT id, name, description, completed, startDate, endDate, 
+          SELECT id, name, description, status, startDate, endDate, 
                  coverImage, constructionManagerId, createdAt, updatedAt,
                  (SELECT COUNT(*) FROM [Level] WHERE parentId = [Level].id) as childrenCount
           FROM [Level]

@@ -58,7 +58,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
       const data = await getMyWorks(token);
-      setObras(data.filter(obra => !obra.completed && !obra.hidden));
+      setObras(data.filter(obra => obra.status !== 'completed' && !obra.hidden));
     } catch (err) {
       console.error("Erro ao carregar obras:", err);
       alert(`Erro ao carregar obras: ${err.message}`);
@@ -113,7 +113,7 @@ export default function Dashboard() {
   };
 
   const getBarColor = (level) => {
-    if (level.completed) return "#16a34a"; // finished
+    if (level.status === 'completed') return "#16a34a"; // finished
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const startDate = level.startDate ? new Date(level.startDate) : null;
@@ -123,7 +123,7 @@ export default function Dashboard() {
   };
 
   const getBarBgColor = (level) => {
-    if (level.completed) return "#dcfce7";
+    if (level.status === 'completed') return "#dcfce7";
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const startDate = level.startDate ? new Date(level.startDate) : null;
@@ -207,7 +207,7 @@ export default function Dashboard() {
       if (!node || !node.children || node.children.length === 0) {
         return {
           total: 1,
-          completed: node.level.completed ? 1 : 0
+          completed: node.level.status === 'completed' ? 1 : 0
         };
       }
       

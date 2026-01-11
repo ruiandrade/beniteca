@@ -32,9 +32,9 @@ class LevelService {
     const orderValue = data.order !== undefined ? data.order : await this.getNextOrderValue(pool, parentId);
     // Insert new level
     const insertQuery = `
-      INSERT INTO Level (name, description, parentId, startDate, endDate, completed, notes, coverImage, constructionManagerId, siteDirectorId, [order])
+      INSERT INTO Level (name, description, parentId, startDate, endDate, status, notes, coverImage, constructionManagerId, siteDirectorId, [order])
       OUTPUT INSERTED.*
-      VALUES (@name, @description, @parentId, @startDate, @endDate, @completed, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order)
+      VALUES (@name, @description, @parentId, @startDate, @endDate, @status, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order)
     `;
     const result = await pool.request()
       .input('name', sql.NVarChar, data.name)
@@ -42,7 +42,7 @@ class LevelService {
       .input('parentId', sql.Int, parentId)
       .input('startDate', sql.DateTime, data.startDate)
       .input('endDate', sql.DateTime, data.endDate)
-      .input('completed', sql.Bit, data.completed || false)
+      .input('status', sql.NVarChar, data.status || 'active')
       .input('notes', sql.NVarChar, data.notes)
       .input('coverImage', sql.NVarChar, data.coverImage)
       .input('constructionManagerId', sql.Int, constructionManagerId)
@@ -70,16 +70,16 @@ class LevelService {
         .input('description', sql.NVarChar, data.root.description)
         .input('startDate', sql.DateTime, data.root.startDate)
         .input('endDate', sql.DateTime, data.root.endDate)
-        .input('completed', sql.Bit, data.root.completed || false)
+        .input('status', sql.NVarChar, data.root.status || 'active')
         .input('notes', sql.NVarChar, data.root.notes)
         .input('coverImage', sql.NVarChar, data.root.coverImage)
         .input('constructionManagerId', sql.Int, data.root.constructionManagerId ? parseInt(data.root.constructionManagerId) : null)
         .input('siteDirectorId', sql.Int, data.root.siteDirectorId ? parseInt(data.root.siteDirectorId) : null)
         .input('order', sql.Int, rootOrder)
         .query(`
-          INSERT INTO Level (name, description, parentId, startDate, endDate, completed, notes, coverImage, constructionManagerId, siteDirectorId, [order])
+          INSERT INTO Level (name, description, parentId, startDate, endDate, status, notes, coverImage, constructionManagerId, siteDirectorId, [order])
           OUTPUT INSERTED.*
-          VALUES (@name, @description, NULL, @startDate, @endDate, @completed, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order)
+          VALUES (@name, @description, NULL, @startDate, @endDate, @status, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order)
         `);
       
       const rootId = rootResult.recordset[0].id;
@@ -97,12 +97,12 @@ class LevelService {
               .input('parentId', sql.Int, parentId)
               .input('startDate', sql.DateTime, data.root.startDate)
               .input('endDate', sql.DateTime, data.root.endDate)
-              .input('completed', sql.Bit, false)
+              .input('status', sql.NVarChar, 'active')
               .input('order', sql.Int, childOrder)
               .query(`
-                INSERT INTO Level (name, description, parentId, startDate, endDate, completed, [order])
+                INSERT INTO Level (name, description, parentId, startDate, endDate, status, [order])
                 OUTPUT INSERTED.*
-                VALUES (@name, @description, @parentId, @startDate, @endDate, @completed, @order)
+                VALUES (@name, @description, @parentId, @startDate, @endDate, @status, @order)
               `);
             
             const childId = childResult.recordset[0].id;
@@ -164,12 +164,12 @@ class LevelService {
           .input('parentId', sql.Int, parentId)
           .input('startDate', sql.DateTime, entry.startDate || null)
           .input('endDate', sql.DateTime, entry.endDate || null)
-          .input('completed', sql.Bit, false)
+          .input('status', sql.NVarChar, 'active')
           .input('order', sql.Int, orderValue)
           .query(`
-            INSERT INTO Level (name, description, parentId, startDate, endDate, completed, [order])
+            INSERT INTO Level (name, description, parentId, startDate, endDate, status, [order])
             OUTPUT INSERTED.*
-            VALUES (@name, @description, @parentId, @startDate, @endDate, @completed, @order)
+            VALUES (@name, @description, @parentId, @startDate, @endDate, @status, @order)
           `);
 
         const createdId = result.recordset[0].id;
@@ -195,7 +195,7 @@ class LevelService {
            sd.name as siteDirectorName,
            sd.email as siteDirectorEmail,
            (SELECT COUNT(*) FROM Level WHERE parentId = l.id) as childrenCount,
-           (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND completed = 1) as completedChildren
+           (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND status = 'completed') as completedChildren
           FROM Level l
           LEFT JOIN Level p ON l.parentId = p.id
           LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
@@ -229,7 +229,7 @@ class LevelService {
               sd.name as siteDirectorName,
               sd.email as siteDirectorEmail,
               (SELECT COUNT(*) FROM Level WHERE parentId = l.id) as childrenCount,
-              (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND completed = 1) as completedChildren
+              (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND status = 'completed') as completedChildren
             FROM Level l
             LEFT JOIN Level p ON l.parentId = p.id
             LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
@@ -271,7 +271,7 @@ class LevelService {
              cm.name as constructionManagerName,
              cm.email as constructionManagerEmail,
              (SELECT COUNT(*) FROM Level WHERE parentId = l.id) as childrenCount,
-             (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND completed = 1) as completedChildren
+             (SELECT COUNT(*) FROM Level WHERE parentId = l.id AND status = 'completed') as completedChildren
       FROM Level l
       LEFT JOIN Level p ON l.parentId = p.id
       LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
@@ -310,9 +310,9 @@ class LevelService {
       fields.push('endDate = @endDate');
       request.input('endDate', sql.DateTime, data.endDate);
     }
-    if (data.completed !== undefined) {
-      fields.push('completed = @completed');
-      request.input('completed', sql.Bit, data.completed);
+    if (data.status !== undefined) {
+      fields.push('status = @status');
+      request.input('status', sql.NVarChar, data.status);
     }
     if (data.notes !== undefined) {
       fields.push('notes = @notes');
@@ -372,9 +372,9 @@ class LevelService {
     const pool = await getConnection();
     const childrenResult = await pool.request()
       .input('parentId', sql.Int, parseInt(id))
-      .query('SELECT completed FROM Level WHERE parentId = @parentId');
+      .query('SELECT status FROM Level WHERE parentId = @parentId');
     for (const child of childrenResult.recordset) {
-      if (!child.completed) return false;
+      if (child.status !== 'completed') return false;
     }
     return true;
   }
@@ -384,7 +384,7 @@ class LevelService {
     if (!(await this.canCompleteLevel(id))) {
       throw new Error('Cannot complete level: children not completed');
     }
-    return await this.updateLevel(id, { completed: true });
+    return await this.updateLevel(id, { status: 'completed' });
   }
 
   // Reorder direct children under a parent by orderedIds array

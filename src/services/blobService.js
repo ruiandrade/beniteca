@@ -1,13 +1,36 @@
+// Ensure env is loaded before accessing process.env
+if (process.env.NODE_ENV !== 'production' && !process.env.AZURE_STORAGE_CONNECTION_STRING) {
+  const fs = require('fs');
+  const path = require('path');
+  const envFile = `.env.${process.env.NODE_ENV || 'development'}`;
+  const envPath = path.join(__dirname, '../../', envFile);
+  
+  if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+  } else {
+    require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+  }
+}
+
 const { BlobServiceClient } = require('@azure/storage-blob');
 const { AZURE_STORAGE_CONNECTION_STRING } = process.env;
 
 class BlobService {
   constructor() {
-    this.blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+    if (!AZURE_STORAGE_CONNECTION_STRING) {
+      console.warn('⚠️  AZURE_STORAGE_CONNECTION_STRING not configured. Blob operations will fail.');
+      this.blobServiceClient = null;
+    } else {
+      this.blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+    }
     this.defaultContainer = 'beniteca-photos';
   }
 
   async uploadFile(fileBuffer, fileName, mimeType, containerName = this.defaultContainer) {
+    if (!this.blobServiceClient) {
+      throw new Error('Blob storage not configured');
+    }
+    
     try {
       const container = containerName || this.defaultContainer;
       // Ensure container exists (private)

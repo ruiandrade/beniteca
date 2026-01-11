@@ -140,11 +140,11 @@ export default function ManageLevels() {
     return await res.json();
   };
 
-  const setLevelCompleted = async (levelId, completed) => {
+  const setLevelStatus = async (levelId, status) => {
     await fetch(`/api/levels/${levelId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ completed })
+      body: JSON.stringify({ status })
     });
   };
 
@@ -156,9 +156,9 @@ export default function ManageLevels() {
     // Walk up while each ancestor qualifies to be completed
     while (currentParentId) {
       const siblings = await fetchChildren(currentParentId);
-      const allCompleted = siblings.length === 0 ? true : siblings.every(s => s.completed);
+      const allCompleted = siblings.length === 0 ? true : siblings.every(s => s.status === 'completed');
       if (allCompleted) {
-        await setLevelCompleted(currentParentId, true);
+        await setLevelStatus(currentParentId, 'completed');
         const parentLevel = await fetchLevelById(currentParentId);
         currentParentId = parentLevel?.parentId || null;
       } else {
@@ -171,7 +171,7 @@ export default function ManageLevels() {
   const cascadeReopenUpFrom = async (levelId) => {
     const ancestors = await fetchAncestorIds(levelId);
     for (const ancestorId of ancestors) {
-      await setLevelCompleted(ancestorId, false);
+      await setLevelStatus(ancestorId, 'active');
     }
   };
 
@@ -249,7 +249,7 @@ export default function ManageLevels() {
             if (childrenRes.ok) {
               const children = await childrenRes.json();
               const visibleChildren = children.filter(c => !c.hidden);
-              const completedChildren = visibleChildren.filter(c => c.completed).length;
+              const completedChildren = visibleChildren.filter(c => c.status === 'completed').length;
               return { ...sub, childrenCount: visibleChildren.length, completedChildren };
             }
             return { ...sub, childrenCount: 0, completedChildren: 0 };
@@ -264,7 +264,7 @@ export default function ManageLevels() {
         });
 
         setSublevels(sortedData);
-        const completed = sortedData.filter(sub => sub.completed).length;
+        const completed = sortedData.filter(sub => sub.status === 'completed').length;
         setCompletedCount(completed);
       }
     } catch (err) {
@@ -464,12 +464,12 @@ export default function ManageLevels() {
       
       // Se o nível atual ou algum ancestral estava concluído, reabrir todos
       const ancestors = await fetchAncestorIds(id);
-      const targetsToReopen = work?.completed ? [id, ...ancestors] : ancestors;
+      const targetsToReopen = work?.status === 'completed' ? [id, ...ancestors] : ancestors;
       for (const ancestorId of targetsToReopen) {
         await fetch(`/api/levels/${ancestorId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ completed: false }),
+          body: JSON.stringify({ status: 'active' }),
         });
       }
       
@@ -603,7 +603,7 @@ export default function ManageLevels() {
       const childrenRes = await fetch(`/api/levels?parentId=${sublevelId}`);
       if (childrenRes.ok) {
         const children = await childrenRes.json();
-        const incompletedChildren = children.filter(c => !c.completed);
+        const incompletedChildren = children.filter(c => c.status !== 'completed');
         
         if (incompletedChildren.length > 0) {
           setModal({
@@ -626,7 +626,7 @@ export default function ManageLevels() {
         const res = await fetch(`/api/levels/${sublevelId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ completed: !currentStatus }),
+          body: JSON.stringify({ status: currentStatus ? 'active' : 'completed' }),
         });
         if (res.ok) {
           // If completing the main work level, refresh its state
@@ -1513,8 +1513,8 @@ export default function ManageLevels() {
     );
   };
 
-  const visibleNotCompleted = sublevels.filter((s) => !s.completed && !s.hidden);
-  const visibleCompleted = sublevels.filter((s) => s.completed && !s.hidden);
+  const visibleNotCompleted = sublevels.filter((s) => s.status !== 'completed' && !s.hidden);
+  const visibleCompleted = sublevels.filter((s) => s.status === 'completed' && !s.hidden);
   const hiddenSublevels = sublevels.filter((s) => s.hidden);
 
   return (
@@ -1834,16 +1834,16 @@ export default function ManageLevels() {
                               <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete" title="Ocultar">👁️</button>
                               <button onClick={() => handleRemoveSublevel(sub.id)} className="ml-btn-remove" title="Remover permanentemente">🗑️</button>
                               <button 
-                                onClick={() => handleToggleComplete(sub.id, sub.completed)} 
-                                className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
-                                title={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.completed ? "Marcar como não concluído" : "Marcar como concluído")}
-                                disabled={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
+                                onClick={() => handleToggleComplete(sub.id, sub.status === 'completed')} 
+                                className={sub.status === 'completed' ? "ml-btn-completed" : "ml-btn-incomplete"}
+                                title={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.status === 'completed' ? "Marcar como não concluído" : "Marcar como concluído")}
+                                disabled={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
                                 style={{
-                                  opacity: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
-                                  cursor: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
+                                  opacity: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
+                                  cursor: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
                                 }}
                               >
-                                {sub.completed ? "✓" : "○"}
+                                {sub.status === 'completed' ? "✓" : "○"}
                               </button>
                             </div>
                           </div>
@@ -1877,16 +1877,16 @@ export default function ManageLevels() {
                               <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete" title="Ocultar">👁️</button>
                               <button onClick={() => handleRemoveSublevel(sub.id)} className="ml-btn-remove" title="Remover permanentemente">🗑️</button>
                               <button 
-                                onClick={() => handleToggleComplete(sub.id, sub.completed)} 
-                                className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
-                                title={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.completed ? "Marcar como não concluído" : "Marcar como concluído")}
-                                disabled={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
+                                onClick={() => handleToggleComplete(sub.id, sub.status === 'completed')} 
+                                className={sub.status === 'completed' ? "ml-btn-completed" : "ml-btn-incomplete"}
+                                title={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.status === 'completed' ? "Marcar como não concluído" : "Marcar como concluído")}
+                                disabled={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
                                 style={{
-                                  opacity: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
-                                  cursor: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
+                                  opacity: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
+                                  cursor: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
                                 }}
                               >
-                                {sub.completed ? "✓" : "○"}
+                                {sub.status === 'completed' ? "✓" : "○"}
                               </button>
                             </div>
                           </div>
@@ -1920,16 +1920,16 @@ export default function ManageLevels() {
                               <button onClick={() => handleShowSublevel(sub.id)} className="ml-btn-show" title="Mostrar">👁️‍🗨️</button>
                               <button onClick={() => handleRemoveSublevel(sub.id)} className="ml-btn-remove" title="Remover permanentemente">🗑️</button>
                               <button 
-                                onClick={() => handleToggleComplete(sub.id, sub.completed)} 
-                                className={sub.completed ? "ml-btn-completed" : "ml-btn-incomplete"}
-                                title={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.completed ? "Marcar como não concluído" : "Marcar como concluído")}
-                                disabled={!sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
+                                onClick={() => handleToggleComplete(sub.id, sub.status === 'completed')} 
+                                className={sub.status === 'completed' ? "ml-btn-completed" : "ml-btn-incomplete"}
+                                title={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.status === 'completed' ? "Marcar como não concluído" : "Marcar como concluído")}
+                                disabled={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
                                 style={{
-                                  opacity: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
-                                  cursor: !sub.completed && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
+                                  opacity: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
+                                  cursor: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
                                 }}
                               >
-                                {sub.completed ? "✓" : "○"}
+                                {sub.status === 'completed' ? "✓" : "○"}
                               </button>
                             </div>
                           </div>

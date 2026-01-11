@@ -41,7 +41,7 @@ export default function Permissions() {
       });
       if (!obrasRes.ok) throw new Error('Erro ao carregar obras');
       const obrasData = await obrasRes.json();
-      setObras(obrasData.filter(o => !o.completed));
+      setObras(obrasData.filter(o => o.status !== 'completed'));
     } catch (err) {
       setError(`Erro ao carregar dados: ${err.message}`);
     } finally {
