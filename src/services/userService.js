@@ -7,17 +7,27 @@ class UserService {
       .input('email', sql.NVarChar, data.email)
       .input('name', sql.NVarChar, data.name)
       .input('status', sql.NVarChar, data.status)
+      .input('active', sql.Bit, data.active === undefined ? true : !!data.active)
       .query(`
-        INSERT INTO [User] (email, name, status)
+        INSERT INTO [User] (email, name, status, active)
         OUTPUT INSERTED.*
-        VALUES (@email, @name, @status)
+        VALUES (@email, @name, @status, @active)
       `);
     return result.recordset[0];
   }
 
-  async getUsers() {
+  async getUsers(filter = {}) {
     const pool = await getConnection();
-    const result = await pool.request().query('SELECT * FROM [User] ORDER BY id');
+    let query = 'SELECT * FROM [User]';
+    const req = pool.request();
+    const clauses = [];
+    if (filter.active !== undefined) {
+      clauses.push('active = @active');
+      req.input('active', sql.Bit, filter.active === true || filter.active === '1' || filter.active === 1 || filter.active === 'true');
+    }
+    if (clauses.length) query += ' WHERE ' + clauses.join(' AND ');
+    query += ' ORDER BY name ASC, id ASC';
+    const result = await req.query(query);
     return result.recordset;
   }
 
@@ -52,6 +62,10 @@ class UserService {
     if (data.status) {
       updates.push('status = @status');
       request.input('status', sql.NVarChar, data.status);
+    }
+    if (data.active !== undefined) {
+      updates.push('active = @active');
+      request.input('active', sql.Bit, !!data.active);
     }
     if (data.passwordHash !== undefined) {
       updates.push('passwordHash = @passwordHash');

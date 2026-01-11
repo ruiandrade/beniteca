@@ -10,7 +10,17 @@ export const getMyWorks = async (token) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Erro ao obter obras: ${response.statusText}`);
+      let errorMessage = response.statusText || 'Erro ao obter obras';
+      try {
+        const data = await response.json();
+        if (data?.error) errorMessage = data.error;
+      } catch (_) {
+        // ignore JSON parse errors; fall back to statusText
+      }
+
+      const err = new Error(`Erro ao obter obras: ${errorMessage}`);
+      err.status = response.status;
+      throw err;
     }
     
     return await response.json();

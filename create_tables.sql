@@ -6,6 +6,7 @@ CREATE TABLE [User] (
   email NVARCHAR(255) UNIQUE NOT NULL,
   name NVARCHAR(255) NOT NULL,
   status NVARCHAR(255) NOT NULL, -- A: Admin, C: Construction Manager, W: Write, R: Read-only
+  active BIT NOT NULL DEFAULT 1,
   createdAt DATETIME2 DEFAULT GETDATE(),
   updatedAt DATETIME2 DEFAULT GETDATE()
 );

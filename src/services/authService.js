@@ -10,6 +10,10 @@ class AuthService {
     const user = await userService.getUserByEmail(email);
     if (!user) throw new Error('Credenciais inválidas');
 
+    if (user.active === false || user.active === 0) {
+      throw new Error('Conta desativada');
+    }
+
     // Admin/Other only; if no password set, deny
     if (!user.passwordHash) throw new Error('Conta sem password definida');
 

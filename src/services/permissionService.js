@@ -155,7 +155,7 @@ class PermissionService {
       const result = await pool.request()
         .input('levelId', sql.Int, levelId)
         .query(`
-          SELECT u.id, u.name, u.email, u.status
+          SELECT u.id, u.name, u.email, u.status, u.active
           FROM [User] u
           INNER JOIN [LevelUser] lu ON u.id = lu.userId
           WHERE lu.levelId = @levelId

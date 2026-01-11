@@ -12,11 +12,30 @@ class UserController {
 
   async getAll(req, res) {
     try {
-      const users = await userService.getUsers();
+      const users = await userService.getUsers(req.query || {});
       console.log('📋 getAll - Retornando', users.length, 'users');
       res.json(users);
     } catch (error) {
       console.error('❌ Erro em getAll:', error.message);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async getActive(req, res) {
+    try {
+      const users = await userService.getUsers({ active: true });
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async getManagers(req, res) {
+    try {
+      // For now, return all active users (selection lists use this route)
+      const users = await userService.getUsers({ active: true });
+      res.json(users);
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }

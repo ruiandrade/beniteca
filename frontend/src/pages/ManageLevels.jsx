@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 
 export default function ManageLevels() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("sublevels");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "sublevels");
   const [work, setWork] = useState(null);
   const [breadcrumb, setBreadcrumb] = useState([]);
   const [sublevels, setSublevels] = useState([]);
@@ -95,6 +96,13 @@ export default function ManageLevels() {
   const [showExcelImport, setShowExcelImport] = useState(false);
   const [showExcelImportMaterials, setShowExcelImportMaterials] = useState(false);
 
+  // Estado para tab "Todos os Anexos"
+  const [allContents, setAllContents] = useState({ materials: [], photos: [], documents: [], counts: { materials: 0, photos: 0, documents: 0 } });
+  const [contentsFilter, setContentsFilter] = useState('all'); // 'all', 'materials', 'photos', 'documents'
+  const [contentsSearch, setContentsSearch] = useState('');
+  const [contentsOffset, setContentsOffset] = useState(0);
+  const [contentsLoading, setContentsLoading] = useState(false);
+
   // Estado para modal de notificação
   const [modal, setModal] = useState({ type: null, title: '', message: '', onConfirm: null });
 
@@ -176,6 +184,21 @@ export default function ManageLevels() {
     fetchPhotos();
     buildBreadcrumb();
   }, [id]);
+
+  // Update activeTab when URL search params change
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  // Fetch all contents when "Todos os Anexos" tab is active and work is root
+  useEffect(() => {
+    if (activeTab === 'allContents' && work && !work.parentId) {
+      fetchAllContents();
+    }
+  }, [activeTab, work, contentsFilter, contentsSearch, contentsOffset]);
 
   const fetchWork = async () => {
     try {
@@ -297,30 +320,59 @@ export default function ManageLevels() {
     }
   };
 
-  // Equipa-related fetches removed; handled in Equipa page
+  const fetchAllContents = async () => {
+    setContentsLoading(true);
+    try {
+      const types = contentsFilter === 'all' ? 'materials,photos,documents' 
+        : contentsFilter === 'materials' ? 'materials'
+        : contentsFilter === 'photos' ? 'photos'
+        : 'documents';
+      
+      const params = new URLSearchParams({
+        types,
+        limit: 50,
+        offset: contentsOffset
+      });
+      if (contentsSearch) params.set('q', contentsSearch);
 
-  // ========== SUBNÍVEIS ==========
-  const buildReorderedSublevels = (sourceId, targetId) => {
-    const visible = sublevels.filter((s) => !s.completed && !s.hidden);
-    const sourceIndex = visible.findIndex((s) => s.id === sourceId);
-    const targetIndex = visible.findIndex((s) => s.id === targetId);
-    if (sourceIndex === -1 || targetIndex === -1) return null;
-
-    const reorderedVisible = [...visible];
-    const [moved] = reorderedVisible.splice(sourceIndex, 1);
-    reorderedVisible.splice(targetIndex, 0, moved);
-
-    const merged = [];
-    let cursor = 0;
-
-    for (const item of sublevels) {
-      if (!item.completed && !item.hidden) {
-        merged.push(reorderedVisible[cursor]);
-        cursor += 1;
+      const res = await fetch(`/api/levels/${id}/contents?${params}`);
+      if (!res.ok) throw new Error('Erro ao carregar anexos');
+      const data = await res.json();
+      
+      if (contentsOffset === 0) {
+        setAllContents(data);
       } else {
-        merged.push(item);
+        // Append for pagination
+        setAllContents(prev => ({
+          materials: [...prev.materials, ...data.materials],
+          photos: [...prev.photos, ...data.photos],
+          documents: [...prev.documents, ...data.documents],
+          counts: data.counts
+        }));
       }
+    } catch (err) {
+      console.error('Erro ao carregar todos os anexos:', err);
+      setModal({
+        type: 'error',
+        title: 'Erro',
+        message: err.message,
+        onConfirm: null
+      });
+    } finally {
+      setContentsLoading(false);
     }
+  };
+  
+  // Equipa-related handlers removed; handled in Equipa page
+
+  const buildReorderedSublevels = (draggedId, targetId) => {
+    const dragged = sublevels.find((s) => s.id === draggedId);
+    const target = sublevels.find((s) => s.id === targetId);
+    if (!dragged || !target) return { nextSublevels: sublevels, orderedIds: sublevels.map((s) => s.id) };
+
+    const filtered = sublevels.filter((s) => s.id !== draggedId);
+    const targetIndex = filtered.findIndex((s) => s.id === targetId);
+    const merged = [...filtered.slice(0, targetIndex + 1), dragged, ...filtered.slice(targetIndex + 1)];
 
     const orderedIds = merged.map((item) => item.id);
     return { nextSublevels: merged, orderedIds };
@@ -1639,6 +1691,15 @@ export default function ManageLevels() {
           >
             🏗️
           </button>
+          {work && !work.parentId && (
+            <button
+              className={activeTab === "allContents" ? "ml-tab ml-tab-active" : "ml-tab"}
+              onClick={() => setActiveTab("allContents")}
+              title="Todos os Anexos"
+            >
+              📎
+            </button>
+          )}
           <button
             className={activeTab === "materials" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("materials")}
@@ -1924,6 +1985,259 @@ export default function ManageLevels() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ========== TAB: TODOS OS ANEXOS ========== */}
+        {activeTab === "allContents" && (
+          <div className="ml-tab-content">
+            <div className="ml-section-header">
+              <h2>Todos os Anexos da Obra</h2>
+              <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                <input
+                  type="text"
+                  placeholder="Pesquisar..."
+                  value={contentsSearch}
+                  onChange={(e) => {
+                    setContentsSearch(e.target.value);
+                    setContentsOffset(0);
+                  }}
+                  style={{padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db'}}
+                />
+              </div>
+            </div>
+
+            {/* Sub-tabs */}
+            <div style={{display: 'flex', gap: '8px', marginBottom: '16px', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px'}}>
+              <button
+                onClick={() => { setContentsFilter('all'); setContentsOffset(0); }}
+                style={{
+                  padding: '6px 12px',
+                  border: 'none',
+                  background: contentsFilter === 'all' ? '#4f46e5' : '#f3f4f6',
+                  color: contentsFilter === 'all' ? 'white' : '#374151',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                Tudo ({(allContents.counts.materials || 0) + (allContents.counts.photos || 0) + (allContents.counts.documents || 0)})
+              </button>
+              <button
+                onClick={() => { setContentsFilter('materials'); setContentsOffset(0); }}
+                style={{
+                  padding: '6px 12px',
+                  border: 'none',
+                  background: contentsFilter === 'materials' ? '#4f46e5' : '#f3f4f6',
+                  color: contentsFilter === 'materials' ? 'white' : '#374151',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                Materiais ({allContents.counts.materials || 0})
+              </button>
+              <button
+                onClick={() => { setContentsFilter('photos'); setContentsOffset(0); }}
+                style={{
+                  padding: '6px 12px',
+                  border: 'none',
+                  background: contentsFilter === 'photos' ? '#4f46e5' : '#f3f4f6',
+                  color: contentsFilter === 'photos' ? 'white' : '#374151',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                Fotos ({allContents.counts.photos || 0})
+              </button>
+              <button
+                onClick={() => { setContentsFilter('documents'); setContentsOffset(0); }}
+                style={{
+                  padding: '6px 12px',
+                  border: 'none',
+                  background: contentsFilter === 'documents' ? '#4f46e5' : '#f3f4f6',
+                  color: contentsFilter === 'documents' ? 'white' : '#374151',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                Documentos ({allContents.counts.documents || 0})
+              </button>
+            </div>
+
+            {contentsLoading && contentsOffset === 0 ? (
+              <div style={{textAlign: 'center', padding: '32px', color: '#6b7280'}}>A carregar...</div>
+            ) : (
+              <>
+                {/* Render Materiais */}
+                {(contentsFilter === 'all' || contentsFilter === 'materials') && allContents.materials.length > 0 && (
+                  <div style={{marginBottom: '24px'}}>
+                    <h3 style={{fontSize: '1.2rem', marginBottom: '12px'}}>📦 Materiais</h3>
+                    <table className="ml-table">
+                      <thead>
+                        <tr>
+                          <th>Descrição</th>
+                          <th>Tipo</th>
+                          <th>Quantidade</th>
+                          <th>Nível</th>
+                          <th>Criado</th>
+                          <th>Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allContents.materials.map(m => (
+                          <tr key={m.id}>
+                            <td>{m.description}</td>
+                            <td>{m.type || '—'}</td>
+                            <td>{m.quantity}</td>
+                            <td style={{fontSize: '0.85rem', color: '#6b7280'}}>{m.levelPath}</td>
+                            <td>{new Date(m.createdAt).toLocaleDateString('pt-PT')}</td>
+                            <td>
+                              <Link
+                                to={`/works/${m.levelId}/levels?tab=materials`}
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '4px 8px',
+                                  background: '#e0e7ff',
+                                  color: '#4338ca',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.85rem',
+                                  textDecoration: 'none'
+                                }}
+                              >
+                                Ir →
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Render Fotos */}
+                {(contentsFilter === 'all' || contentsFilter === 'photos') && allContents.photos.length > 0 && (
+                  <div style={{marginBottom: '24px'}}>
+                    <h3 style={{fontSize: '1.2rem', marginBottom: '12px'}}>📸 Fotos</h3>
+                    <table className="ml-table">
+                      <thead>
+                        <tr>
+                          <th>Tipo</th>
+                          <th>Descrição</th>
+                          <th>Nível</th>
+                          <th>Criado</th>
+                          <th>Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allContents.photos.map(p => (
+                          <tr key={p.id}>
+                            <td>{p.type === 'before' ? 'Antes' : p.type === 'inprogress' ? 'Em progresso' : p.type === 'completed' ? 'Concluído' : p.type === 'issue' ? 'Problema' : p.type}</td>
+                            <td>{p.description || '—'}</td>
+                            <td style={{fontSize: '0.85rem', color: '#6b7280'}}>{p.levelPath}</td>
+                            <td>{new Date(p.createdAt).toLocaleDateString('pt-PT')}</td>
+                            <td>
+                              <Link
+                                to={`/works/${p.levelId}/levels?tab=photos`}
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '4px 8px',
+                                  background: '#e0e7ff',
+                                  color: '#4338ca',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.85rem',
+                                  textDecoration: 'none'
+                                }}
+                              >
+                                Ir →
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Render Documentos */}
+                {(contentsFilter === 'all' || contentsFilter === 'documents') && allContents.documents.length > 0 && (
+                  <div style={{marginBottom: '24px'}}>
+                    <h3 style={{fontSize: '1.2rem', marginBottom: '12px'}}>📄 Documentos</h3>
+                    <table className="ml-table">
+                      <thead>
+                        <tr>
+                          <th>Nome</th>
+                          <th>Tipo</th>
+                          <th>Nível</th>
+                          <th>Criado</th>
+                          <th>Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allContents.documents.map(d => (
+                          <tr key={d.id}>
+                            <td>{d.name}</td>
+                            <td>{d.type || '—'}</td>
+                            <td style={{fontSize: '0.85rem', color: '#6b7280'}}>{d.levelPath}</td>
+                            <td>{new Date(d.createdAt).toLocaleDateString('pt-PT')}</td>
+                            <td>
+                              <Link
+                                to={`/works/${d.levelId}/levels?tab=documents`}
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '4px 8px',
+                                  background: '#e0e7ff',
+                                  color: '#4338ca',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.85rem',
+                                  textDecoration: 'none'
+                                }}
+                              >
+                                Ir →
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {!contentsLoading && allContents.materials.length === 0 && allContents.photos.length === 0 && allContents.documents.length === 0 && (
+                  <div style={{textAlign: 'center', padding: '32px', color: '#6b7280'}}>
+                    Nenhum anexo encontrado.
+                  </div>
+                )}
+
+                {/* Load More Button */}
+                {!contentsLoading && (allContents.materials.length > 0 || allContents.photos.length > 0 || allContents.documents.length > 0) && (
+                  <div style={{textAlign: 'center', marginTop: '16px'}}>
+                    <button
+                      onClick={() => setContentsOffset(prev => prev + 50)}
+                      disabled={contentsLoading}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#f3f4f6',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 600
+                      }}
+                    >
+                      {contentsLoading ? 'A carregar...' : 'Carregar mais'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 

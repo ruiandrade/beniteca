@@ -6,7 +6,7 @@ import WorkerSchedule from './WorkerSchedule';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('list');
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,6 +28,12 @@ export default function Home() {
       setLevels(data.filter(l => !l.completed));
     } catch (err) {
       console.error('Erro ao carregar obras:', err);
+      if (err.status === 401) {
+        alert('Sessão expirada. Faça login novamente.');
+        logout();
+        navigate('/login');
+        return;
+      }
       alert(`Erro ao carregar obras: ${err.message}`);
     } finally {
       setLoading(false);

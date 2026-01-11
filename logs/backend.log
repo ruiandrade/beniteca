@@ -1,0 +1,14 @@
+nohup: ignoring input
+
+> beniteca@1.0.0 start
+> node index.js
+
+[dotenv@17.2.3] injecting env (10) from .env.development -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+Loaded environment from .env.development
+✅ Server running on port 3000 in development mode
+📊 Database: Connected
+📦 Blob Storage: Connected
+Conectado ao Azure SQL ✅
+Upload request received
+File: 298-1768170081870-issue-amoreiras-shopping-center.jpg image/jpeg 49367
+Upload successful, URL: https://beniteca.blob.core.windows.net/beniteca-photos/1768170081988-298-1768170081870-issue-amoreiras-shopping-center.jpg?sv=2025-11-05&se=2027-01-11T22%3A21%3A22Z&sr=b&sp=r&sig=9LsOoNtAGbSQigXkRvjCS8YDLqZA8AdesJOcs3goSKo%3D

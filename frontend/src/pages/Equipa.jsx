@@ -32,7 +32,7 @@ export default function Equipa() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users', {
+      const res = await fetch('/api/users?active=1', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {

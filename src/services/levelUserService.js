@@ -18,6 +18,14 @@ class LevelUserService {
 
   async add(levelId, userId) {
     const pool = await getConnection();
+    // Ensure user is active before associating
+    const userCheck = await pool.request()
+      .input('userId', sql.Int, parseInt(userId))
+      .query('SELECT id, active FROM [User] WHERE id = @userId');
+    const user = userCheck.recordset[0];
+    if (!user || user.active === false || user.active === 0) {
+      throw new Error('Utilizador desativado ou inexistente');
+    }
     const result = await pool.request()
       .input('levelId', sql.Int, parseInt(levelId))
       .input('userId', sql.Int, parseInt(userId))

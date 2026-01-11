@@ -80,18 +80,23 @@ export default function Users() {
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!confirm('Tem certeza que deseja eliminar este utilizador?')) return;
-
+  const handleToggleActive = async (u) => {
+    if (u.id === user?.id && u.active) {
+      setError('Não pode desativar a sua própria conta.');
+      return;
+    }
+    const nextActive = !u.active;
     try {
-      const res = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+      const res = await fetch(`/api/users/${u.id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ active: nextActive })
       });
-
-      if (!res.ok) throw new Error('Erro ao eliminar utilizador');
-
-      setSuccess('Utilizador eliminado com sucesso!');
+      if (!res.ok) throw new Error('Erro ao atualizar utilizador');
+      setSuccess(nextActive ? 'Utilizador reativado com sucesso!' : 'Utilizador desativado com sucesso!');
       loadUsers();
     } catch (err) {
       setError(err.message);
@@ -397,46 +402,101 @@ export default function Users() {
 
       {loading ? (
         <div className="loading-text">A carregar...</div>
-      ) : users.length === 0 ? (
-        <div className="empty-state">
-          <p>Nenhum utilizador encontrado</p>
-        </div>
       ) : (
-        <table className="users-table">
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Nome</th>
-              <th>Role</th>
-              <th>Criado</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(u => (
-              <tr key={u.id}>
-                <td>{u.email}</td>
-                <td>{u.name}</td>
-                <td>
-                  <span className={`role-badge role-${u.status === 'A' ? 'admin' : u.status === 'C' ? 'client' : 'other'}`}>
-                    {u.status === 'A' ? 'Admin' : u.status === 'C' ? 'Cliente' : 'Utilizador'}
-                  </span>
-                </td>
-                <td>{new Date(u.createdAt).toLocaleDateString('pt-PT')}</td>
-                <td>
-                  <button
-                    className="btn-delete"
-                    onClick={() => handleDeleteUser(u.id)}
-                    disabled={u.id === user?.id}
-                    title={u.id === user?.id ? 'Não pode eliminar a si próprio' : 'Eliminar utilizador'}
-                  >
-                    🗑️ Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          {/* Utilizadores Ativos */}
+          <div className="users-header" style={{marginTop: '8px'}}>
+            <h2 style={{margin: 0}}>Utilizadores Ativos</h2>
+            <p style={{margin: 0, color: '#6b7280'}}>Total ativos: {users.filter(u => u.active).length}</p>
+          </div>
+          {users.filter(u => u.active).length === 0 ? (
+            <div className="empty-state"><p>Nenhum utilizador ativo</p></div>
+          ) : (
+            <table className="users-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Nome</th>
+                  <th>Role</th>
+                  <th>Ativo</th>
+                  <th>Criado</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.filter(u => u.active).map(u => (
+                  <tr key={u.id}>
+                    <td>{u.email}</td>
+                    <td>{u.name}</td>
+                    <td>
+                      <span className={`role-badge role-${u.status === 'A' ? 'admin' : u.status === 'C' ? 'client' : 'other'}`}>
+                        {u.status === 'A' ? 'Admin' : u.status === 'C' ? 'Cliente' : 'Utilizador'}
+                      </span>
+                    </td>
+                    <td>Sim</td>
+                    <td>{new Date(u.createdAt).toLocaleDateString('pt-PT')}</td>
+                    <td>
+                      <button
+                        className="btn-delete"
+                        onClick={() => handleToggleActive(u)}
+                        title="Desativar utilizador"
+                        disabled={u.id === user?.id}
+                      >
+                        Desativar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* Utilizadores Inativos */}
+          <div className="users-header" style={{marginTop: '24px'}}>
+            <h2 style={{margin: 0}}>Utilizadores Inativos</h2>
+            <p style={{margin: 0, color: '#6b7280'}}>Total inativos: {users.filter(u => !u.active).length}</p>
+          </div>
+          {users.filter(u => !u.active).length === 0 ? (
+            <div className="empty-state"><p>Nenhum utilizador inativo</p></div>
+          ) : (
+            <table className="users-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Nome</th>
+                  <th>Role</th>
+                  <th>Ativo</th>
+                  <th>Criado</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.filter(u => !u.active).map(u => (
+                  <tr key={u.id}>
+                    <td>{u.email}</td>
+                    <td>{u.name}</td>
+                    <td>
+                      <span className={`role-badge role-${u.status === 'A' ? 'admin' : u.status === 'C' ? 'client' : 'other'}`}>
+                        {u.status === 'A' ? 'Admin' : u.status === 'C' ? 'Cliente' : 'Utilizador'}
+                      </span>
+                    </td>
+                    <td>Não</td>
+                    <td>{new Date(u.createdAt).toLocaleDateString('pt-PT')}</td>
+                    <td>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => handleToggleActive(u)}
+                        title="Reativar utilizador"
+                      >
+                        Reativar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
       )}
     </div>
   );
