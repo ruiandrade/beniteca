@@ -297,11 +297,11 @@ export default function Reports() {
 function ReportPage({ data, fromDate, toDate }) {
   const obra = data.obra;
   const kpis = data.kpis;
-  const hierarchy = data.hierarchy;
-  const materials = data.materials;
-  const issuePhotos = data.issuePhotos;
-  const completedTasks = data.completedTasks;
-  const monthlyStats = data.monthlyStats;
+  const progress = data.progress || [];
+  const materials = data.materials || [];
+  const issuePhotos = data.issuePhotos || [];
+  const completedTasks = data.completedTasks || [];
+  const monthlyStats = data.monthlyStats || {};
 
   const formatDate = (date) => new Date(date).toLocaleDateString('pt-PT');
 
@@ -331,22 +331,53 @@ function ReportPage({ data, fromDate, toDate }) {
           <p style={{ margin: '5px 0', fontSize: '0.95rem' }}>
             <strong>Período:</strong> {formatDate(obra.startDate)} → {formatDate(obra.endDate)}
           </p>
-          <p style={{ margin: '5px 0', fontSize: '0.95rem' }}>
-            <strong>Responsável:</strong> {obra.constructionManagerName || '—'} ({obra.constructionManagerEmail || '—'})
-          </p>
-          <p style={{ margin: '5px 0', fontSize: '0.95rem' }}>
-            <strong>Director:</strong> {obra.siteDirectorName || '—'} ({obra.siteDirectorEmail || '—'})
-          </p>
           <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', color: '#666' }}>
             Relatório gerado em {formatDate(new Date())} para {formatDate(fromDate)} → {formatDate(toDate)}
           </p>
         </div>
       </div>
 
+      {/* Monthly Stats - First Section */}
+      <div style={{ marginBottom: '40px' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
+          📅 Estatísticas Mensais
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+          <div style={{ background: '#e6f9f6', padding: '20px', borderRadius: '8px', border: '1px solid #01a383' }}>
+            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Mês Anterior</div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#01a383' }}>
+              {monthlyStats.completedLastMonth || 0}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '5px' }}>tarefas concluídas</div>
+          </div>
+          <div style={{ background: '#d1fae5', padding: '20px', borderRadius: '8px', border: '1px solid #10b981' }}>
+            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Mês Atual ({monthlyStats.currentMonth})</div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#10b981' }}>
+              {monthlyStats.completedCurrentMonth || 0}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '5px' }}>tarefas concluídas</div>
+          </div>
+          <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '8px', border: '1px solid #f59e0b' }}>
+            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Semana Atual</div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#f59e0b' }}>
+              {monthlyStats.completedCurrentWeek || 0}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '5px' }}>tarefas concluídas</div>
+          </div>
+          <div style={{ background: '#f3e8ff', padding: '20px', borderRadius: '8px', border: '1px solid #a855f7' }}>
+            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Progresso Total</div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#a855f7' }}>
+              {kpis.totalTasks > 0 ? Math.round((kpis.completedTasks / kpis.totalTasks) * 100) : 0}%
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '5px' }}>da obra</div>
+          </div>
+        </div>
+      </div>
+
       {/* KPIs */}
       <div style={{ marginBottom: '40px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-          📊 KPIs - Tarefas
+          📊 KPIs - Tarefas (Nós Folha)
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
           <div style={{ background: '#e6f9f6', padding: '20px', borderRadius: '8px', border: '1px solid #01a383' }}>
@@ -364,75 +395,43 @@ function ReportPage({ data, fromDate, toDate }) {
         </div>
       </div>
 
-      {/* Hierarchy Summary */}
-      <div style={{ marginBottom: '40px' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-          🌳 Progresso da Obra
-        </h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-          <thead>
-            <tr style={{ background: '#f1f5f9' }}>
-              <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Nível</th>
-              <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Status</th>
-              <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Datas</th>
-            </tr>
-          </thead>
-          <tbody>
-            {hierarchy.slice(0, 20).map((node) => (
-              <tr key={node.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={{ padding: '10px', fontWeight: node.parentId === null ? '700' : '400' }}>
-                  {node.parentId === null ? '▶ ' : '  ├ '}{node.name}
-                </td>
-                <td style={{ padding: '10px', textAlign: 'center' }}>
-                  <span
-                    style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '0.85rem',
-                      fontWeight: '600',
-                      background: node.status === 'completed' ? '#d1fae5' : '#fef3c7',
-                      color: node.status === 'completed' ? '#059669' : '#92400e'
-                    }}
-                  >
-                    {node.status === 'completed' ? '✓ Concluído' : '⏳ Ativo'}
-                  </span>
-                </td>
-                <td style={{ padding: '10px', fontSize: '0.85rem', color: '#666' }}>
-                  {node.startDate ? formatDate(node.startDate) : '—'} → {node.endDate ? formatDate(node.endDate) : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {hierarchy.length > 20 && <p style={{ marginTop: '10px', color: '#666', fontSize: '0.9rem' }}>... e mais {hierarchy.length - 20} níveis</p>}
-      </div>
-
-      {/* Monthly Stats */}
-      <div style={{ marginBottom: '40px' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-          📅 Estatísticas Mensais
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-          <div style={{ background: '#f0f4f8', padding: '15px', borderRadius: '8px' }}>
-            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Mês Anterior</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#334155' }}>{monthlyStats.completedLastMonth}</div>
-          </div>
-          <div style={{ background: '#f0f4f8', padding: '15px', borderRadius: '8px' }}>
-            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Mês Atual ({monthlyStats.currentMonth})</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#334155' }}>{monthlyStats.completedCurrentMonth}</div>
-          </div>
-          <div style={{ background: '#f0f4f8', padding: '15px', borderRadius: '8px' }}>
-            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Semana Atual</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#334155' }}>{monthlyStats.completedCurrentWeek}</div>
-          </div>
-        </div>
-      </div>
-
+      {/* Progress da Obra - Simplified */}
+      {progress.length > 0 && (
+        <div style={{ marginBottom: '40px' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
+            🌳 Progresso da Obra
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
+            {progress.map((item) => (
+              <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'center', padding: '15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div>
+                  <div style={{ fontWeight: '600', marginBottom: '8px', color: '#1e293b' }}>
+                    {item.name}
+                  </div>
+                  <div style={{
+                    width: '100%',
+                    height: '20px',
+                    background: '#e2e8f0',
+                    borderRadius: '10px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${item.progressPercent}%`,
+                      background: item.progressPercent >= 75 ? '#10b981' : item.progressPercent >= 50 ? '#f59e0b' : '#ef4444',
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#01a383' }}>
+                    {item.progressPercent}%
+                  </div>
       {/* Materials */}
       {materials.length > 0 && (
         <div style={{ marginBottom: '40px' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-            🛒 Materiais em Espera (Pedido)
+            🛒 Materiais
           </h2>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
             <thead>
@@ -441,19 +440,48 @@ function ReportPage({ data, fromDate, toDate }) {
                 <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Marca</th>
                 <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Quantidade</th>
                 <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Tipo</th>
+                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Status Entrega</th>
+                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Status Montagem</th>
               </tr>
             </thead>
             <tbody>
-              {materials.map((material) => (
+              {materials.slice(0, 15).map((material) => (
                 <tr key={material.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '10px' }}>{material.name}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>{material.brand || '—'}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{material.quantity}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>{material.type || '—'}</td>
+                  <td style={{ padding: '10px' }}>{material.description}</td>
+                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>
+                    {material.brand || '—'}
+                  </td>
+                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem' }}>
+                    {material.quantity}
+                  </td>
+                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>
+                    {material.type || '—'}
+                  </td>
+                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.8rem' }}>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      background: material.deliveryStatus === 'Delivered' ? '#d1fae5' : '#fef3c7',
+                      color: material.deliveryStatus === 'Delivered' ? '#059669' : '#92400e'
+                    }}>
+                      {material.deliveryStatus || '—'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.8rem' }}>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      background: material.assemblyStatus === 'Completed' ? '#d1fae5' : '#fef3c7',
+                      color: material.assemblyStatus === 'Completed' ? '#059669' : '#92400e'
+                    }}>
+                      {material.assemblyStatus || '—'}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {materials.length > 15 && <p style={{ marginTop: '10px', color: '#666', fontSize: '0.9rem' }}>... e mais {materials.length - 15} materiais</p>}
         </div>
       )}
 
@@ -479,8 +507,7 @@ function ReportPage({ data, fromDate, toDate }) {
                     }}
                   />
                 )}
-                <p style={{ fontSize: '0.85rem', fontWeight: '600', margin: '5px 0' }}>{photo.levelName}</p>
-                {photo.observations && <p style={{ fontSize: '0.8rem', color: '#666', margin: '5px 0' }}>{photo.observations}</p>}
+                {photo.observations && <p style={{ fontSize: '0.8rem', color: '#666', margin: '5px 0' }}>📝 {photo.observations}</p>}
                 <p style={{ fontSize: '0.75rem', color: '#999', margin: '5px 0' }}>{formatDate(photo.createdAt)}</p>
               </div>
             ))}
@@ -493,7 +520,7 @@ function ReportPage({ data, fromDate, toDate }) {
       {completedTasks.length > 0 && (
         <div style={{ marginBottom: '40px' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-            ✅ Tarefas Concluídas ({fromDate} → {toDate})
+            ✅ Tarefas Concluídas (Nós Folha) - {fromDate} → {toDate}
           </h2>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
             <thead>

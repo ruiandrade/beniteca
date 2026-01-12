@@ -10,10 +10,11 @@ class ReportService {
    */
   async getObraReport(obraId, fromDate, toDate) {
     const pool = await getConnection();
+    const obraIdNum = parseInt(obraId);
 
-    // 1. Get obra info - test with simpler query first
+    // 1. Get obra info
     const obraRes = await pool.request()
-      .input('obraId', sql.Int, parseInt(obraId))
+      .input('obraId', sql.Int, obraIdNum)
       .query(`
         SELECT 
           l.id,
@@ -35,9 +36,41 @@ class ReportService {
 
     const obra = obraRes.recordset[0];
 
-    // 2. Get direct children for hierarchy view (only 1 level deep)
-    const hierarchyRes = await pool.request()
-      .input('obraId', sql.Int, parseInt(obraId))
+    // 2. Get all levels in hierarchy to calculate KPIs (all descendants)
+    const allLevelsRes = await pool.request()
+      .input('obraId', sql.Int, obraIdNum)
+      .query(`
+        WITH LevelHierarchy AS (
+          SELECT l.id, l.parentId, l.status, 0 as depth
+          FROM [Level] l
+          WHERE l.id = @obraId
+          
+          UNION ALL
+          
+          SELECT l.id, l.parentId, l.status, lh.depth + 1
+          FROM [Level] l
+          INNER JOIN LevelHierarchy lh ON l.parentId = lh.id
+          WHERE lh.depth < 20
+        )
+        SELECT *
+        FROM LevelHierarchy
+        ORDER BY depth
+      `);
+
+    const allLevels = allLevelsRes.recordset;
+    
+    // Calculate KPIs: only count leaf nodes (levels with no children)
+    const leafLevels = allLevels.filter(level => 
+      !allLevels.some(l => l.parentId === level.id)
+    );
+    
+    const totalTasks = leafLevels.length;
+    const completedTasks = leafLevels.filter(l => l.status === 'completed').length;
+    const pendingTasks = totalTasks - completedTasks;
+
+    // 3. Get direct children for progress view with calculated progress
+    const directChildrenRes = await pool.request()
+      .input('obraId', sql.Int, obraIdNum)
       .query(`
         SELECT 
           l.id,
@@ -45,17 +78,37 @@ class ReportService {
           l.status,
           l.startDate,
           l.endDate,
-          l.hidden
+          l.hidden,
+          l.[order]
         FROM [Level] l
-        WHERE l.parentId = @obraId OR l.id = @obraId
+        WHERE l.parentId = @obraId
         ORDER BY l.[order], l.id
       `);
 
-    const hierarchyNodes = hierarchyRes.recordset;
+    const directChildren = directChildrenRes.recordset;
+    
+    // Calculate progress % for each direct child (% of completed descendants)
+    const progressData = directChildren.map(child => {
+      const descendants = allLevels.filter(l => this.isDescendantOf(l, child, allLevels));
+      const leafDescendants = descendants.filter(d => 
+        !allLevels.some(l => l.parentId === d.id)
+      );
+      const completedDescendants = leafDescendants.filter(d => d.status === 'completed').length;
+      const progressPercent = leafDescendants.length > 0 
+        ? Math.round((completedDescendants / leafDescendants.length) * 100) 
+        : 0;
+      
+      return {
+        id: child.id,
+        name: child.name,
+        progressPercent,
+        status: child.status
+      };
+    });
 
-    // 3. Get materials that are pending or ordered (in delivery status)
+    // 4. Get materials for the obra (direct children only, by levelId)
     const materialsRes = await pool.request()
-      .input('obraId', sql.Int, parseInt(obraId))
+      .input('obraId', sql.Int, obraIdNum)
       .query(`
         SELECT 
           m.id,
@@ -69,15 +122,17 @@ class ReportService {
           m.assemblyStatus,
           m.createdAt
         FROM [Material] m
-        WHERE m.levelId = @obraId AND (m.deliveryStatus IS NOT NULL OR m.assemblyStatus IS NOT NULL)
+        WHERE m.levelId IN (
+          SELECT id FROM [Level] WHERE parentId = @obraId
+        )
         ORDER BY m.createdAt DESC
       `);
 
     const materialsData = materialsRes.recordset;
 
-    // 4. Get issue photos in date range
+    // 5. Get issue photos for the obra and its direct children only
     const photosRes = await pool.request()
-      .input('obraId', sql.Int, parseInt(obraId))
+      .input('obraId', sql.Int, obraIdNum)
       .input('fromDate', sql.Date, new Date(fromDate))
       .input('toDate', sql.Date, new Date(toDate))
       .query(`
@@ -88,7 +143,10 @@ class ReportService {
           p.observacoes as observations,
           p.createdAt
         FROM [Photo] p
-        WHERE p.type = 'issue'
+        WHERE p.levelId IN (
+          SELECT id FROM [Level] WHERE id = @obraId OR parentId = @obraId
+        )
+          AND p.type = 'issue'
           AND p.createdAt >= @fromDate
           AND p.createdAt <= @toDate
         ORDER BY p.createdAt DESC
@@ -96,45 +154,114 @@ class ReportService {
 
     const photosData = photosRes.recordset;
 
-    // 5. Get completed tasks
-    const completedTasksRes = await pool.request()
-      .input('obraId', sql.Int, parseInt(obraId))
+    // 6. Get completed leaf node tasks (only tasks with no children) in date range
+    const completedTasksListRes = await pool.request()
+      .input('obraId', sql.Int, obraIdNum)
       .input('fromDate', sql.Date, new Date(fromDate))
       .input('toDate', sql.Date, new Date(toDate))
       .query(`
-        SELECT 
-          l.id,
-          l.name,
-          l.status,
-          l.updatedAt
-        FROM [Level] l
-        WHERE l.status = 'completed'
-          AND l.updatedAt >= @fromDate
-          AND l.updatedAt <= @toDate
-        ORDER BY l.updatedAt DESC
+        WITH AllDescendants AS (
+          SELECT l.id, l.name, l.status, l.updatedAt
+          FROM [Level] l
+          WHERE l.id IN (
+            WITH LevelHierarchy AS (
+              SELECT l.id, l.parentId, 0 as depth
+              FROM [Level] l
+              WHERE l.id = @obraId
+              
+              UNION ALL
+              
+              SELECT l.id, l.parentId, lh.depth + 1
+              FROM [Level] l
+              INNER JOIN LevelHierarchy lh ON l.parentId = lh.id
+              WHERE lh.depth < 20
+            )
+            SELECT id FROM LevelHierarchy
+          )
+        ),
+        LeafNodes AS (
+          SELECT ad.id, ad.name, ad.status, ad.updatedAt
+          FROM AllDescendants ad
+          WHERE NOT EXISTS (
+            SELECT 1 FROM [Level] WHERE parentId = ad.id
+          )
+            AND ad.status = 'completed'
+            AND ad.updatedAt >= @fromDate
+            AND ad.updatedAt <= @toDate
+        )
+        SELECT * FROM LeafNodes
+        ORDER BY updatedAt DESC
       `);
 
-    const completedTasks = completedTasksRes.recordset;
+    const completedTasksList = completedTasksListRes.recordset;
+
+    // 7. Calculate monthly/weekly statistics based on leaf nodes only
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+    
+    const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
+    const endOfMonth = new Date(currentYear, currentMonth, 0);
+    
+    const startOfLastMonth = new Date(currentYear, currentMonth - 2, 1);
+    const endOfLastMonth = new Date(currentYear, currentMonth - 1, 0);
+    
+    const getMonday = (date) => {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(d.setDate(diff));
+    };
+    const startOfWeek = getMonday(today);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 6);
+
+    // Calculate stats from completedTasksList (which are already leaf nodes)
+    const completedLastMonth = completedTasksList.filter(t => {
+      const date = new Date(t.updatedAt);
+      return date >= startOfLastMonth && date <= endOfLastMonth;
+    }).length;
+
+    const completedCurrentMonth = completedTasksList.filter(t => {
+      const date = new Date(t.updatedAt);
+      return date >= startOfMonth && date <= endOfMonth;
+    }).length;
+
+    const completedCurrentWeek = completedTasksList.filter(t => {
+      const date = new Date(t.updatedAt);
+      return date >= startOfWeek && date <= endOfWeek;
+    }).length;
 
     return {
       obra,
-      kpis: {
-        totalTasks: 0,
-        completedTasks: 0,
-        pendingTasks: 0
+      monthlyStats: {
+        completedLastMonth,
+        completedCurrentMonth,
+        completedCurrentWeek,
+        currentMonth: `${currentMonth}/${currentYear}`
       },
-      hierarchy: hierarchyNodes,
-      team: [],
+      kpis: {
+        totalTasks,
+        completedTasks,
+        pendingTasks
+      },
+      progress: progressData,
       materials: materialsData,
       issuePhotos: photosData,
-      completedTasks,
-      monthlyStats: {
-        completedLastMonth: 0,
-        completedCurrentMonth: 0,
-        completedCurrentWeek: 0,
-        currentMonth: '1/2025'
-      }
+      completedTasks: completedTasksList
     };
+  }
+
+  // Helper to check if a level is a descendant of another
+  isDescendantOf(level, parent, allLevels) {
+    let current = level;
+    while (current) {
+      if (current.parentId === parent.id) {
+        return true;
+      }
+      current = allLevels.find(l => l.id === current.parentId);
+    }
+    return false;
   }
 }
 

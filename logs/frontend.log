@@ -14,3 +14,645 @@ nohup: ignoring input
 10:42:57 AM [vite] (client) hmr update /src/App.jsx
 10:43:04 AM [vite] (client) hmr update /src/components/Layout.jsx
 10:46:33 AM [vite] (client) hmr update /src/pages/Reports.jsx
+11:09:33 AM [vite] (client) hmr update /src/App.jsx
+11:09:33 AM [vite] (client) hmr update /src/components/Layout.jsx
+11:09:33 AM [vite] (client) hmr update /src/pages/Reports.jsx
+11:10:51 AM [vite] (client) hmr update /src/pages/Reports.jsx
+11:10:51 AM [vite] Internal server error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Expected corresponding JSX closing tag for <div>. (438:16)
+
+  436 |                   <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{material.quantity}</td>
+  437 |                   <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>{material.type || '—'}</td>
+> 438 |                 </tr>
+      |                 ^
+  439 |               ))}
+  440 |             </tbody>
+  441 |           </table>
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:438:16
+  436 |                    <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{material.quantity}</td>
+  437 |                    <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>{material....
+  438 |                  </tr>
+      |                  ^
+  439 |                ))}
+  440 |              </tbody>
+      at constructor (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at JSXParserMixin.raise (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4756:16)
+      at JSXParserMixin.jsxParseElement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at JSXParserMixin.parseExpressionBase (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10848:23)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10844:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12495:16)
+      at JSXParserMixin.parseExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10844:17)
+      at JSXParserMixin.parseReturnStatement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13218:28)
+      at JSXParserMixin.parseStatementContent (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12874:21)
+      at JSXParserMixin.parseStatementLike (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12843:17)
+      at JSXParserMixin.parseStatementListItem (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12823:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13392:61)
+      at JSXParserMixin.parseBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13385:10)
+      at JSXParserMixin.parseBlock (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13373:10)
+      at JSXParserMixin.parseFunctionBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12174:24)
+      at JSXParserMixin.parseFunctionBodyAndFinish (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12160:10)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13521:12
+      at JSXParserMixin.withSmartMixTopicForbiddingContext (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12477:14)
+      at JSXParserMixin.parseFunction (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13520:10)
+      at JSXParserMixin.parseFunctionStatement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13201:17)
+      at JSXParserMixin.parseStatementContent (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12867:21)
+      at JSXParserMixin.parseStatementLike (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12843:17)
+      at JSXParserMixin.parseModuleItem (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12820:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13392:36)
+      at JSXParserMixin.parseBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13385:10)
+      at JSXParserMixin.parseProgram (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12698:10)
+      at JSXParserMixin.parseTopLevel (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12688:25)
+11:10:51 AM [vite] Internal server error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Expected corresponding JSX closing tag for <div>. (438:16)
+
+  436 |                   <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{material.quantity}</td>
+  437 |                   <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>{material.type || '—'}</td>
+> 438 |                 </tr>
+      |                 ^
+  439 |               ))}
+  440 |             </tbody>
+  441 |           </table>
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:438:16
+  436 |                    <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{material.quantity}</td>
+  437 |                    <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>{material....
+  438 |                  </tr>
+      |                  ^
+  439 |                ))}
+  440 |              </tbody>
+      at constructor (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at JSXParserMixin.raise (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4756:16)
+      at JSXParserMixin.jsxParseElement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at JSXParserMixin.parseExpressionBase (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10848:23)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10844:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12495:16)
+      at JSXParserMixin.parseExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10844:17)
+      at JSXParserMixin.parseReturnStatement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13218:28)
+      at JSXParserMixin.parseStatementContent (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12874:21)
+      at JSXParserMixin.parseStatementLike (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12843:17)
+      at JSXParserMixin.parseStatementListItem (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12823:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13392:61)
+      at JSXParserMixin.parseBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13385:10)
+      at JSXParserMixin.parseBlock (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13373:10)
+      at JSXParserMixin.parseFunctionBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12174:24)
+      at JSXParserMixin.parseFunctionBodyAndFinish (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12160:10)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13521:12
+      at JSXParserMixin.withSmartMixTopicForbiddingContext (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12477:14)
+      at JSXParserMixin.parseFunction (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13520:10)
+      at JSXParserMixin.parseFunctionStatement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13201:17)
+      at JSXParserMixin.parseStatementContent (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12867:21)
+      at JSXParserMixin.parseStatementLike (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12843:17)
+      at JSXParserMixin.parseModuleItem (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12820:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13392:36)
+      at JSXParserMixin.parseBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13385:10)
+      at JSXParserMixin.parseProgram (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12698:10)
+      at JSXParserMixin.parseTopLevel (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12688:25)
+11:11:05 AM [vite] (client) Pre-transform error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Expected corresponding JSX closing tag for <div>. (438:16)
+
+  436 |                   <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{material.quantity}</td>
+  437 |                   <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>{material.type || '—'}</td>
+> 438 |                 </tr>
+      |                 ^
+  439 |               ))}
+  440 |             </tbody>
+  441 |           </table>
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:438:16
+  436 |                    <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{material.quantity}</td>
+  437 |                    <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>{material....
+  438 |                  </tr>
+      |                  ^
+  439 |                ))}
+  440 |              </tbody>
+11:11:06 AM [vite] Internal server error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Expected corresponding JSX closing tag for <div>. (438:16)
+
+  436 |                   <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{material.quantity}</td>
+  437 |                   <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>{material.type || '—'}</td>
+> 438 |                 </tr>
+      |                 ^
+  439 |               ))}
+  440 |             </tbody>
+  441 |           </table>
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:438:16
+  436 |                    <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{material.quantity}</td>
+  437 |                    <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>{material....
+  438 |                  </tr>
+      |                  ^
+  439 |                ))}
+  440 |              </tbody>
+      at constructor (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at JSXParserMixin.raise (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4756:16)
+      at JSXParserMixin.jsxParseElement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at JSXParserMixin.parseExpressionBase (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10848:23)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10844:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12495:16)
+      at JSXParserMixin.parseExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10844:17)
+      at JSXParserMixin.parseReturnStatement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13218:28)
+      at JSXParserMixin.parseStatementContent (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12874:21)
+      at JSXParserMixin.parseStatementLike (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12843:17)
+      at JSXParserMixin.parseStatementListItem (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12823:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13392:61)
+      at JSXParserMixin.parseBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13385:10)
+      at JSXParserMixin.parseBlock (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13373:10)
+      at JSXParserMixin.parseFunctionBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12174:24)
+      at JSXParserMixin.parseFunctionBodyAndFinish (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12160:10)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13521:12
+      at JSXParserMixin.withSmartMixTopicForbiddingContext (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12477:14)
+      at JSXParserMixin.parseFunction (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13520:10)
+      at JSXParserMixin.parseFunctionStatement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13201:17)
+      at JSXParserMixin.parseStatementContent (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12867:21)
+      at JSXParserMixin.parseStatementLike (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12843:17)
+      at JSXParserMixin.parseModuleItem (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12820:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13392:36)
+      at JSXParserMixin.parseBlockBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:13385:10)
+      at JSXParserMixin.parseProgram (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12698:10)
+      at JSXParserMixin.parseTopLevel (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12688:25)
+11:11:13 AM [vite] (client) hmr update /src/pages/Reports.jsx
+11:11:13 AM [vite] Internal server error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Unterminated JSX contents. (551:10)
+
+  549 |         <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |       </div>
+> 551 |     </div>
+      |           ^
+  552 |   );
+  553 | }
+  554 |
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:551:10
+  549 |          <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |        </div>
+  551 |      </div>
+      |            ^
+  552 |    );
+  553 |  }
+      at constructor (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at JSXParserMixin.raise (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+      at JSXParserMixin.jsxReadToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4477:20)
+      at JSXParserMixin.getTokenFromCode (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4803:12)
+      at JSXParserMixin.nextToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5807:10)
+      at JSXParserMixin.next (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5717:10)
+      at JSXParserMixin.eat (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5721:12)
+      at JSXParserMixin.expect (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6923:15)
+      at JSXParserMixin.jsxParseClosingElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+      at JSXParserMixin.jsxParseElement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at JSXParserMixin.parseFunctionBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12167:24)
+      at JSXParserMixin.parseArrowExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12149:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11759:12)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+11:11:13 AM [vite] (client) Pre-transform error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Unterminated JSX contents. (551:10)
+
+  549 |         <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |       </div>
+> 551 |     </div>
+      |           ^
+  552 |   );
+  553 | }
+  554 |
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:551:10
+  549 |          <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |        </div>
+  551 |      </div>
+      |            ^
+  552 |    );
+  553 |  }
+11:11:14 AM [vite] Internal server error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Unterminated JSX contents. (551:10)
+
+  549 |         <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |       </div>
+> 551 |     </div>
+      |           ^
+  552 |   );
+  553 | }
+  554 |
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:551:10
+  549 |          <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |        </div>
+  551 |      </div>
+      |            ^
+  552 |    );
+  553 |  }
+      at constructor (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at JSXParserMixin.raise (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+      at JSXParserMixin.jsxReadToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4477:20)
+      at JSXParserMixin.getTokenFromCode (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4803:12)
+      at JSXParserMixin.nextToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5807:10)
+      at JSXParserMixin.next (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5717:10)
+      at JSXParserMixin.eat (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5721:12)
+      at JSXParserMixin.expect (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6923:15)
+      at JSXParserMixin.jsxParseClosingElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+      at JSXParserMixin.jsxParseElement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at JSXParserMixin.parseFunctionBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12167:24)
+      at JSXParserMixin.parseArrowExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12149:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11759:12)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+11:16:51 AM [vite] Internal server error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Unterminated JSX contents. (551:10)
+
+  549 |         <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |       </div>
+> 551 |     </div>
+      |           ^
+  552 |   );
+  553 | }
+  554 |
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:551:10
+  549 |          <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |        </div>
+  551 |      </div>
+      |            ^
+  552 |    );
+  553 |  }
+      at constructor (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at JSXParserMixin.raise (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+      at JSXParserMixin.jsxReadToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4477:20)
+      at JSXParserMixin.getTokenFromCode (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4803:12)
+      at JSXParserMixin.nextToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5807:10)
+      at JSXParserMixin.next (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5717:10)
+      at JSXParserMixin.eat (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5721:12)
+      at JSXParserMixin.expect (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6923:15)
+      at JSXParserMixin.jsxParseClosingElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+      at JSXParserMixin.jsxParseElement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at JSXParserMixin.parseFunctionBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12167:24)
+      at JSXParserMixin.parseArrowExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12149:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11759:12)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+11:29:13 AM [vite] Internal server error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Unterminated JSX contents. (551:10)
+
+  549 |         <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |       </div>
+> 551 |     </div>
+      |           ^
+  552 |   );
+  553 | }
+  554 |
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:551:10
+  549 |          <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |        </div>
+  551 |      </div>
+      |            ^
+  552 |    );
+  553 |  }
+      at constructor (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at JSXParserMixin.raise (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+      at JSXParserMixin.jsxReadToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4477:20)
+      at JSXParserMixin.getTokenFromCode (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4803:12)
+      at JSXParserMixin.nextToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5807:10)
+      at JSXParserMixin.next (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5717:10)
+      at JSXParserMixin.eat (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5721:12)
+      at JSXParserMixin.expect (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6923:15)
+      at JSXParserMixin.jsxParseClosingElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+      at JSXParserMixin.jsxParseElement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at JSXParserMixin.parseFunctionBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12167:24)
+      at JSXParserMixin.parseArrowExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12149:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11759:12)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+11:30:08 AM [vite] Internal server error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Unterminated JSX contents. (551:10)
+
+  549 |         <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |       </div>
+> 551 |     </div>
+      |           ^
+  552 |   );
+  553 | }
+  554 |
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:551:10
+  549 |          <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |        </div>
+  551 |      </div>
+      |            ^
+  552 |    );
+  553 |  }
+      at constructor (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at JSXParserMixin.raise (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+      at JSXParserMixin.jsxReadToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4477:20)
+      at JSXParserMixin.getTokenFromCode (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4803:12)
+      at JSXParserMixin.nextToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5807:10)
+      at JSXParserMixin.next (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5717:10)
+      at JSXParserMixin.eat (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5721:12)
+      at JSXParserMixin.expect (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6923:15)
+      at JSXParserMixin.jsxParseClosingElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+      at JSXParserMixin.jsxParseElement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at JSXParserMixin.parseFunctionBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12167:24)
+      at JSXParserMixin.parseArrowExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12149:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11759:12)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+11:30:11 AM [vite] Internal server error: /workspaces/beniteca/frontend/src/pages/Reports.jsx: Unterminated JSX contents. (551:10)
+
+  549 |         <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |       </div>
+> 551 |     </div>
+      |           ^
+  552 |   );
+  553 | }
+  554 |
+  Plugin: vite:react-babel
+  File: /workspaces/beniteca/frontend/src/pages/Reports.jsx:551:10
+  549 |          <p>Relatório confidencial | Beniteca © 2026</p>
+  550 |        </div>
+  551 |      </div>
+      |            ^
+  552 |    );
+  553 |  }
+      at constructor (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at JSXParserMixin.raise (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6624:19)
+      at JSXParserMixin.jsxReadToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4477:20)
+      at JSXParserMixin.getTokenFromCode (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4803:12)
+      at JSXParserMixin.nextToken (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5807:10)
+      at JSXParserMixin.next (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5717:10)
+      at JSXParserMixin.eat (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:5721:12)
+      at JSXParserMixin.expect (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:6923:15)
+      at JSXParserMixin.jsxParseClosingElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4709:10)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4724:37)
+      at JSXParserMixin.jsxParseElementAt (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4727:32)
+      at JSXParserMixin.jsxParseElement (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4778:17)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4788:19)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11747:28)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at JSXParserMixin.parseFunctionBody (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12167:24)
+      at JSXParserMixin.parseArrowExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12149:10)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11759:12)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11395:23)
+      at JSXParserMixin.parseExprAtom (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:4793:20)
+      at JSXParserMixin.parseExprSubscripts (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11145:23)
+      at JSXParserMixin.parseUpdate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11130:21)
+      at JSXParserMixin.parseMaybeUnary (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:11110:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10963:61)
+      at JSXParserMixin.parseExprOps (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10968:23)
+      at JSXParserMixin.parseMaybeConditional (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10945:23)
+      at JSXParserMixin.parseMaybeAssign (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10895:21)
+      at /workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:39
+      at JSXParserMixin.allowInAnd (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12500:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:10864:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/workspaces/beniteca/frontend/node_modules/@babel/parser/lib/index.js:12567:17)

@@ -1,11 +1,9 @@
-nohup: ignoring input
 
 > beniteca@1.0.0 start
 > node index.js
 
-[dotenv@17.2.3] injecting env (10) from .env.development -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (10) from .env.development -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
 Loaded environment from .env.development
 ✅ Server running on port 3000 in development mode
 📊 Database: Connected
 📦 Blob Storage: Connected
-Conectado ao Azure SQL ✅
