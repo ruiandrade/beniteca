@@ -68,6 +68,9 @@ export default function Layout() {
           <NavLink to="/presencas" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
             📋 Presenças
           </NavLink>
+          <NavLink to="/reports" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+            📄 Relatórios
+          </NavLink>
           <NavLink to="/archived" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
             📦 Obras Arquivadas
           </NavLink>
