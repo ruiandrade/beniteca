@@ -75,7 +75,8 @@ export default function Reports() {
           const data = await res.json();
           reports[obraId] = data;
         } else {
-          throw new Error(`Erro ao gerar relatório para obra ${obraId}`);
+          const errorData = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(`Erro ao gerar relatório para obra ${obraId}: ${res.status} - ${errorData.error || 'Desconhecido'}`);
         }
       }
       setReportData(reports);

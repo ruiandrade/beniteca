@@ -3,9 +3,14 @@ nohup: ignoring input
 > frontend@0.0.0 dev
 > vite
 
-Port 5173 is in use, trying another one...
 
-  VITE v7.3.0  ready in 244 ms
+  VITE v7.3.0  ready in 309 ms
 
-  ➜  Local:   http://localhost:5174/
-  ➜  Network: http://10.0.10.14:5174/
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://10.0.0.193:5173/
+10:42:54 AM [vite] (client) hmr update /src/App.jsx
+10:42:56 AM [vite] (client) ✨ new dependencies optimized: html2pdf.js
+10:42:56 AM [vite] (client) ✨ optimized dependencies changed. reloading
+10:42:57 AM [vite] (client) hmr update /src/App.jsx
+10:43:04 AM [vite] (client) hmr update /src/components/Layout.jsx
+10:46:33 AM [vite] (client) hmr update /src/pages/Reports.jsx
