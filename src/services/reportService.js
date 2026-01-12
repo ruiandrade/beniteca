@@ -40,7 +40,7 @@ class ReportService {
     const allLevelsRes = await pool.request()
       .input('obraId', sql.Int, obraIdNum)
       .query(`
-        WITH LevelHierarchy AS (
+        ;WITH LevelHierarchy AS (
           SELECT l.id, l.parentId, l.status, 0 as depth
           FROM [Level] l
           WHERE l.id = @obraId
@@ -160,34 +160,27 @@ class ReportService {
       .input('fromDate', sql.Date, new Date(fromDate))
       .input('toDate', sql.Date, new Date(toDate))
       .query(`
-        WITH AllDescendants AS (
-          SELECT l.id, l.name, l.status, l.updatedAt
+        ;WITH LevelHierarchy AS (
+          SELECT l.id, l.parentId, l.name, l.status, l.updatedAt, 0 as depth
           FROM [Level] l
-          WHERE l.id IN (
-            WITH LevelHierarchy AS (
-              SELECT l.id, l.parentId, 0 as depth
-              FROM [Level] l
-              WHERE l.id = @obraId
-              
-              UNION ALL
-              
-              SELECT l.id, l.parentId, lh.depth + 1
-              FROM [Level] l
-              INNER JOIN LevelHierarchy lh ON l.parentId = lh.id
-              WHERE lh.depth < 20
-            )
-            SELECT id FROM LevelHierarchy
-          )
+          WHERE l.id = @obraId
+          
+          UNION ALL
+          
+          SELECT l.id, l.parentId, l.name, l.status, l.updatedAt, lh.depth + 1
+          FROM [Level] l
+          INNER JOIN LevelHierarchy lh ON l.parentId = lh.id
+          WHERE lh.depth < 20
         ),
         LeafNodes AS (
-          SELECT ad.id, ad.name, ad.status, ad.updatedAt
-          FROM AllDescendants ad
+          SELECT lh.id, lh.name, lh.status, lh.updatedAt
+          FROM LevelHierarchy lh
           WHERE NOT EXISTS (
-            SELECT 1 FROM [Level] WHERE parentId = ad.id
+            SELECT 1 FROM [Level] WHERE parentId = lh.id
           )
-            AND ad.status = 'completed'
-            AND ad.updatedAt >= @fromDate
-            AND ad.updatedAt <= @toDate
+            AND lh.status = 'completed'
+            AND lh.updatedAt >= @fromDate
+            AND lh.updatedAt <= @toDate
         )
         SELECT * FROM LeafNodes
         ORDER BY updatedAt DESC

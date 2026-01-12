@@ -2,8 +2,15 @@
 > beniteca@1.0.0 start
 > node index.js
 
-[dotenv@17.2.3] injecting env (10) from .env.development -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.3] injecting env (10) from .env.development -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
 Loaded environment from .env.development
 ✅ Server running on port 3000 in development mode
 📊 Database: Connected
 📦 Blob Storage: Connected
+Conectado ao Azure SQL ✅
+📋 getAll - Retornando 24 users
+📋 getAll - Retornando 24 users
+📋 getAll - Retornando 24 users
+📋 getAll - Retornando 24 users
+📋 getAll - Retornando 24 users
+📋 getAll - Retornando 24 users

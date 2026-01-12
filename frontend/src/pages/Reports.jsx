@@ -20,12 +20,21 @@ export default function Reports() {
       return;
     }
     loadObras();
-    // Set default date range (today to today + 30 days)
+    // Set default date range (Monday to Friday of current week)
     const today = new Date();
-    const in30Days = new Date(today);
-    in30Days.setDate(in30Days.getDate() + 30);
-    setFromDate(today.toISOString().slice(0, 10));
-    setToDate(in30Days.toISOString().slice(0, 10));
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    
+    // Calculate Monday (start of week)
+    const monday = new Date(today);
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday, go back 6 days
+    monday.setDate(today.getDate() + daysToMonday);
+    
+    // Calculate Friday (end of work week)
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4); // Monday + 4 days = Friday
+    
+    setFromDate(monday.toISOString().slice(0, 10));
+    setToDate(friday.toISOString().slice(0, 10));
   }, [user, token]);
 
   const loadObras = async () => {
@@ -111,9 +120,9 @@ export default function Reports() {
 
   if (user && user.role !== 'A') {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>
-        <h2>Acesso Negado</h2>
-        <p>Esta página é apenas para administradores.</p>
+      <div style={{ padding: '32px', textAlign: 'center' }}>
+        <h1>🔒 Acesso Negado</h1>
+        <p>Apenas administradores podem aceder a esta página.</p>
       </div>
     );
   }
@@ -337,12 +346,38 @@ function ReportPage({ data, fromDate, toDate }) {
         </div>
       </div>
 
-      {/* Monthly Stats - First Section */}
+      {/* KPIs - First Section */}
+      <div style={{ marginBottom: '40px' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
+          📊 KPIs - Tarefas (Nós Folha)
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+          <div style={{ background: '#e6f9f6', padding: '20px', borderRadius: '8px', border: '1px solid #01a383' }}>
+            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Total de Tarefas</div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#01a383' }}>{kpis.totalTasks}</div>
+          </div>
+          <div style={{ background: '#d1fae5', padding: '20px', borderRadius: '8px', border: '1px solid #10b981' }}>
+            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Tarefas Concluídas</div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#10b981' }}>{kpis.completedTasks}</div>
+          </div>
+          <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '8px', border: '1px solid #f59e0b' }}>
+            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Por Concluir</div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#f59e0b' }}>{kpis.pendingTasks}</div>
+          </div>          <div style={{ background: '#f3e8ff', padding: '20px', borderRadius: '8px', border: '1px solid #a855f7' }}>
+            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Progresso Total</div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#a855f7' }}>
+              {kpis.totalTasks > 0 ? Math.round((kpis.completedTasks / kpis.totalTasks) * 100) : 0}%
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Monthly Stats */}
       <div style={{ marginBottom: '40px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
           📅 Estatísticas Mensais
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
           <div style={{ background: '#e6f9f6', padding: '20px', borderRadius: '8px', border: '1px solid #01a383' }}>
             <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Mês Anterior</div>
             <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#01a383' }}>
@@ -363,36 +398,7 @@ function ReportPage({ data, fromDate, toDate }) {
               {monthlyStats.completedCurrentWeek || 0}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '5px' }}>tarefas concluídas</div>
-          </div>
-          <div style={{ background: '#f3e8ff', padding: '20px', borderRadius: '8px', border: '1px solid #a855f7' }}>
-            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Progresso Total</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#a855f7' }}>
-              {kpis.totalTasks > 0 ? Math.round((kpis.completedTasks / kpis.totalTasks) * 100) : 0}%
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '5px' }}>da obra</div>
-          </div>
-        </div>
-      </div>
-
-      {/* KPIs */}
-      <div style={{ marginBottom: '40px' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-          📊 KPIs - Tarefas (Nós Folha)
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-          <div style={{ background: '#e6f9f6', padding: '20px', borderRadius: '8px', border: '1px solid #01a383' }}>
-            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Total de Tarefas</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#01a383' }}>{kpis.totalTasks}</div>
-          </div>
-          <div style={{ background: '#d1fae5', padding: '20px', borderRadius: '8px', border: '1px solid #10b981' }}>
-            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Tarefas Concluídas</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#10b981' }}>{kpis.completedTasks}</div>
-          </div>
-          <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '8px', border: '1px solid #f59e0b' }}>
-            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Por Concluir</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#f59e0b' }}>{kpis.pendingTasks}</div>
-          </div>
-        </div>
+          </div>        </div>
       </div>
 
       {/* Progress da Obra - Simplified */}
@@ -427,6 +433,13 @@ function ReportPage({ data, fromDate, toDate }) {
                   <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#01a383' }}>
                     {item.progressPercent}%
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Materials */}
       {materials.length > 0 && (
         <div style={{ marginBottom: '40px' }}>
