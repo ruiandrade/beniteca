@@ -114,6 +114,17 @@ class LevelController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  async getHierarchy(req, res) {
+    try {
+      const { id } = req.params;
+      const tree = await levelService.getHierarchyTree(id);
+      if (!tree) return res.status(404).json({ error: 'Level not found' });
+      res.json(tree);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 module.exports = new LevelController();

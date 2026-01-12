@@ -446,6 +446,118 @@ class LevelService {
       throw err;
     }
   }
+
+  async getHierarchyTree(rootId) {
+    const pool = await getConnection();
+    
+    // SQL recursivo usando CTE (Common Table Expression) para buscar toda a hierarquia
+    const query = `
+      WITH HierarchyCTE AS (
+        -- Anchor: o nó raiz
+        SELECT 
+          l.id,
+          l.name,
+          l.description,
+          l.parentId,
+          l.startDate,
+          l.endDate,
+          l.status,
+          l.notes,
+          l.coverImage,
+          l.constructionManagerId,
+          l.siteDirectorId,
+          l.[order],
+          l.hidden,
+          l.createdAt,
+          l.updatedAt,
+          0 AS depth,
+          CAST(l.id AS VARCHAR(MAX)) AS path
+        FROM Level l
+        WHERE l.id = @rootId
+        
+        UNION ALL
+        
+        -- Recursão: todos os descendentes
+        SELECT 
+          l.id,
+          l.name,
+          l.description,
+          l.parentId,
+          l.startDate,
+          l.endDate,
+          l.status,
+          l.notes,
+          l.coverImage,
+          l.constructionManagerId,
+          l.siteDirectorId,
+          l.[order],
+          l.hidden,
+          l.createdAt,
+          l.updatedAt,
+          h.depth + 1,
+          h.path + '/' + CAST(l.id AS VARCHAR(MAX))
+        FROM Level l
+        INNER JOIN HierarchyCTE h ON l.parentId = h.id
+        WHERE h.depth < 10
+      )
+      SELECT 
+        h.*,
+        -- Verificar se tem filhos (se é nó folha ou não)
+        CASE WHEN EXISTS (SELECT 1 FROM Level WHERE parentId = h.id) THEN 1 ELSE 0 END AS hasChildren
+      FROM HierarchyCTE h
+      ORDER BY h.path, h.[order]
+    `;
+
+    const result = await pool.request()
+      .input('rootId', sql.Int, parseInt(rootId))
+      .query(query);
+
+    if (result.recordset.length === 0) {
+      return null;
+    }
+
+    // Construir a árvore hierárquica a partir dos resultados flat
+    const nodesMap = new Map();
+    const rootNode = result.recordset[0];
+    
+    // Criar todos os nós
+    result.recordset.forEach(row => {
+      nodesMap.set(row.id, {
+        level: {
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          parentId: row.parentId,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          status: row.status,
+          notes: row.notes,
+          coverImage: row.coverImage,
+          constructionManagerId: row.constructionManagerId,
+          siteDirectorId: row.siteDirectorId,
+          order: row.order,
+          hidden: row.hidden,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt
+        },
+        children: [],
+        depth: row.depth,
+        hasChildren: row.hasChildren === 1,
+        isLeaf: row.hasChildren === 0
+      });
+    });
+
+    // Construir a árvore linkando pais e filhos
+    result.recordset.forEach(row => {
+      if (row.parentId && nodesMap.has(row.parentId)) {
+        const parentNode = nodesMap.get(row.parentId);
+        const childNode = nodesMap.get(row.id);
+        parentNode.children.push(childNode);
+      }
+    });
+
+    return nodesMap.get(rootNode.id);
+  }
 }
 
 module.exports = new LevelService();
