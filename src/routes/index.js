@@ -14,5 +14,6 @@ router.use('/level-users', require('./levelUsers'));
 router.use('/level-user-days', require('./levelUserDays'));
 router.use('/auth', require('./auth'));
 router.use('/logo', require('./logo'));
+router.use('/reports', require('./reports'));
 
 module.exports = router;
