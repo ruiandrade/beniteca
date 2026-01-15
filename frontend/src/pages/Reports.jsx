@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import html2pdf from 'html2pdf.js';
+import { formatDateToDDMMYYYY } from '../utils/helpers';
 
 export default function Reports() {
   const { token, user } = useAuth();
@@ -304,6 +305,7 @@ export default function Reports() {
 }
 
 function ReportPage({ data, fromDate, toDate }) {
+  const { token } = useAuth();
   const obra = data.obra;
   const kpis = data.kpis;
   const progress = data.progress || [];
@@ -311,61 +313,87 @@ function ReportPage({ data, fromDate, toDate }) {
   const issuePhotos = data.issuePhotos || [];
   const completedTasks = data.completedTasks || [];
   const monthlyStats = data.monthlyStats || {};
+  const [planningData, setPlanningData] = useState(null);
 
   const formatDate = (date) => new Date(date).toLocaleDateString('pt-PT');
+
+  // Load planning data when component mounts
+  useEffect(() => {
+    const loadPlanning = async () => {
+      try {
+        console.log('Fetching planning for obra:', obra.id, 'fromDate:', fromDate, 'toDate:', toDate);
+        const url = `/api/level-user-days/level/${obra.id}?from=${fromDate}&to=${toDate}`;
+        const res = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          console.log('Planning data fetched:', data);
+          setPlanningData(data);
+        } else {
+          console.error('Failed to fetch planning:', res.status, res.statusText);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar planeamento:', err);
+      }
+    };
+    if (obra?.id && token) {
+      loadPlanning();
+    }
+  }, [obra?.id, fromDate, toDate, token]);
 
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.6', color: '#333' }}>
       {/* Header */}
-      <div style={{ display: 'flex', gap: '30px', marginBottom: '40px', borderBottom: '2px solid #01a383', paddingBottom: '20px' }}>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '15px', borderBottom: '1px solid #01a383', paddingBottom: '8px' }}>
         {obra.coverImage && (
           <img
             src={obra.coverImage}
             alt={obra.name}
             style={{
-              width: '150px',
-              height: '150px',
+              width: '65px',
+              height: '65px',
               objectFit: 'cover',
-              borderRadius: '8px'
+              borderRadius: '4px'
             }}
           />
         )}
         <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#01a383', margin: '0 0 10px 0' }}>
+          <h1 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#01a383', margin: '0 0 2px 0' }}>
             {obra.name}
           </h1>
-          <p style={{ margin: '5px 0', fontSize: '0.95rem' }}>
-            <strong>Descrição:</strong> {obra.description}
-          </p>
-          <p style={{ margin: '5px 0', fontSize: '0.95rem' }}>
+          <p style={{ margin: '1px 0', fontSize: '0.7rem' }}>
             <strong>Período:</strong> {formatDate(obra.startDate)} → {formatDate(obra.endDate)}
           </p>
-          <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', color: '#666' }}>
-            Relatório gerado em {formatDate(new Date())} para {formatDate(fromDate)} → {formatDate(toDate)}
+          <p style={{ margin: '1px 0', fontSize: '0.65rem', color: '#666' }}>
+            Relatório: {formatDate(fromDate)} → {formatDate(toDate)}
           </p>
         </div>
       </div>
 
       {/* KPIs - First Section */}
-      <div style={{ marginBottom: '40px' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-          📊 KPIs - Tarefas (Nós Folha)
+      <div style={{ marginBottom: '10px' }}>
+        <h2 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#01a383', marginBottom: '6px', borderBottom: '1px solid #01a383', paddingBottom: '3px' }}>
+          📊 KPIs
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-          <div style={{ background: '#e6f9f6', padding: '20px', borderRadius: '8px', border: '1px solid #01a383' }}>
-            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Total de Tarefas</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#01a383' }}>{kpis.totalTasks}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+          <div style={{ background: '#e6f9f6', padding: '6px', borderRadius: '4px', border: '1px solid #01a383' }}>
+            <div style={{ fontSize: '0.6rem', color: '#666', marginBottom: '1px' }}>Total</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#01a383' }}>{kpis.totalTasks}</div>
           </div>
-          <div style={{ background: '#d1fae5', padding: '20px', borderRadius: '8px', border: '1px solid #10b981' }}>
-            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Tarefas Concluídas</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#10b981' }}>{kpis.completedTasks}</div>
+          <div style={{ background: '#d1fae5', padding: '6px', borderRadius: '4px', border: '1px solid #10b981' }}>
+            <div style={{ fontSize: '0.6rem', color: '#666', marginBottom: '1px' }}>Concluídas</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#10b981' }}>{kpis.completedTasks}</div>
           </div>
-          <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '8px', border: '1px solid #f59e0b' }}>
-            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Por Concluir</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#f59e0b' }}>{kpis.pendingTasks}</div>
-          </div>          <div style={{ background: '#f3e8ff', padding: '20px', borderRadius: '8px', border: '1px solid #a855f7' }}>
-            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Progresso Total</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#a855f7' }}>
+          <div style={{ background: '#fef3c7', padding: '6px', borderRadius: '4px', border: '1px solid #f59e0b' }}>
+            <div style={{ fontSize: '0.6rem', color: '#666', marginBottom: '1px' }}>Pendentes</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#f59e0b' }}>{kpis.pendingTasks}</div>
+          </div>
+          <div style={{ background: '#f3e8ff', padding: '6px', borderRadius: '4px', border: '1px solid #a855f7' }}>
+            <div style={{ fontSize: '0.6rem', color: '#666', marginBottom: '1px' }}>%</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#a855f7' }}>
               {kpis.totalTasks > 0 ? Math.round((kpis.completedTasks / kpis.totalTasks) * 100) : 0}%
             </div>
           </div>
@@ -373,52 +401,183 @@ function ReportPage({ data, fromDate, toDate }) {
       </div>
 
       {/* Monthly Stats */}
-      <div style={{ marginBottom: '40px' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-          📅 Estatísticas Mensais
+      <div style={{ marginBottom: '10px' }}>
+        <h2 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#01a383', marginBottom: '6px', borderBottom: '1px solid #01a383', paddingBottom: '3px' }}>
+          📅 Estatísticas
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-          <div style={{ background: '#e6f9f6', padding: '20px', borderRadius: '8px', border: '1px solid #01a383' }}>
-            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Mês Anterior</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#01a383' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+          <div style={{ background: '#e6f9f6', padding: '6px', borderRadius: '4px', border: '1px solid #01a383' }}>
+            <div style={{ fontSize: '0.6rem', color: '#666', marginBottom: '1px' }}>Mês Ant.</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#01a383' }}>
               {monthlyStats.completedLastMonth || 0}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '5px' }}>tarefas concluídas</div>
           </div>
-          <div style={{ background: '#d1fae5', padding: '20px', borderRadius: '8px', border: '1px solid #10b981' }}>
-            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Mês Atual ({monthlyStats.currentMonth})</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#10b981' }}>
+          <div style={{ background: '#d1fae5', padding: '6px', borderRadius: '4px', border: '1px solid #10b981' }}>
+            <div style={{ fontSize: '0.6rem', color: '#666', marginBottom: '1px' }}>Mês Atual</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#10b981' }}>
               {monthlyStats.completedCurrentMonth || 0}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '5px' }}>tarefas concluídas</div>
           </div>
-          <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '8px', border: '1px solid #f59e0b' }}>
-            <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px' }}>Semana Atual</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#f59e0b' }}>
+          <div style={{ background: '#fef3c7', padding: '6px', borderRadius: '4px', border: '1px solid #f59e0b' }}>
+            <div style={{ fontSize: '0.6rem', color: '#666', marginBottom: '1px' }}>Semana</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#f59e0b' }}>
               {monthlyStats.completedCurrentWeek || 0}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '5px' }}>tarefas concluídas</div>
-          </div>        </div>
+          </div>
+        </div>
       </div>
+
+      {/* Planeamento Global */}
+      {planningData && planningData.length > 0 && (
+        <div style={{ marginBottom: '10px', pageBreakInside: 'avoid' }}>
+          <h2 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#01a383', marginBottom: '6px', borderBottom: '1px solid #01a383', paddingBottom: '3px' }}>
+            📅 Planeamento
+          </h2>
+          
+          {/* Build days array and organize planning data by user */}
+          {(() => {
+            const days = [];
+            const start = new Date(fromDate);
+            const end = new Date(toDate);
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              days.push(d.toISOString().slice(0, 10));
+            }
+            
+            // Group planning data by user
+            const planningByUser = {};
+            planningData.forEach(p => {
+              if (!planningByUser[p.userId]) {
+                planningByUser[p.userId] = { name: p.name, email: p.email, days: {} };
+              }
+              // Normalize day format (remove time component if present)
+              const dayKey = typeof p.day === 'string' ? p.day.split('T')[0] : new Date(p.day).toISOString().slice(0, 10);
+              if (!planningByUser[p.userId].days[dayKey]) {
+                planningByUser[p.userId].days[dayKey] = [];
+              }
+              if (!planningByUser[p.userId].days[dayKey].includes(p.period)) {
+                planningByUser[p.userId].days[dayKey].push(p.period);
+              }
+            });
+
+            const userCount = Object.keys(planningByUser).length;
+            console.log('Planning table - Users:', userCount, 'Days:', days.length, 'Data by user:', planningByUser);
+
+            if (userCount === 0) {
+              return <p style={{ color: '#999', fontSize: '0.85rem', marginTop: '10px' }}>Sem planeamento registado neste período.</p>;
+            }
+
+            return (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.6rem', border: '1px solid #e2e8f0' }}>
+                <thead>
+                  <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
+                    <th style={{ padding: '4px', textAlign: 'left', fontWeight: '600', borderRight: '1px solid #e2e8f0', fontSize: '0.65rem' }}>Utilizador</th>
+                    {days.map(day => {
+                      const dow = new Date(day).getDay();
+                      const dayName = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'][dow];
+                      return (
+                        <th 
+                          key={day} 
+                          style={{ 
+                            padding: '3px 2px',
+                            textAlign: 'center',
+                            fontWeight: '600',
+                            borderRight: '1px solid #e2e8f0',
+                            background: [0, 6].includes(dow) ? '#f3e8ff' : '#f8fafc',
+                            fontSize: '0.5rem'
+                          }}
+                        >
+                          <div style={{ fontSize: '0.5rem' }}>{day.split('-')[2]}</div>
+                          <div style={{ fontSize: '0.45rem', opacity: 0.7 }}>{dayName}</div>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(planningByUser).map(([userId, userData]) => (
+                    <tr key={userId} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ 
+                        padding: '4px', 
+                        fontWeight: '500', 
+                        color: '#333',
+                        borderRight: '1px solid #e2e8f0',
+                        background: '#fafafa',
+                        maxWidth: '80px',
+                        wordBreak: 'break-word',
+                        fontSize: '0.6rem'
+                      }}>
+                        <div style={{ fontSize: '0.6rem' }}>{userData.name}</div>
+                        <div style={{ fontSize: '0.5rem', color: '#999', marginTop: '1px' }}>{userData.email.split('@')[0]}</div>
+                      </td>
+                      {days.map(day => {
+                        const periods = userData.days[day] || [];
+                        const hasMorning = periods.includes('m');
+                        const hasAfternoon = periods.includes('a');
+                        const dow = new Date(day).getDay();
+                        const isWeekend = [0, 6].includes(dow);
+                        
+                        return (
+                          <td 
+                            key={day}
+                            style={{
+                              padding: '2px 1px',
+                              textAlign: 'center',
+                              borderRight: '1px solid #e2e8f0',
+                              background: isWeekend ? '#faf5ff' : '#fafafa'
+                            }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                              <div style={{
+                                fontSize: '0.45rem',
+                                padding: '1px 2px',
+                                borderRadius: '2px',
+                                background: hasMorning ? '#d1fae5' : '#f0f0f0',
+                                color: hasMorning ? '#065f46' : '#999',
+                                fontWeight: hasMorning ? '600' : '400'
+                              }}>
+                                {hasMorning ? '✓' : '—'}
+                              </div>
+                              <div style={{
+                                fontSize: '0.45rem',
+                                padding: '1px 2px',
+                                borderRadius: '2px',
+                                background: hasAfternoon ? '#d1fae5' : '#f0f0f0',
+                                color: hasAfternoon ? '#065f46' : '#999',
+                                fontWeight: hasAfternoon ? '600' : '400'
+                              }}>
+                                {hasAfternoon ? '✓' : '—'}
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Progress da Obra - Simplified */}
       {progress.length > 0 && (
-        <div style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-            🌳 Progresso da Obra
+        <div style={{ marginBottom: '10px' }}>
+          <h2 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#01a383', marginBottom: '6px', borderBottom: '1px solid #01a383', paddingBottom: '3px' }}>
+            🌳 Progresso
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
-            {progress.map((item) => (
-              <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'center', padding: '15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '6px' }}>
+            {progress.slice(0, 3).map((item) => (
+              <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', alignItems: 'center', padding: '6px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                 <div>
-                  <div style={{ fontWeight: '600', marginBottom: '8px', color: '#1e293b' }}>
+                  <div style={{ fontWeight: '600', marginBottom: '2px', color: '#1e293b', fontSize: '0.7rem' }}>
                     {item.name}
                   </div>
                   <div style={{
                     width: '100%',
-                    height: '20px',
+                    height: '12px',
                     background: '#e2e8f0',
-                    borderRadius: '10px',
+                    borderRadius: '6px',
                     overflow: 'hidden'
                   }}>
                     <div style={{
@@ -430,135 +589,129 @@ function ReportPage({ data, fromDate, toDate }) {
                   </div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#01a383' }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#01a383' }}>
                     {item.progressPercent}%
                   </div>
                 </div>
               </div>
             ))}
+            {progress.length > 3 && <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '4px' }}>... e mais {progress.length - 3}</div>}
           </div>
         </div>
       )}
 
       {/* Materials */}
       {materials.length > 0 && (
-        <div style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
+        <div style={{ marginBottom: '10px' }}>
+          <h2 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#01a383', marginBottom: '6px', borderBottom: '1px solid #01a383', paddingBottom: '3px' }}>
             🛒 Materiais
           </h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.65rem' }}>
             <thead>
               <tr style={{ background: '#f1f5f9' }}>
-                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Descrição</th>
-                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Marca</th>
-                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Quantidade</th>
-                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Tipo</th>
-                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Status Entrega</th>
-                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Status Montagem</th>
+                <th style={{ padding: '4px', textAlign: 'left', borderBottom: '1px solid #cbd5e1', fontWeight: '600' }}>Descrição</th>
+                <th style={{ padding: '4px', textAlign: 'center', borderBottom: '1px solid #cbd5e1', fontWeight: '600' }}>Qty</th>
+                <th style={{ padding: '4px', textAlign: 'center', borderBottom: '1px solid #cbd5e1', fontWeight: '600' }}>Entrega</th>
+                <th style={{ padding: '4px', textAlign: 'center', borderBottom: '1px solid #cbd5e1', fontWeight: '600' }}>Montagem</th>
               </tr>
             </thead>
             <tbody>
-              {materials.slice(0, 15).map((material) => (
+              {materials.slice(0, 8).map((material) => (
                 <tr key={material.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '10px' }}>{material.description}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>
-                    {material.brand || '—'}
-                  </td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem' }}>
+                  <td style={{ padding: '3px' }}>{material.description}</td>
+                  <td style={{ padding: '3px', textAlign: 'center', fontSize: '0.6rem' }}>
                     {material.quantity}
                   </td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>
-                    {material.type || '—'}
-                  </td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.8rem' }}>
+                  <td style={{ padding: '3px', textAlign: 'center', fontSize: '0.6rem' }}>
                     <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
+                      padding: '2px 4px',
+                      borderRadius: '2px',
                       background: material.deliveryStatus === 'Delivered' ? '#d1fae5' : '#fef3c7',
-                      color: material.deliveryStatus === 'Delivered' ? '#059669' : '#92400e'
+                      color: material.deliveryStatus === 'Delivered' ? '#059669' : '#92400e',
+                      fontSize: '0.55rem'
                     }}>
-                      {material.deliveryStatus || '—'}
+                      {material.deliveryStatus ? material.deliveryStatus.charAt(0).toUpperCase() : '—'}
                     </span>
                   </td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.8rem' }}>
+                  <td style={{ padding: '3px', textAlign: 'center', fontSize: '0.6rem' }}>
                     <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
+                      padding: '2px 4px',
+                      borderRadius: '2px',
                       background: material.assemblyStatus === 'Completed' ? '#d1fae5' : '#fef3c7',
-                      color: material.assemblyStatus === 'Completed' ? '#059669' : '#92400e'
+                      color: material.assemblyStatus === 'Completed' ? '#059669' : '#92400e',
+                      fontSize: '0.55rem'
                     }}>
-                      {material.assemblyStatus || '—'}
+                      {material.assemblyStatus ? material.assemblyStatus.charAt(0).toUpperCase() : '—'}
                     </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {materials.length > 15 && <p style={{ marginTop: '10px', color: '#666', fontSize: '0.9rem' }}>... e mais {materials.length - 15} materiais</p>}
+          {materials.length > 8 && <p style={{ marginTop: '3px', color: '#666', fontSize: '0.65rem' }}>... e mais {materials.length - 8}</p>}
         </div>
       )}
 
       {/* Issue Photos */}
       {issuePhotos.length > 0 && (
-        <div style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-            ⚠️ Fotos de Inconformidades ({fromDate} → {toDate})
+        <div style={{ marginBottom: '10px' }}>
+          <h2 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#01a383', marginBottom: '6px', borderBottom: '1px solid #01a383', paddingBottom: '3px' }}>
+            ⚠️ Fotos de Inconformidades
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
-            {issuePhotos.slice(0, 9).map((photo) => (
-              <div key={photo.id} style={{ background: '#f9fafb', padding: '10px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+            {issuePhotos.slice(0, 4).map((photo) => (
+              <div key={photo.id} style={{ background: '#f9fafb', padding: '4px', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
                 {photo.photoUrl && (
                   <img
                     src={photo.photoUrl}
                     alt="Issue"
                     style={{
                       width: '100%',
-                      height: '150px',
+                      height: '80px',
                       objectFit: 'cover',
-                      borderRadius: '6px',
-                      marginBottom: '10px'
+                      borderRadius: '3px',
+                      marginBottom: '3px'
                     }}
                   />
                 )}
-                {photo.observations && <p style={{ fontSize: '0.8rem', color: '#666', margin: '5px 0' }}>📝 {photo.observations}</p>}
-                <p style={{ fontSize: '0.75rem', color: '#999', margin: '5px 0' }}>{formatDate(photo.createdAt)}</p>
+                {photo.observations && <p style={{ fontSize: '0.6rem', color: '#666', margin: '2px 0' }}>📝 {photo.observations.substring(0, 30)}...</p>}
               </div>
             ))}
           </div>
-          {issuePhotos.length > 9 && <p style={{ marginTop: '10px', color: '#666', fontSize: '0.9rem' }}>... e mais {issuePhotos.length - 9} fotos</p>}
+          {issuePhotos.length > 4 && <p style={{ marginTop: '4px', color: '#666', fontSize: '0.7rem' }}>... e mais {issuePhotos.length - 4} fotos</p>}
         </div>
       )}
 
       {/* Completed Tasks */}
       {completedTasks.length > 0 && (
-        <div style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#01a383', marginBottom: '15px', borderBottom: '2px solid #01a383', paddingBottom: '10px' }}>
-            ✅ Tarefas Concluídas (Nós Folha) - {fromDate} → {toDate}
+        <div style={{ marginBottom: '10px' }}>
+          <h2 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#01a383', marginBottom: '6px', borderBottom: '1px solid #01a383', paddingBottom: '3px' }}>
+            ✅ Tarefas Concluídas
           </h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.65rem' }}>
             <thead>
               <tr style={{ background: '#f1f5f9' }}>
-                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Tarefa</th>
-                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #cbd5e1', fontWeight: '600' }}>Data de Conclusão</th>
+                <th style={{ padding: '4px', textAlign: 'left', borderBottom: '1px solid #cbd5e1', fontWeight: '600' }}>Tarefa</th>
+                <th style={{ padding: '4px', textAlign: 'center', borderBottom: '1px solid #cbd5e1', fontWeight: '600' }}>Data</th>
               </tr>
             </thead>
             <tbody>
-              {completedTasks.slice(0, 20).map((task) => (
+              {completedTasks.slice(0, 10).map((task) => (
                 <tr key={task.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '10px' }}>{task.name}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', fontSize: '0.85rem', color: '#666' }}>
+                  <td style={{ padding: '3px' }}>{task.name.substring(0, 40)}</td>
+                  <td style={{ padding: '3px', textAlign: 'center', fontSize: '0.6rem', color: '#666' }}>
                     {formatDate(task.updatedAt)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {completedTasks.length > 20 && <p style={{ marginTop: '10px', color: '#666', fontSize: '0.9rem' }}>... e mais {completedTasks.length - 20} tarefas</p>}
+          {completedTasks.length > 10 && <p style={{ marginTop: '3px', color: '#666', fontSize: '0.65rem' }}>... e mais {completedTasks.length - 10} tarefas</p>}
         </div>
       )}
 
       {/* Footer */}
-      <div style={{ marginTop: '60px', paddingTop: '20px', borderTop: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#999', textAlign: 'center' }}>
+      <div style={{ marginTop: '15px', paddingTop: '8px', borderTop: '1px solid #e2e8f0', fontSize: '0.6rem', color: '#999', textAlign: 'center' }}>
         <p>Relatório confidencial | Beniteca © 2026</p>
       </div>
     </div>

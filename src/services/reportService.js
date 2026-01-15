@@ -161,34 +161,66 @@ class ReportService {
       .input('toDate', sql.Date, new Date(toDate))
       .query(`
         ;WITH LevelHierarchy AS (
-          SELECT l.id, l.parentId, l.name, l.status, l.updatedAt, 0 as depth
+          SELECT l.id, l.parentId, l.name, l.status, l.completedAt, l.updatedAt, 0 as depth
           FROM [Level] l
           WHERE l.id = @obraId
           
           UNION ALL
           
-          SELECT l.id, l.parentId, l.name, l.status, l.updatedAt, lh.depth + 1
+          SELECT l.id, l.parentId, l.name, l.status, l.completedAt, l.updatedAt, lh.depth + 1
           FROM [Level] l
           INNER JOIN LevelHierarchy lh ON l.parentId = lh.id
           WHERE lh.depth < 20
         ),
         LeafNodes AS (
-          SELECT lh.id, lh.name, lh.status, lh.updatedAt
+          SELECT lh.id, lh.name, lh.status, lh.completedAt, lh.updatedAt
           FROM LevelHierarchy lh
           WHERE NOT EXISTS (
             SELECT 1 FROM [Level] WHERE parentId = lh.id
           )
             AND lh.status = 'completed'
-            AND lh.updatedAt >= @fromDate
-            AND lh.updatedAt <= @toDate
+            AND lh.completedAt >= @fromDate
+            AND lh.completedAt <= @toDate
         )
         SELECT * FROM LeafNodes
-        ORDER BY updatedAt DESC
+        ORDER BY completedAt DESC
       `);
 
     const completedTasksList = completedTasksListRes.recordset;
 
-    // 7. Calculate monthly/weekly statistics based on leaf nodes only
+    // 7. Get ALL completed leaf node tasks (no date filter) for monthly/weekly/historical statistics
+    // These stats should reflect the actual state from the beginning of time, not just the selected date range
+    const allCompletedTasksRes = await pool.request()
+      .input('obraId', sql.Int, obraIdNum)
+      .query(`
+        ;WITH LevelHierarchy AS (
+          SELECT l.id, l.parentId, l.name, l.status, l.completedAt, l.updatedAt, 0 as depth
+          FROM [Level] l
+          WHERE l.id = @obraId
+          
+          UNION ALL
+          
+          SELECT l.id, l.parentId, l.name, l.status, l.completedAt, l.updatedAt, lh.depth + 1
+          FROM [Level] l
+          INNER JOIN LevelHierarchy lh ON l.parentId = lh.id
+          WHERE lh.depth < 20
+        ),
+        LeafNodes AS (
+          SELECT lh.id, lh.name, lh.status, lh.completedAt, lh.updatedAt
+          FROM LevelHierarchy lh
+          WHERE NOT EXISTS (
+            SELECT 1 FROM [Level] WHERE parentId = lh.id
+          )
+            AND lh.status = 'completed'
+        )
+        SELECT * FROM LeafNodes
+        ORDER BY completedAt DESC
+      `);
+
+    const allCompletedTasks = allCompletedTasksRes.recordset;
+
+    // 8. Calculate monthly/weekly statistics based on ALL completed tasks
+    // Stats are always relative to TODAY's month/week/year, regardless of the selected report date range
     const today = new Date();
     const currentMonth = today.getMonth() + 1;
     const currentYear = today.getFullYear();
@@ -209,21 +241,28 @@ class ReportService {
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(endOfWeek.getDate() + 6);
 
-    // Calculate stats from completedTasksList (which are already leaf nodes)
-    const completedLastMonth = completedTasksList.filter(t => {
-      const date = new Date(t.updatedAt);
+    // Calculate stats from allCompletedTasks using completedAt (not updatedAt)
+    const completedLastMonth = allCompletedTasks.filter(t => {
+      const date = new Date(t.completedAt || t.updatedAt); // fallback to updatedAt if completedAt is null
       return date >= startOfLastMonth && date <= endOfLastMonth;
     }).length;
 
-    const completedCurrentMonth = completedTasksList.filter(t => {
-      const date = new Date(t.updatedAt);
+    const completedCurrentMonth = allCompletedTasks.filter(t => {
+      const date = new Date(t.completedAt || t.updatedAt);
       return date >= startOfMonth && date <= endOfMonth;
     }).length;
 
-    const completedCurrentWeek = completedTasksList.filter(t => {
-      const date = new Date(t.updatedAt);
+    const completedCurrentWeek = allCompletedTasks.filter(t => {
+      const date = new Date(t.completedAt || t.updatedAt);
       return date >= startOfWeek && date <= endOfWeek;
     }).length;
+
+    console.log(`📊 Report Stats for Obra ${obraIdNum}:`);
+    console.log(`   Total All-Time Completed: ${allCompletedTasks.length}`);
+    console.log(`   Last Month (${startOfLastMonth.toLocaleDateString()} - ${endOfLastMonth.toLocaleDateString()}): ${completedLastMonth}`);
+    console.log(`   Current Month ${currentMonth}/${currentYear} (${startOfMonth.toLocaleDateString()} - ${endOfMonth.toLocaleDateString()}): ${completedCurrentMonth}`);
+    console.log(`   Current Week (${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}): ${completedCurrentWeek}`);
+    console.log(`   Report Date Range: ${fromDate} - ${toDate}`);
 
     return {
       obra,

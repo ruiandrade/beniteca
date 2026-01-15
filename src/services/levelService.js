@@ -313,6 +313,10 @@ class LevelService {
     if (data.status !== undefined) {
       fields.push('status = @status');
       request.input('status', sql.NVarChar, data.status);
+      // If status is changing to 'completed', set completedAt to now
+      if (data.status === 'completed') {
+        fields.push('completedAt = GETDATE()');
+      }
     }
     if (data.notes !== undefined) {
       fields.push('notes = @notes');
