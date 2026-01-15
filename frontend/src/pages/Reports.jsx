@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import html2pdf from 'html2pdf.js';
 import { formatDateToDDMMYYYY } from '../utils/helpers';
@@ -13,6 +13,8 @@ export default function Reports() {
   const [reportData, setReportData] = useState(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [error, setError] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   // Check admin access
   useEffect(() => {
@@ -37,6 +39,20 @@ export default function Reports() {
     setFromDate(monday.toISOString().slice(0, 10));
     setToDate(friday.toISOString().slice(0, 10));
   }, [user, token]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [dropdownOpen]);
 
   const loadObras = async () => {
     try {
@@ -197,42 +213,86 @@ export default function Reports() {
         )}
 
         <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          {/* Obra Selection */}
+          {/* Obra Selection - Dropdown */}
           <div style={{ marginBottom: '30px' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '15px', color: '#334155' }}>
               Selecione as Obras
             </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
-              {obras.map((obra) => (
-                <label
-                  key={obra.id}
-                  style={{
-                    padding: '15px',
-                    background: selectedObras.has(obra.id) ? '#01a383' : '#f1f5f9',
-                    color: selectedObras.has(obra.id) ? '#fff' : '#334155',
-                    border: `2px solid ${selectedObras.has(obra.id) ? '#01a383' : '#e2e8f0'}`,
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px'
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedObras.has(obra.id)}
-                    onChange={() => toggleObraSelection(obra.id)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ fontWeight: '600' }}>{obra.name}</div>
-                    <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-                      {new Date(obra.startDate).toLocaleDateString('pt-PT')} → {new Date(obra.endDate).toLocaleDateString('pt-PT')}
-                    </div>
-                  </div>
-                </label>
-              ))}
+            <div ref={dropdownRef} style={{ position: 'relative', maxWidth: '400px' }}>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                style={{
+                  width: '100%',
+                  padding: '12px 15px',
+                  background: '#fff',
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '1rem',
+                  color: '#334155',
+                  fontWeight: '600',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <span>
+                  {selectedObras.size === 0 
+                    ? 'Selecionar obras...' 
+                    : `${selectedObras.size} obra${selectedObras.size !== 1 ? 's' : ''} selecionada${selectedObras.size !== 1 ? 's' : ''}`}
+                </span>
+                <span style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                  ▼
+                </span>
+              </button>
+
+              {dropdownOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: '#fff',
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '8px',
+                  marginTop: '5px',
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  zIndex: 10
+                }}>
+                  {obras.map((obra) => (
+                    <label
+                      key={obra.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        padding: '12px 15px',
+                        borderBottom: '1px solid #f1f5f9',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s',
+                        background: selectedObras.has(obra.id) ? '#f0fdf4' : 'transparent'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = selectedObras.has(obra.id) ? '#e6f9f0' : '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = selectedObras.has(obra.id) ? '#f0fdf4' : 'transparent'}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedObras.has(obra.id)}
+                        onChange={() => toggleObraSelection(obra.id)}
+                        style={{ cursor: 'pointer', marginRight: '10px', marginTop: '2px' }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: '600', color: '#334155' }}>{obra.name}</div>
+                        <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                          {new Date(obra.startDate).toLocaleDateString('pt-PT')} → {new Date(obra.endDate).toLocaleDateString('pt-PT')}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -567,7 +627,7 @@ function ReportPage({ data, fromDate, toDate }) {
             🌳 Progresso
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '6px' }}>
-            {progress.slice(0, 3).map((item) => (
+            {progress.map((item) => (
               <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', alignItems: 'center', padding: '6px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                 <div>
                   <div style={{ fontWeight: '600', marginBottom: '2px', color: '#1e293b', fontSize: '0.7rem' }}>
@@ -595,7 +655,6 @@ function ReportPage({ data, fromDate, toDate }) {
                 </div>
               </div>
             ))}
-            {progress.length > 3 && <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '4px' }}>... e mais {progress.length - 3}</div>}
           </div>
         </div>
       )}
@@ -616,7 +675,7 @@ function ReportPage({ data, fromDate, toDate }) {
               </tr>
             </thead>
             <tbody>
-              {materials.slice(0, 8).map((material) => (
+              {materials.map((material) => (
                 <tr key={material.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                   <td style={{ padding: '3px' }}>{material.description}</td>
                   <td style={{ padding: '3px', textAlign: 'center', fontSize: '0.6rem' }}>
@@ -648,7 +707,6 @@ function ReportPage({ data, fromDate, toDate }) {
               ))}
             </tbody>
           </table>
-          {materials.length > 8 && <p style={{ marginTop: '3px', color: '#666', fontSize: '0.65rem' }}>... e mais {materials.length - 8}</p>}
         </div>
       )}
 
@@ -659,7 +717,7 @@ function ReportPage({ data, fromDate, toDate }) {
             ⚠️ Fotos de Inconformidades
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-            {issuePhotos.slice(0, 4).map((photo) => (
+            {issuePhotos.map((photo) => (
               <div key={photo.id} style={{ background: '#f9fafb', padding: '4px', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
                 {photo.photoUrl && (
                   <img
@@ -696,7 +754,7 @@ function ReportPage({ data, fromDate, toDate }) {
               </tr>
             </thead>
             <tbody>
-              {completedTasks.slice(0, 10).map((task) => (
+              {completedTasks.map((task) => (
                 <tr key={task.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                   <td style={{ padding: '3px' }}>{task.name.substring(0, 40)}</td>
                   <td style={{ padding: '3px', textAlign: 'center', fontSize: '0.6rem', color: '#666' }}>
@@ -706,7 +764,6 @@ function ReportPage({ data, fromDate, toDate }) {
               ))}
             </tbody>
           </table>
-          {completedTasks.length > 10 && <p style={{ marginTop: '3px', color: '#666', fontSize: '0.65rem' }}>... e mais {completedTasks.length - 10} tarefas</p>}
         </div>
       )}
 

@@ -79,9 +79,12 @@ class PermissionService {
         .query(`
           SELECT DISTINCT l.id, l.name, l.description, l.status, l.startDate, l.endDate, 
                  l.coverImage, l.constructionManagerId, l.createdAt, l.updatedAt,
+                 cm.name as constructionManagerName,
+                 cm.email as constructionManagerEmail,
                  (SELECT COUNT(*) FROM [Level] WHERE parentId = l.id) as childrenCount
           FROM [Level] l
           INNER JOIN [UserWorkPermission] uwp ON l.id = uwp.levelId
+          LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
           WHERE uwp.userId = @userId
             AND uwp.objectType = 'LEVELS'
             AND uwp.permissionLevel IN ('R', 'W')
@@ -112,11 +115,14 @@ class PermissionService {
             l.endDate,
             l.coverImage,
             l.constructionManagerId,
+            cm.name as constructionManagerName,
+            cm.email as constructionManagerEmail,
             l.createdAt,
             l.updatedAt,
             COUNT(c.id) AS childrenCount
           FROM [Level] l
           LEFT JOIN [Level] c ON c.parentId = l.id
+          LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
           WHERE l.parentId IS NULL
           GROUP BY 
             l.id,
@@ -127,6 +133,8 @@ class PermissionService {
             l.endDate,
             l.coverImage,
             l.constructionManagerId,
+            cm.name,
+            cm.email,
             l.createdAt,
             l.updatedAt
           ORDER BY l.name ASC

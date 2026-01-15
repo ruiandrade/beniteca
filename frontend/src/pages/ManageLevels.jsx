@@ -47,7 +47,9 @@ export default function ManageLevels() {
   const [materialReal, setMaterialReal] = useState("");
   const [materialDeliveryStatus, setMaterialDeliveryStatus] = useState("Not requested");
   const [materialAssemblyStatus, setMaterialAssemblyStatus] = useState("Not started");
+  const [materialPhotoFile, setMaterialPhotoFile] = useState(null);
   const [materialErrors, setMaterialErrors] = useState({});
+  const materialPhotoInputRef = useRef(null);
 
   // Import/export hierarchy via Excel
   const [importingHierarchy, setImportingHierarchy] = useState(false);
@@ -676,6 +678,22 @@ export default function ManageLevels() {
 
     setLoading(true);
     try {
+      let photoUrl = null;
+      
+      // Upload photo if provided
+      if (materialPhotoFile) {
+        const formData = new FormData();
+        const renamed = new File([materialPhotoFile], `${id}-${Date.now()}-material-${materialPhotoFile.name}`, { type: materialPhotoFile.type });
+        formData.append("file", renamed);
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (!uploadRes.ok) throw new Error("Erro ao fazer upload da foto");
+        const { url } = await uploadRes.json();
+        photoUrl = url;
+      }
+
       const description = materialUnit.trim() ? `${materialName} (${materialUnit})` : materialName;
       const res = await fetch("/api/materials", {
         method: "POST",
@@ -690,6 +708,7 @@ export default function ManageLevels() {
           realValue: materialReal ? parseFloat(materialReal) : null,
           deliveryStatus: materialDeliveryStatus,
           assemblyStatus: materialAssemblyStatus,
+          photoUrl,
           levelId: id,
         }),
       });
@@ -703,10 +722,12 @@ export default function ManageLevels() {
       setMaterialUnit("");
       setMaterialEstimated("");
       setMaterialReal("");
+      setMaterialPhotoFile(null);
       setMaterialDeliveryStatus("Not requested");
       setMaterialAssemblyStatus("Not started");
       setShowMaterialForm(false);
       setMaterialErrors({});
+      if (materialPhotoInputRef.current) materialPhotoInputRef.current.value = "";
     } catch (err) {
       setMaterialErrors({ submit: err.message });
     } finally {
@@ -982,6 +1003,22 @@ export default function ManageLevels() {
   const handleUpdateMaterial = async (mat) => {
     setLoading(true);
     try {
+      let photoUrl = mat.photoUrl;
+      
+      // Upload new photo if provided
+      if (mat.photoFile && mat.photoFile instanceof File) {
+        const formData = new FormData();
+        const renamed = new File([mat.photoFile], `${id}-${Date.now()}-material-${mat.photoFile.name}`, { type: mat.photoFile.type });
+        formData.append("file", renamed);
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (!uploadRes.ok) throw new Error("Erro ao fazer upload da foto");
+        const { url } = await uploadRes.json();
+        photoUrl = url;
+      }
+
       const res = await fetch(`/api/materials/${mat.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -995,6 +1032,7 @@ export default function ManageLevels() {
           realValue: mat.realValue ? parseFloat(mat.realValue) : null,
           deliveryStatus: mat.deliveryStatus,
           assemblyStatus: mat.assemblyStatus,
+          photoUrl,
           levelId: id,
         }),
       });
@@ -1545,7 +1583,18 @@ export default function ManageLevels() {
 
         <div className="ml-container">
           <div className="ml-header">
-          <button onClick={() => navigate("/")} className="ml-back-btn">← Início</button>
+          <button 
+            onClick={() => {
+              if (work?.parentId) {
+                navigate(`/works/${work.parentId}/levels`);
+              } else {
+                navigate("/");
+              }
+            }} 
+            className="ml-back-btn"
+          >
+            ← {work?.parentId ? 'Voltar' : 'Início'}
+          </button>
           <div className="ml-header-title-section">
             <h1 className="ml-title">
               {breadcrumb.length > 0
@@ -2364,6 +2413,19 @@ export default function ManageLevels() {
                       />
                     </div>
                   </div>
+                <div className="ml-field">
+                  <label>Foto do Material (opcional)</label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setMaterialPhotoFile(e.target.files[0])}
+                      ref={materialPhotoInputRef}
+                      style={{ flex: 1 }}
+                    />
+                    {materialPhotoFile && <span style={{ color: '#10b981', fontSize: '0.9rem' }}>✓ {materialPhotoFile.name}</span>}
+                  </div>
+                </div>
                 {materialErrors.submit && <div className="ml-error">{materialErrors.submit}</div>}
                 <button type="submit" className="ml-btn" disabled={loading}>
                   {loading ? "A criar..." : "Criar Material"}
@@ -2494,6 +2556,37 @@ export default function ManageLevels() {
                             />
                           </div>
                         </div>
+                        <div className="ml-field">
+                          <label>Foto do Material (opcional)</label>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexDirection: 'column' }}>
+                            {editingMaterial.photoUrl && (
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <img 
+                                  src={editingMaterial.photoUrl} 
+                                  alt="Material" 
+                                  style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                                  onClick={() => setSelectedPhoto(editingMaterial.photoUrl)}
+                                  title="Clica para ampliar"
+                                />
+                                <button 
+                                  type="button"
+                                  onClick={() => setEditingMaterial({...editingMaterial, photoUrl: null})}
+                                  className="ml-btn-delete"
+                                  title="Remover foto"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => setEditingMaterial({...editingMaterial, photoFile: e.target.files[0]})}
+                              style={{ flex: 1, minWidth: '100%' }}
+                            />
+                            {editingMaterial.photoFile && <span style={{ color: '#10b981', fontSize: '0.9rem' }}>✓ Novo arquivo: {editingMaterial.photoFile.name}</span>}
+                          </div>
+                        </div>
                         <div className="ml-item-actions">
                           <button onClick={() => handleUpdateMaterial(editingMaterial)} className="ml-btn-view">Guardar</button>
                           <button onClick={() => setEditingMaterial(null)} className="ml-btn-delete">Cancelar</button>
@@ -2502,12 +2595,58 @@ export default function ManageLevels() {
                     ) : (
                       <>
                         <div className="ml-item-info">
-                          <div className="ml-status-badges">
-                            <span className="ml-badge">Delivery: {mat.deliveryStatus || 'Not requested'}</span>
-                            <span className="ml-badge">Assembly: {mat.assemblyStatus || 'Not started'}</span>
-                          </div>
-                          <h3>{mat.description}</h3>
-                          <p>Quantidade: {mat.quantity}</p>
+                          {mat.photoUrl && (
+                            <div style={{ marginBottom: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                              <img 
+                                src={mat.photoUrl} 
+                                alt={mat.description}
+                                style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}
+                                onClick={() => setSelectedPhoto(mat.photoUrl)}
+                                title="Clica para ampliar"
+                              />
+                              <div style={{ flex: 1 }}>
+                                <div className="ml-status-badges">
+                                  <span className="ml-badge">Entrega: {
+                                    {
+                                      'Not requested': 'Não pedido',
+                                      'Requested': 'Pedido',
+                                      'Delivered': 'Entregue'
+                                    }[mat.deliveryStatus] || mat.deliveryStatus || 'Não pedido'
+                                  }</span>
+                                  <span className="ml-badge">Montagem: {
+                                    {
+                                      'Not started': 'Não iniciado',
+                                      'Started': 'Iniciado',
+                                      'Finished': 'Terminado'
+                                    }[mat.assemblyStatus] || mat.assemblyStatus || 'Não iniciado'
+                                  }</span>
+                                </div>
+                                <h3 style={{ margin: '4px 0 0 0' }}>{mat.description}</h3>
+                              </div>
+                            </div>
+                          )}
+                          {!mat.photoUrl && (
+                            <>
+                              <div className="ml-status-badges">
+                                <span className="ml-badge">Entrega: {
+                                  {
+                                    'Not requested': 'Não pedido',
+                                    'Requested': 'Pedido',
+                                  'Delivered': 'Entregue'
+                                }[mat.deliveryStatus] || mat.deliveryStatus || 'Não pedido'
+                              }</span>
+                              <span className="ml-badge">Montagem: {
+                                {
+                                  'Not started': 'Não iniciado',
+                                  'Started': 'Iniciado',
+                                  'Finished': 'Terminado'
+                                }[mat.assemblyStatus] || mat.assemblyStatus || 'Não iniciado'
+                              }</span>
+                              </div>
+                              <h3>{mat.description}</h3>
+                              <p>Quantidade: {mat.quantity}</p>
+                            </>
+                          )}
                           {(mat.brand || mat.manufacturer || mat.type) && (
                             <p>
                               {mat.brand && <span>Marca: {mat.brand} </span>}

@@ -562,6 +562,48 @@ class LevelService {
 
     return nodesMap.get(rootNode.id);
   }
+
+  // Calculate leaf nodes ratio for a level (recursive)
+  async getLeafNodesRatio(levelId) {
+    const pool = await getConnection();
+    
+    // Get all descendants using the same approach as reportService
+    const allLevelsRes = await pool.request()
+      .input('levelId', sql.Int, levelId)
+      .query(`
+        ;WITH LevelHierarchy AS (
+          SELECT l.id, l.parentId, l.status, 0 as depth
+          FROM [Level] l
+          WHERE l.id = @levelId
+          
+          UNION ALL
+          
+          SELECT l.id, l.parentId, l.status, lh.depth + 1
+          FROM [Level] l
+          INNER JOIN LevelHierarchy lh ON l.parentId = lh.id
+          WHERE lh.depth < 20 AND l.hidden = 0
+        )
+        SELECT *
+        FROM LevelHierarchy
+        ORDER BY depth
+      `);
+
+    const allLevels = allLevelsRes.recordset;
+    
+    // Filter to only leaf nodes (levels with no children)
+    const leafLevels = allLevels.filter(level => 
+      !allLevels.some(l => l.parentId === level.id)
+    );
+    
+    const total = leafLevels.length;
+    const completed = leafLevels.filter(l => l.status === 'completed').length;
+    
+    return {
+      completed,
+      total,
+      ratio: total > 0 ? `${completed}/${total}` : '0/0'
+    };
+  }
 }
 
 module.exports = new LevelService();

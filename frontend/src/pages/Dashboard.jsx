@@ -2,6 +2,75 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
 import { getMyWorks } from '../services/permissionService';
+import Reports from './Reports';
+
+// Sub-component to load and display obra card with ratio
+function ObraCard({ obra, onSelect, getBarColor, getBarBgColor, getNameColor, ratioCache, onRatioLoaded }) {
+  const [ratio, setRatio] = useState(ratioCache[obra.id] || '—');
+  const [loadingRatio, setLoadingRatio] = useState(!ratioCache[obra.id]);
+
+  useEffect(() => {
+    if (!ratioCache[obra.id]) {
+      fetchRatio();
+    }
+  }, [obra.id]);
+
+  const fetchRatio = async () => {
+    try {
+      const res = await fetch(`/api/levels/${obra.id}/ratio`);
+      if (res.ok) {
+        const data = await res.json();
+        const r = data.ratio || '—';
+        setRatio(r);
+        onRatioLoaded(obra.id, r);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar ratio:", err);
+      setRatio('—');
+    } finally {
+      setLoadingRatio(false);
+    }
+  };
+
+  return (
+    <div
+      className="dashboard-card"
+      onClick={() => onSelect(obra)}
+      style={{ borderLeft: `4px solid ${getBarColor(obra)}` }}
+    >
+      <div className="dashboard-card-header" style={{
+        background: getBarBgColor(obra)
+      }}>
+        <h2 className="dashboard-card-title" style={{ color: getNameColor(0) }}>{obra.name}</h2>
+        <p className="dashboard-card-manager">{obra.constructionManagerName || "Sem responsável"}</p>
+      </div>
+
+      <div className="dashboard-card-content">
+        <div className="dashboard-kpi-row">
+          <div className="dashboard-kpi-item">
+            <span className="dashboard-kpi-label">Início</span>
+            <span className="dashboard-kpi-value">
+              {new Date(obra.startDate).toLocaleDateString("pt-PT")}
+            </span>
+          </div>
+          <div className="dashboard-kpi-item">
+            <span className="dashboard-kpi-label">Fim</span>
+            <span className="dashboard-kpi-value">
+              {new Date(obra.endDate).toLocaleDateString("pt-PT")}
+            </span>
+          </div>
+        </div>
+
+        <div className="dashboard-kpi-row">
+          <div className="dashboard-kpi-item">
+            <span className="dashboard-kpi-label">Rácio</span>
+            <span className="dashboard-kpi-value">{loadingRatio ? '...' : ratio}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -18,6 +87,12 @@ export default function Dashboard() {
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [fromWeek, setFromWeek] = useState(1);
   const [toWeek, setToWeek] = useState(16);
+  const [ratioCache, setRatioCache] = useState({});
+  const [dashboardView, setDashboardView] = useState("cards"); // "cards" ou "reports"
+
+  const handleRatioLoaded = (obraId, ratio) => {
+    setRatioCache(prev => ({ ...prev, [obraId]: ratio }));
+  };
 
   useEffect(() => {
     fetchObras();
@@ -56,6 +131,28 @@ export default function Dashboard() {
     } else {
       setSelectedObra(null);
       setActiveTab("gantt");
+    }
+  };
+
+  const handleGoBackInGantt = async () => {
+    if (!selectedObra || !selectedObra.parentId) return;
+    
+    try {
+      // Carregar o nível pai
+      const res = await fetch(`/api/levels/${selectedObra.parentId}`);
+      if (res.ok) {
+        const parentLevel = await res.json();
+        setSelectedObra(parentLevel);
+        setHierarchyTree(null);
+        setHierarchyLoading(true);
+        fetchObraChildren(parentLevel.id);
+        buildHierarchy(parentLevel.id);
+        setExpandedNodes(new Set([parentLevel.id]));
+        setFromWeek(1);
+        setToWeek(16);
+      }
+    } catch (err) {
+      console.error("Erro ao voltar para o nível anterior:", err);
     }
   };
 
@@ -350,65 +447,62 @@ export default function Dashboard() {
         <div className="dashboard-container">
           <div className="dashboard-header">
             <h1 className="dashboard-title">📊 Dashboard de Obras</h1>
-          </div>
-
-          <div className="dashboard-search">
-            <input
-              type="text"
-              placeholder="🔍 Pesquisar obras..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="dashboard-search-input"
-            />
-          </div>
-
-          {loading ? (
-            <p className="dashboard-loading">A carregar obras...</p>
-          ) : filteredObras.length === 0 ? (
-            <div className="dashboard-empty">
-              <p>Nenhuma obra encontrada.</p>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+              <button 
+                className={`view-toggle-btn ${dashboardView === 'cards' ? 'active' : ''}`}
+                onClick={() => setDashboardView('cards')}
+                title="Ver progresso das obras"
+              >
+                📊 Progresso
+              </button>
+              <button 
+                className={`view-toggle-btn ${dashboardView === 'reports' ? 'active' : ''}`}
+                onClick={() => setDashboardView('reports')}
+                title="Ver relatórios"
+              >
+                📈 Relatórios
+              </button>
             </div>
-          ) : (
-            <div className="dashboard-grid">
-              {filteredObras.map((obra) => (
-                <div
-                  key={obra.id}
-                  className="dashboard-card"
-                  onClick={() => setSelectedObra(obra)}
-                  style={{ borderLeft: `4px solid ${getBarColor(obra)}` }}
-                >
-                  <div className="dashboard-card-header" style={{
-                    background: getBarBgColor(obra)
-                  }}>
-                    <h2 className="dashboard-card-title" style={{ color: getNameColor(0) }}>{obra.name}</h2>
-                    <p className="dashboard-card-manager">{obra.constructionManagerName || "Sem responsável"}</p>
-                  </div>
+          </div>
 
-                  <div className="dashboard-card-content">
-                    <div className="dashboard-kpi-row">
-                      <div className="dashboard-kpi-item">
-                        <span className="dashboard-kpi-label">Início</span>
-                        <span className="dashboard-kpi-value">
-                          {new Date(obra.startDate).toLocaleDateString("pt-PT")}
-                        </span>
-                      </div>
-                      <div className="dashboard-kpi-item">
-                        <span className="dashboard-kpi-label">Fim</span>
-                        <span className="dashboard-kpi-value">
-                          {new Date(obra.endDate).toLocaleDateString("pt-PT")}
-                        </span>
-                      </div>
-                    </div>
+          {dashboardView === 'cards' ? (
+            <>
+              <div className="dashboard-search">
+                <input
+                  type="text"
+                  placeholder="🔍 Pesquisar obras..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="dashboard-search-input"
+                />
+              </div>
 
-                    <div className="dashboard-kpi-row">
-                      <div className="dashboard-kpi-item">
-                        <span className="dashboard-kpi-label">Rácio</span>
-                        <span className="dashboard-kpi-value">{getLeafNodeRatio(obra.id)}</span>
-                      </div>
-                    </div>
-                  </div>
+              {loading ? (
+                <p className="dashboard-loading">A carregar obras...</p>
+              ) : filteredObras.length === 0 ? (
+                <div className="dashboard-empty">
+                  <p>Nenhuma obra encontrada.</p>
                 </div>
-              ))}
+              ) : (
+                <div className="dashboard-grid">
+                  {filteredObras.map((obra) => (
+                    <ObraCard
+                      key={obra.id}
+                      obra={obra}
+                      onSelect={setSelectedObra}
+                      getBarColor={getBarColor}
+                      getBarBgColor={getBarBgColor}
+                      getNameColor={getNameColor}
+                      ratioCache={ratioCache}
+                      onRatioLoaded={handleRatioLoaded}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <Reports />
             </div>
           )}
         </div>
@@ -429,12 +523,36 @@ export default function Dashboard() {
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 2px 16px #0001;
+            display: flex;
+            align-items: center;
+            gap: 24px;
           }
           .dashboard-title {
             font-size: 2rem;
             font-weight: 800;
             color: #1e293b;
             margin: 0;
+          }
+          .view-toggle-btn {
+            padding: 8px 16px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+          }
+          .view-toggle-btn:hover {
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+          }
+          .view-toggle-btn.active {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #fff;
           }
           .dashboard-search {
             margin-bottom: 24px;
@@ -586,6 +704,15 @@ export default function Dashboard() {
                       ))}
                     </select>
                   </div>
+                  {selectedObra?.parentId && (
+                    <button 
+                      className="gantt-nav-btn"
+                      onClick={handleGoBackInGantt}
+                      title="Voltar para o nível anterior"
+                    >
+                      ← Nível Anterior
+                    </button>
+                  )}
                 </div>
                 <div className="gantt-scroll">
                   <table className="gantt-table">
@@ -833,6 +960,7 @@ export default function Dashboard() {
           padding: 12px;
           background: #f8fafc;
           border-radius: 8px;
+          align-items: flex-end;
         }
         .gantt-filter-group {
           display: flex;
@@ -857,6 +985,27 @@ export default function Dashboard() {
           outline: none;
           border-color: #2563eb;
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        .gantt-nav-btn {
+          padding: 8px 16px;
+          background: #f3f4f6;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          color: #374151;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+          margin-left: auto;
+        }
+        .gantt-nav-btn:hover {
+          background: #e5e7eb;
+          border-color: #9ca3af;
+          transform: translateX(-2px);
+        }
+        .gantt-nav-btn:active {
+          transform: translateX(-1px);
         }
         .empty-state {
           text-align: center;

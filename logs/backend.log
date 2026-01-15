@@ -2,21 +2,23 @@
 > beniteca@1.0.0 start
 > node index.js
 
-[dotenv@17.2.3] injecting env (10) from .env.development -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (10) from .env.development -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
 Loaded environment from .env.development
 ✅ Server running on port 3000 in development mode
 📊 Database: Connected
 📦 Blob Storage: Connected
 Conectado ao Azure SQL ✅
 📊 Report Stats for Obra 1021:
-   Total All-Time Completed: 181
+   Total All-Time Completed: 344
    Last Month (12/1/2025 - 12/31/2025): 0
-   Current Month 1/2026 (1/1/2026 - 1/31/2026): 181
-   Current Week (1/12/2026 - 1/18/2026): 1
+   Current Month 1/2026 (1/1/2026 - 1/31/2026): 344
+   Current Week (1/12/2026 - 1/18/2026): 164
    Report Date Range: 2026-01-12 - 2026-01-16
 📊 Report Stats for Obra 1021:
-   Total All-Time Completed: 181
+   Total All-Time Completed: 344
    Last Month (12/1/2025 - 12/31/2025): 0
-   Current Month 1/2026 (1/1/2026 - 1/31/2026): 181
-   Current Week (1/12/2026 - 1/18/2026): 1
+   Current Month 1/2026 (1/1/2026 - 1/31/2026): 344
+   Current Week (1/12/2026 - 1/18/2026): 164
    Report Date Range: 2026-01-12 - 2026-01-16
+📋 getAll - Retornando 24 users
+📋 getAll - Retornando 24 users

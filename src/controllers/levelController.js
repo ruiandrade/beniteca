@@ -125,6 +125,16 @@ class LevelController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  async getRatio(req, res) {
+    try {
+      const { id } = req.params;
+      const ratio = await levelService.getLeafNodesRatio(id);
+      res.json(ratio);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 module.exports = new LevelController();

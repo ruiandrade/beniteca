@@ -14,7 +14,8 @@ class MaterialService {
         assemblyStatus,
         brand,
         manufacturer,
-        [type]
+        [type],
+        photoUrl
       )
       OUTPUT INSERTED.*
       VALUES (
@@ -27,7 +28,8 @@ class MaterialService {
         @assemblyStatus,
         @brand,
         @manufacturer,
-        @type
+        @type,
+        @photoUrl
       )
     `;
     const result = await pool.request()
@@ -41,6 +43,7 @@ class MaterialService {
       .input('brand', sql.NVarChar, data.brand || null)
       .input('manufacturer', sql.NVarChar, data.manufacturer || null)
       .input('type', sql.NVarChar, data.type || null)
+      .input('photoUrl', sql.NVarChar, data.photoUrl || null)
       .query(insertQuery);
     return result.recordset[0];
   }
@@ -67,6 +70,7 @@ class MaterialService {
           brand = @brand,
           manufacturer = @manufacturer,
           [type] = @type,
+          photoUrl = @photoUrl,
           updatedAt = GETDATE()
       OUTPUT INSERTED.*
       WHERE id = @id
@@ -83,6 +87,7 @@ class MaterialService {
       .input('brand', sql.NVarChar, data.brand || null)
       .input('manufacturer', sql.NVarChar, data.manufacturer || null)
       .input('type', sql.NVarChar, data.type || null)
+      .input('photoUrl', sql.NVarChar, data.photoUrl || null)
       .query(updateQuery);
     return result.recordset[0];
   }
