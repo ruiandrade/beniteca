@@ -16,6 +16,8 @@ export default function Dashboard() {
   const [hierarchyLoading, setHierarchyLoading] = useState(false);
   const [navigationStack, setNavigationStack] = useState([]);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
+  const [fromWeek, setFromWeek] = useState(1);
+  const [toWeek, setToWeek] = useState(16);
 
   useEffect(() => {
     fetchObras();
@@ -31,6 +33,10 @@ export default function Dashboard() {
       buildHierarchy(selectedObra.id);
       // Expandir automaticamente a raiz
       setExpandedNodes(new Set([selectedObra.id]));
+      
+      // Reset week filters
+      setFromWeek(1);
+      setToWeek(16);
     }
   }, [selectedObra]);
 
@@ -562,81 +568,101 @@ export default function Dashboard() {
                 <p>Não há dados de planeamento para esta obra.</p>
               </div>
             ) : (
-              <div className="gantt-scroll">
-                <table className="gantt-table">
-                  <thead>
-                    <tr>
-                      <th className="gantt-name-header">Nível</th>
+              <>
+                <div className="gantt-filters">
+                  <div className="gantt-filter-group">
+                    <label>Semana De:</label>
+                    <select value={fromWeek} onChange={(e) => setFromWeek(Math.max(1, parseInt(e.target.value)))}>
                       {weeks.map((w) => (
-                        <th key={w.number} className="gantt-week-header">{w.label}</th>
+                        <option key={w.number} value={w.number}>{w.label}</option>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ganttRows.map((row) => (
-                      <tr key={row.id} className={`gantt-row depth-${row.depth}`}>
-                        <td className="gantt-name-cell">
-                          <div
-                            className="level-info"
-                            style={{
-                              backgroundColor: getBarBgColor(row),
-                              borderLeft: `4px solid ${getBarColor(row)}`,
-                              marginLeft: `${row.depth * 16}px`,
-                              width: `calc(100% - ${row.depth * 16}px)`,
-                            }}
-                          >
-                            <div className="level-name">
-                              <button
-                                className="link-btn"
-                                onClick={() => navigate(`/works/${row.id}/levels`)}
-                                style={{ color: getNameColor(row.depth || 0) }}
-                              >
-                                {row.name}
-                              </button>
-                              {row.hasChildren && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleNode(row.id);
-                                  }}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold',
-                                    marginLeft: '6px',
-                                    fontSize: '14px',
-                                    padding: '0 4px'
-                                  }}
-                                >
-                                  {expandedNodes.has(row.id) ? '−' : '+'}
-                                </button>
-                              )}
-                            </div>
-                            <div className="level-ratio">{getLeafNodeRatio(row.id)}</div>
-                          </div>
-                        </td>
-                        <td
-                          className="gantt-bar-cell"
-                          colSpan={Math.max(1, weeks.length)}
-                        >
-                          <div className="gantt-bar-track">
-                            <div
-                              className="gantt-bar"
-                              style={getBarStyle(row, weeks, selectedObra)}
-                              onClick={() => {
-                                if (row.depth > 0) {
-                                  handleObraClick(row);
-                                }
-                              }}
-                            />
-                          </div>
-                        </td>
+                    </select>
+                  </div>
+                  <div className="gantt-filter-group">
+                    <label>Semana Até:</label>
+                    <select value={toWeek} onChange={(e) => setToWeek(Math.min(weeks.length, parseInt(e.target.value)))}>
+                      {weeks.map((w) => (
+                        <option key={w.number} value={w.number}>{w.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="gantt-scroll">
+                  <table className="gantt-table">
+                    <thead>
+                      <tr>
+                        <th className="gantt-name-header">Nível</th>
+                        {weeks.filter(w => w.number >= fromWeek && w.number <= toWeek).map((w) => (
+                          <th key={w.number} className="gantt-week-header">{w.label}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {ganttRows.map((row) => (
+                        <tr key={row.id} className={`gantt-row depth-${row.depth}`}>
+                          <td className="gantt-name-cell">
+                            <div
+                              className="level-info"
+                              style={{
+                                backgroundColor: getBarBgColor(row),
+                                borderLeft: `4px solid ${getBarColor(row)}`,
+                                marginLeft: `${row.depth * 16}px`,
+                                width: `calc(100% - ${row.depth * 16}px)`,
+                              }}
+                            >
+                              <div className="level-name">
+                                <button
+                                  className="link-btn"
+                                  onClick={() => navigate(`/works/${row.id}/levels`)}
+                                  style={{ color: getNameColor(row.depth || 0) }}
+                                >
+                                  {row.name}
+                                </button>
+                                {row.hasChildren && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleNode(row.id);
+                                    }}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      fontWeight: 'bold',
+                                      marginLeft: '6px',
+                                      fontSize: '14px',
+                                      padding: '0 4px'
+                                    }}
+                                  >
+                                    {expandedNodes.has(row.id) ? '−' : '+'}
+                                  </button>
+                                )}
+                              </div>
+                              <div className="level-ratio">{getLeafNodeRatio(row.id)}</div>
+                            </div>
+                          </td>
+                          <td
+                            className="gantt-bar-cell"
+                            colSpan={Math.max(1, weeks.filter(w => w.number >= fromWeek && w.number <= toWeek).length)}
+                          >
+                            <div className="gantt-bar-track">
+                              <div
+                                className="gantt-bar"
+                                style={getBarStyle(row, weeks.filter(w => w.number >= fromWeek && w.number <= toWeek), selectedObra)}
+                                onClick={() => {
+                                  if (row.depth > 0) {
+                                    handleObraClick(row);
+                                  }
+                                }}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         ) : (
@@ -799,6 +825,38 @@ export default function Dashboard() {
           border-radius: 12px;
           padding: 20px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .gantt-filters {
+          display: flex;
+          gap: 16px;
+          margin-bottom: 20px;
+          padding: 12px;
+          background: #f8fafc;
+          border-radius: 8px;
+        }
+        .gantt-filter-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .gantt-filter-group label {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: #475569;
+        }
+        .gantt-filter-group select {
+          padding: 8px 12px;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          background: #fff;
+          font-size: 0.9rem;
+          cursor: pointer;
+          min-width: 120px;
+        }
+        .gantt-filter-group select:focus {
+          outline: none;
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         .empty-state {
           text-align: center;

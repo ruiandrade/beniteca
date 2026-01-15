@@ -165,6 +165,7 @@ export default function WorkerSchedule() {
     filteredAllocations.forEach((alloc) => {
       const userId = alloc.userId || 'sem-id';
       const userName = alloc.name || 'Colaborador';
+      const userCar = alloc.Car || null;
       const levelId = alloc.levelId;
       const levelName = alloc.levelName || `Obra ${levelId}`;
       const day = (alloc.day || '').slice(0, 10);
@@ -176,7 +177,7 @@ export default function WorkerSchedule() {
       const levelEntry = levels.get(levelId);
 
       if (!levelEntry.users.has(userId)) {
-        levelEntry.users.set(userId, { userName, slots: {} });
+        levelEntry.users.set(userId, { userName, userCar, slots: {} });
       }
       const userEntry = levelEntry.users.get(userId);
 
@@ -299,6 +300,7 @@ export default function WorkerSchedule() {
                 <tr>
                   <th className="sticky-col col-level" rowSpan={2}>Obra</th>
                   <th className="sticky-col col-user" rowSpan={2}>Colaborador</th>
+                  <th className="sticky-col col-car" rowSpan={2}>Carro</th>
                   {days.map((day) => (
                     <th key={day} colSpan={slotFilter === 'both' ? 2 : 1} className="day-header">{day}</th>
                   ))}
@@ -324,6 +326,7 @@ export default function WorkerSchedule() {
                         <td className="sticky-col col-level" rowSpan={level.users.length}>{level.levelName}</td>
                       )}
                       <td className="sticky-col col-user">{user.userName}</td>
+                      <td className="sticky-col col-car">{user.userCar || '—'}</td>
                       {days.map((day) => {
                         const slot = user.slots[day] || { m: false, a: false };
                         const renderCell = (period) => (
@@ -546,6 +549,15 @@ export default function WorkerSchedule() {
           min-width: 140px; 
           text-align: left;
           z-index: 1;
+        }
+        .col-car { 
+          left: 340px; 
+          min-width: 120px; 
+          text-align: left;
+          z-index: 1;
+          background: #f9fafb;
+          color: #64748b;
+          font-size: 0.88rem;
         }
         .cell.on {
           background: #dcfce7;
