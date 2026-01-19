@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 
 export default function Presencas() {
+  const { user } = useAuth();
   const [works, setWorks] = useState([]);
   const [selectedWork, setSelectedWork] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -13,7 +15,7 @@ export default function Presencas() {
 
   useEffect(() => {
     fetchWorks();
-  }, []);
+  }, [user]);
 
   const fetchWorks = async () => {
     try {
@@ -21,7 +23,22 @@ export default function Presencas() {
       if (res.ok) {
         const data = await res.json();
         // Mostrar apenas obras ativas (status = 'active')
-        setWorks(data.filter(obra => obra.status === 'active'));
+        let filteredWorks = data.filter(obra => obra.status === 'active');
+        
+        // Filtrar baseado no role do user
+        if (user?.role === 'A') {
+          // Admin vê tudo
+        } else if (user?.role === 'C' || user?.role === 'O') {
+          // Cliente e Outros veem apenas obras onde são site_director ou construction_manager
+          filteredWorks = filteredWorks.filter(obra => 
+            obra.siteDirectorId === user?.id || obra.constructionManagerId === user?.id
+          );
+        } else {
+          // Sem role válido, sem obras
+          filteredWorks = [];
+        }
+        
+        setWorks(filteredWorks);
       }
     } catch (err) {
       console.error("Erro ao carregar obras:", err);

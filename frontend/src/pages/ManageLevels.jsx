@@ -87,7 +87,10 @@ export default function ManageLevels() {
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
   const [editCover, setEditCover] = useState(null);
+  const [editConstructionManagerId, setEditConstructionManagerId] = useState("");
+  const [editSiteDirectorId, setEditSiteDirectorId] = useState("");
   const [editErrors, setEditErrors] = useState({});
+  const [managers, setManagers] = useState([]);
 
   // Estado para mover level (mudar parentId)
   const [moveMode, setMoveMode] = useState(false);
@@ -276,6 +279,12 @@ export default function ManageLevels() {
         // Set default dates for sublevel form
         setSublevelStart(data.startDate ? data.startDate.split('T')[0] : "");
         setSublevelEnd(data.endDate ? data.endDate.split('T')[0] : "");
+        // Set director IDs
+        setEditConstructionManagerId(data.constructionManagerId || "");
+        setEditSiteDirectorId(data.siteDirectorId || "");
+        // Set director IDs
+        setEditConstructionManagerId(data.constructionManagerId || "");
+        setEditSiteDirectorId(data.siteDirectorId || "");
       }
     } catch (err) {
       console.error("Erro ao carregar obra:", err);
@@ -1388,6 +1397,28 @@ export default function ManageLevels() {
     }
   };
 
+  const handleOpenEditMode = async () => {
+    try {
+      const res = await fetch('/api/users/managers', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setManagers(data || []);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar managers:', err);
+    }
+    setEditMode(true);
+  };
+
+  const handleCloseEditMode = () => {
+    setEditMode(false);
+    setEditConstructionManagerId("");
+    setEditSiteDirectorId("");
+    setEditErrors({});
+  };
+
   const handleUpdateLevel = async () => {
     const errors = {};
     if (!editName.trim()) errors.name = "Nome é obrigatório";
@@ -1435,6 +1466,8 @@ export default function ManageLevels() {
         description: editDesc,
         startDate: editStart || null,
         endDate: editEnd || null,
+        constructionManagerId: editConstructionManagerId || null,
+        siteDirectorId: editSiteDirectorId || null,
       };
       if (coverUrl) payload.coverImage = coverUrl;
 
@@ -1805,7 +1838,7 @@ export default function ManageLevels() {
             </p>
           )}
           <button 
-            onClick={() => userPermission === 'W' && setEditMode(!editMode)} 
+            onClick={() => userPermission === 'W' && (editMode ? handleCloseEditMode() : handleOpenEditMode())} 
             disabled={userPermission === 'R'}
             style={{
               opacity: userPermission === 'R' ? 0.5 : 1,
@@ -1865,6 +1898,36 @@ export default function ManageLevels() {
                     onChange={(e) => setEditEnd(e.target.value)}
                   />
                   {editErrors.endDate && <span className="ml-error">{editErrors.endDate}</span>}
+                </div>
+              </div>
+              <div className="ml-row">
+                <div className="ml-field">
+                  <label>Responsável de Obra</label>
+                  <select
+                    value={editConstructionManagerId}
+                    onChange={(e) => setEditConstructionManagerId(e.target.value)}
+                  >
+                    <option value="">-- Sem Responsável --</option>
+                    {managers.map(manager => (
+                      <option key={manager.id} value={manager.id}>
+                        {manager.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="ml-field">
+                  <label>Diretor de Obra</label>
+                  <select
+                    value={editSiteDirectorId}
+                    onChange={(e) => setEditSiteDirectorId(e.target.value)}
+                  >
+                    <option value="">-- Sem Diretor --</option>
+                    {managers.map(manager => (
+                      <option key={manager.id} value={manager.id}>
+                        {manager.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               {editErrors.submit && <div className="ml-error">{editErrors.submit}</div>}
