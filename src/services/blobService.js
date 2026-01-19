@@ -41,13 +41,16 @@ class BlobService {
       const blobName = `${Date.now()}-${fileName}`;
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
+      // Sanitize fileName for metadata (remove special characters that Azure doesn't allow)
+      const sanitizedFileName = fileName.replace(/[^\w\s.-]/g, '_');
+
       // Upload options
       const uploadOptions = {
         blobHTTPHeaders: {
           blobContentType: mimeType,
         },
         metadata: {
-          originalName: fileName,
+          originalName: sanitizedFileName,
         },
       };
 

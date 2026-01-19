@@ -8,7 +8,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user: authUser } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,7 +16,15 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/obras');
+      // Redirect based on user role
+      setTimeout(() => {
+        const savedUser = JSON.parse(localStorage.getItem('authUser'));
+        if (savedUser?.role === 'C') {
+          navigate('/cliente');
+        } else {
+          navigate('/obras');
+        }
+      }, 0);
     } catch (err) {
       setError(err.message);
     } finally {

@@ -8,7 +8,7 @@ class LevelUserDayService {
     if (to) req.input('to', sql.Date, to);
 
     const result = await req.query(`
-      SELECT lud.id, lud.levelId, lud.userId, lud.day, lud.period,
+      SELECT lud.id, lud.levelId, lud.userId, lud.day, lud.period, lud.appeared, lud.observations, lud.overtimeHours,
              u.name, u.email, u.Car
       FROM LevelUserDay lud
       INNER JOIN [User] u ON u.id = lud.userId
@@ -27,7 +27,7 @@ class LevelUserDayService {
     if (to) req.input('to', sql.Date, to);
 
     const result = await req.query(`
-      SELECT lud.id, lud.levelId, lud.userId, lud.day, lud.period,
+      SELECT lud.id, lud.levelId, lud.userId, lud.day, lud.period, lud.appeared, lud.observations, lud.overtimeHours,
              u.name, u.email, u.Car
       FROM LevelUserDay lud
       INNER JOIN [User] u ON u.id = lud.userId
@@ -149,19 +149,56 @@ class LevelUserDayService {
     }
   }
 
-  async update(id, appeared, observations) {
+  async update(id, appeared, observations, overtimeHours = 0) {
     const pool = await getConnection();
     const result = await pool.request()
       .input('id', sql.Int, id)
       .input('appeared', sql.NVarChar(3), appeared)
       .input('observations', sql.NVarChar(sql.MAX), observations)
+      .input('overtimeHours', sql.Decimal(5, 2), overtimeHours)
       .query(`
         UPDATE LevelUserDay 
-        SET appeared = @appeared, observations = @observations
+        SET appeared = @appeared, observations = @observations, overtimeHours = @overtimeHours
         WHERE id = @id
       `);
     
     return result.rowsAffected[0] > 0;
+  }
+
+  async createSingle({ levelId, userId, day, period, appeared = null, observations = '', overtimeHours = 0 }) {
+    const pool = await getConnection();
+
+    const existing = await pool.request()
+      .input('levelId', sql.Int, levelId)
+      .input('userId', sql.Int, userId)
+      .input('day', sql.Date, day)
+      .input('period', sql.Char, period)
+      .query(`
+        SELECT id FROM LevelUserDay
+        WHERE levelId = @levelId AND userId = @userId AND [day] = @day AND period = @period
+      `);
+
+    if (existing.recordset.length > 0) {
+      const id = existing.recordset[0].id;
+      await this.update(id, appeared || 'yes', observations, overtimeHours);
+      return { id, updated: true };
+    }
+
+    const insert = await pool.request()
+      .input('levelId', sql.Int, levelId)
+      .input('userId', sql.Int, userId)
+      .input('day', sql.Date, day)
+      .input('period', sql.Char, period)
+      .input('appeared', sql.NVarChar(3), appeared)
+      .input('observations', sql.NVarChar(sql.MAX), observations)
+      .input('overtimeHours', sql.Decimal(5, 2), overtimeHours)
+      .query(`
+        INSERT INTO LevelUserDay (levelId, userId, [day], period, appeared, observations, overtimeHours)
+        OUTPUT INSERTED.*
+        VALUES (@levelId, @userId, @day, @period, @appeared, @observations, @overtimeHours)
+      `);
+
+    return insert.recordset[0];
   }
 }
 

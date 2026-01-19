@@ -45,16 +45,50 @@ class LevelUserDayController {
     }
   }
 
+  async createSingle(req, res) {
+    try {
+      const { levelId, userId, day, period, appeared, observations, overtimeHours } = req.body;
+      if (!levelId || !userId || !day || !period) {
+        return res.status(400).json({ error: 'levelId, userId, day e period são obrigatórios' });
+      }
+      if (!['m', 'a'].includes(period)) {
+        return res.status(400).json({ error: 'period must be "m" or "a"' });
+      }
+      if (appeared && !['yes', 'no'].includes(appeared)) {
+        return res.status(400).json({ error: 'appeared must be "yes" or "no"' });
+      }
+
+      const result = await levelUserDayService.createSingle({
+        levelId: parseInt(levelId),
+        userId: parseInt(userId),
+        day,
+        period,
+        appeared: appeared || null,
+        observations: observations || '',
+        overtimeHours: overtimeHours !== undefined ? parseFloat(overtimeHours) : 0
+      });
+
+      res.status(201).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   async update(req, res) {
     try {
       const { id } = req.params;
-      const { appeared, observations } = req.body;
+      const { appeared, observations, overtimeHours } = req.body;
       
       if (!appeared || !['yes', 'no'].includes(appeared)) {
         return res.status(400).json({ error: 'appeared must be "yes" or "no"' });
       }
 
-      const result = await levelUserDayService.update(parseInt(id), appeared, observations || '');
+      const result = await levelUserDayService.update(
+        parseInt(id), 
+        appeared, 
+        observations || '', 
+        overtimeHours !== undefined ? parseFloat(overtimeHours) : 0
+      );
       
       if (!result) {
         return res.status(404).json({ error: 'Record not found' });

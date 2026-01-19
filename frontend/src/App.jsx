@@ -14,6 +14,7 @@ import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Permissions from './pages/Permissions';
 import MyAccount from './pages/MyAccount';
+import Cliente from './pages/Cliente';
 import Login from './pages/Login';
 import './App.css';
 
@@ -24,9 +25,12 @@ function ProtectedRoute({ children }) {
 }
 
 function App() {
-  const { token, loading } = useAuth();
+  const { token, loading, user } = useAuth();
 
   if (loading) return <div style={{ padding: '32px', textAlign: 'center' }}>A carregar...</div>;
+
+  // Determine default redirect based on role
+  const defaultPath = user?.role === 'C' ? '/cliente' : '/obras';
 
   return (
     <Router>
@@ -34,7 +38,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         {token && (
           <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to="/obras" replace />} />
+            <Route index element={<Navigate to={defaultPath} replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="report/:id" element={<ProjectReport />} />
             <Route path="obras" element={<Home />} />
@@ -45,12 +49,13 @@ function App() {
             <Route path="works/:id/equipa" element={<Equipa />} />
             <Route path="presencas" element={<Presencas />} />
             <Route path="reports" element={<Reports />} />
+            <Route path="cliente" element={<Cliente />} />
             <Route path="users" element={<Users />} />
             <Route path="permissions" element={<Permissions />} />
             <Route path="account" element={<MyAccount />} />
           </Route>
         )}
-        <Route path="*" element={<Navigate to={token ? "/obras" : "/login"} replace />} />
+        <Route path="*" element={<Navigate to={token ? defaultPath : "/login"} replace />} />
       </Routes>
     </Router>
   );

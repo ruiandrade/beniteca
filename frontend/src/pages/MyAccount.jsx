@@ -39,8 +39,22 @@ export default function MyAccount() {
       <style>{`
         .account-form-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 12px;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+        @media (max-width: 640px) {
+          .account-form-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .account-field {
+          display: flex;
+          flex-direction: column;
+        }
+        .account-field label {
+          margin-bottom: 8px;
+          font-weight: 500;
+          color: #374151;
         }
         .account-input {
           width: 100%;
@@ -48,6 +62,7 @@ export default function MyAccount() {
           border: 1px solid #d1d5db;
           border-radius: 6px;
           font-size: 1rem;
+          box-sizing: border-box;
         }
         .account-input:focus {
           outline: none;
@@ -76,11 +91,11 @@ export default function MyAccount() {
         {success && <div style={{ background: '#dcfce7', color: '#166534', padding: 12, borderRadius: 8, marginBottom: 12 }}>{success}</div>}
         <form onSubmit={handleChangePassword}>
           <div className="account-form-grid">
-            <div>
+            <div className="account-field">
               <label>Nova Password</label>
               <input className="account-input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </div>
-            <div>
+            <div className="account-field">
               <label>Confirmar Password</label>
               <input className="account-input" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
             </div>

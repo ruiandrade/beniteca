@@ -11,11 +11,11 @@ export default function ManageLevels() {
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "sublevels");
   const [work, setWork] = useState(null);
   const [accessDeniedModal, setAccessDeniedModal] = useState(false);
-  const [userPermission, setUserPermission] = useState(null); // 'R', 'W', ou null (para LEVELS)
-  const [userPermissionMaterials, setUserPermissionMaterials] = useState(null);
-  const [userPermissionNotes, setUserPermissionNotes] = useState(null);
-  const [userPermissionPhotos, setUserPermissionPhotos] = useState(null);
-  const [userPermissionDocuments, setUserPermissionDocuments] = useState(null); // 'R', 'W', ou null (para MATERIALS)
+  const [userPermission, setUserPermission] = useState(user?.role === 'A' ? 'W' : null); // 'R', 'W', ou null (para LEVELS)
+  const [userPermissionMaterials, setUserPermissionMaterials] = useState(user?.role === 'A' ? 'W' : null);
+  const [userPermissionNotes, setUserPermissionNotes] = useState(user?.role === 'A' ? 'W' : null);
+  const [userPermissionPhotos, setUserPermissionPhotos] = useState(user?.role === 'A' ? 'W' : null);
+  const [userPermissionDocuments, setUserPermissionDocuments] = useState(user?.role === 'A' ? 'W' : null); // 'R', 'W', ou null (para DOCUMENTS)
   const [breadcrumb, setBreadcrumb] = useState([]);
   const [sublevels, setSublevels] = useState([]);
   const [draggingSublevelId, setDraggingSublevelId] = useState(null);
@@ -3261,13 +3261,16 @@ export default function ManageLevels() {
             <div className="ml-section-header">
               <h2>Documentos</h2>
               <button
-                onClick={() => userPermissionDocuments === 'W' && setShowDocumentForm(!showDocumentForm)}
-                disabled={userPermissionDocuments === 'R'}
-                style={{
-                  opacity: userPermissionDocuments === 'R' ? 0.5 : 1,
-                  cursor: userPermissionDocuments === 'R' ? 'not-allowed' : 'pointer'
+                onClick={() => {
+                  console.log('Document button clicked, permission:', userPermissionDocuments);
+                  setShowDocumentForm(!showDocumentForm);
                 }}
-                title={userPermissionDocuments === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+                disabled={userPermissionDocuments !== 'W'}
+                style={{
+                  opacity: userPermissionDocuments !== 'W' ? 0.5 : 1,
+                  cursor: userPermissionDocuments !== 'W' ? 'not-allowed' : 'pointer'
+                }}
+                title={userPermissionDocuments !== 'W' ? 'Você precisa de permissão de escrita' : ''}
                 className="ml-add-btn"
               >
                 {showDocumentForm ? "Cancelar" : "+ Adicionar Documento"}

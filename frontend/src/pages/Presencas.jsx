@@ -8,6 +8,7 @@ export default function Presencas() {
   const [selectedDate, setSelectedDate] = useState("");
   const [users, setUsers] = useState([]);
   const [presencas, setPresencas] = useState({});
+  const [overtimeHours, setOvertimeHours] = useState({});
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState({ type: null, title: '', message: '', onConfirm: null });
 
@@ -72,6 +73,7 @@ export default function Presencas() {
         
         // Build presencas map: { "userId-period": { appeared, observations, recordId } }
         const presencasMap = {};
+        const overtimeMap = {};
         data.forEach(record => {
           const key = `${record.userId}-${record.period}`;
           presencasMap[key] = {
@@ -79,8 +81,13 @@ export default function Presencas() {
             observations: record.observations || "",
             recordId: record.id
           };
+          // Store overtime hours per user (not per period)
+          if (record.overtimeHours !== null && record.overtimeHours !== undefined) {
+            overtimeMap[record.userId] = record.overtimeHours;
+          }
         });
         setPresencas(presencasMap);
+        setOvertimeHours(overtimeMap);
       }
     } catch (err) {
       console.error("Erro ao carregar presenças:", err);
@@ -117,20 +124,59 @@ export default function Presencas() {
     }));
   };
 
+  const handleOvertimeChange = (userId, hours) => {
+    setOvertimeHours(prev => ({
+      ...prev,
+      [userId]: hours
+    }));
+  };
+
   const handleSavePresencas = async () => {
     setLoading(true);
     try {
       for (const [key, data] of Object.entries(presencas)) {
+        const userId = key.split('-')[0];
+        const period = key.split('-')[1];
+        const payload = {
+          appeared: data.appeared,
+          observations: data.observations || "",
+          overtimeHours: period === 'a' ? (overtimeHours[userId] || 0) : 0
+        };
+
         if (data.recordId && data.appeared) {
           const res = await fetch(`/api/level-user-days/${data.recordId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              appeared: data.appeared,
-              observations: data.observations || ""
-            })
+            body: JSON.stringify(payload)
           });
           if (!res.ok) throw new Error("Erro ao guardar presença");
+        }
+
+        // Create new record when none exists but user marked presence
+        if (!data.recordId && data.appeared) {
+          const res = await fetch('/api/level-user-days', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              levelId: selectedWork,
+              userId,
+              day: selectedDate,
+              period: key.split('-')[1],
+              appeared: data.appeared,
+              observations: data.observations || "",
+              overtimeHours: period === 'a' ? (overtimeHours[userId] || 0) : 0
+            })
+          });
+          if (!res.ok) throw new Error('Erro ao criar presença');
+          const created = await res.json();
+          // Update local recordId so subsequent saves update
+          setPresencas(prev => ({
+            ...prev,
+            [key]: {
+              ...prev[key],
+              recordId: created.id || created.recordId || prev[key]?.recordId
+            }
+          }));
         }
       }
 
@@ -211,6 +257,7 @@ export default function Presencas() {
                     </div>
                   </div>
                 ))}
+                <div className="presencas-grid-cell" style={{ fontWeight: 600, background: '#fef3c7' }}>⏰ Horas Extra</div>
               </div>
 
               {/* Linhas com users */}
@@ -259,6 +306,24 @@ export default function Presencas() {
                       </div>
                     );
                   })}
+                  <div className="presencas-grid-cell" style={{ background: '#fffbeb', padding: '8px' }}>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      max="24"
+                      value={overtimeHours[user.id] || ''}
+                      onChange={(e) => handleOvertimeChange(user.id, parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

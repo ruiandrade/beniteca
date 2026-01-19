@@ -26,6 +26,7 @@ router.post('/', upload.single('file'), async (req, res) => {
 
     // Choose container (default photos)
     const container = req.query.container || 'beniteca-photos';
+    console.log('Container:', container);
 
     // Upload to Azure Blob
     const url = await blobService.uploadFile(buffer, originalname, mimetype, container);
@@ -34,6 +35,7 @@ router.post('/', upload.single('file'), async (req, res) => {
     res.status(200).json({ url });
   } catch (error) {
     console.error('Upload error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ error: 'Upload failed: ' + error.message });
   }
 });

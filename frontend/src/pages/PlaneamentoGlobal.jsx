@@ -1280,12 +1280,64 @@ export default function PlaneamentoGlobal() {
           }
         }
         @media (max-width: 768px) {
+          .pg-container {
+            padding: 16px;
+          }
+          .pg-title {
+            font-size: 1.4rem;
+          }
+          .pg-subtitle {
+            font-size: 0.9rem;
+          }
           .pg-controls {
             flex-direction: column;
             align-items: stretch;
+            gap: 10px;
           }
-          .pg-select {
-            min-width: auto;
+          .pg-control-group {
+            width: 100%;
+          }
+          .pg-select, .pg-date-input {
+            min-width: unset;
+            width: 100%;
+          }
+          .pg-btn, .pg-btn-primary {
+            width: 100%;
+            text-align: center;
+          }
+          .pg-table-wrap {
+            margin: 0 -8px;
+            padding-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
+          }
+          .pg-table th, .pg-table td {
+            font-size: 0.85rem;
+            padding: 6px;
+          }
+          .pg-table th:first-child, .pg-table td:first-child {
+            width: 160px;
+            min-width: 160px;
+            max-width: 160px;
+            left: 0;
+          }
+          .pg-table th:nth-child(2), .pg-table td:nth-child(2) {
+            width: 120px;
+            min-width: 120px;
+            max-width: 120px;
+            left: 160px;
+          }
+          .pg-user-email {
+            display: none;
+          }
+          .pg-cell {
+            min-width: 64px;
+          }
+          .pg-period {
+            min-height: 28px;
+            font-size: 0.85rem;
+          }
+          .pg-select-all-btn, .pg-remove-user-btn {
+            width: 100%;
           }
         }
       `}</style>

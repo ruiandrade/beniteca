@@ -56,24 +56,33 @@ export default function Layout() {
           )}
         </div>
         <nav className="sidebar-nav" onClick={() => setMenuOpen(false)}>
-          <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-            📊 Dashboard
-          </NavLink>
-          <NavLink to="/obras" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-            🏗️ As Minhas Obras
-          </NavLink>
-          <NavLink to="/planeamento-global" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-            📅 Planeamento Global
-          </NavLink>
-          <NavLink to="/presencas" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-            📋 Presenças
-          </NavLink>
-          <NavLink to="/archived" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-            📦 Obras Arquivadas
-          </NavLink>
+          {user?.role !== 'C' && (
+            <>
+              <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                📊 Dashboard
+              </NavLink>
+              <NavLink to="/obras" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                🏗️ As Minhas Obras
+              </NavLink>
+              <NavLink to="/planeamento-global" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                📅 Planeamento Global
+              </NavLink>
+              <NavLink to="/presencas" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                📋 Presenças
+              </NavLink>
+              <NavLink to="/archived" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                📦 Obras Arquivadas
+              </NavLink>
+            </>
+          )}
           <NavLink to="/account" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
             👤 A minha conta
           </NavLink>
+          {user?.role === 'C' && (
+            <NavLink to="/cliente" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+              📁 Cliente
+            </NavLink>
+          )}
           {user?.role === 'A' && (
             <>
               <NavLink to="/users" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
@@ -81,6 +90,9 @@ export default function Layout() {
               </NavLink>
               <NavLink to="/permissions" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
                 🔐 Permissões
+              </NavLink>
+              <NavLink to="/cliente" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                📁 Cliente
               </NavLink>
             </>
           )}
