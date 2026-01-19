@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function PlaneamentoGlobal() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const navigate = useNavigate();
+  const [accessDeniedModal, setAccessDeniedModal] = useState(false);
   const [days, setDays] = useState([]);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -36,6 +39,11 @@ export default function PlaneamentoGlobal() {
   }, [selected]);
 
   useEffect(() => {
+    // Apenas admin pode acessar
+    if (user?.role !== 'A') {
+      setAccessDeniedModal(true);
+      return;
+    }
     loadObras();
     loadAllUsers();
     const today = new Date();
@@ -46,7 +54,7 @@ export default function PlaneamentoGlobal() {
     setFromDate(fromIso);
     setToDate(toIso);
     handleSelectDates(fromIso, toIso);
-  }, [token]);
+  }, [token, user]);
 
   const loadObras = async () => {
     try {
@@ -462,6 +470,82 @@ export default function PlaneamentoGlobal() {
     : obras.filter(o => o.id === parseInt(selectedObraId));
 
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  if (accessDeniedModal) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: '40px 20px'
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: '12px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+          padding: '40px',
+          maxWidth: '500px',
+          width: '100%',
+          minWidth: '320px'
+        }}>
+          <h2 style={{ 
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            color: '#dc2626',
+            margin: '0 0 16px 0'
+          }}>
+            🔒 Acesso Negado
+          </h2>
+          <p style={{
+            color: '#64748b',
+            lineHeight: 1.7,
+            margin: '0 0 32px 0',
+            fontSize: '1.05rem'
+          }}>
+            Apenas administradores podem aceder ao planeamento global.
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'center'
+          }}>
+            <button 
+              style={{
+                padding: '12px 32px',
+                borderRadius: '8px',
+                border: 'none',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '1rem',
+                minWidth: '200px',
+                background: '#059669',
+                color: 'white',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#047857';
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = '#059669';
+                e.target.style.transform = 'translateY(0)';
+              }}
+              onClick={() => navigate("/")}
+            >
+              Voltar para Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pg-page">
