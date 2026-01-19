@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function ArchivedWorks() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [obras, setObras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [accessDeniedModal, setAccessDeniedModal] = useState(false);
 
   useEffect(() => {
+    // Apenas admin pode acessar
+    if (user?.role !== 'A') {
+      setAccessDeniedModal(true);
+      return;
+    }
     fetchObras();
-  }, []);
+  }, [user]);
 
   const fetchObras = async () => {
     try {
@@ -64,6 +72,82 @@ export default function ArchivedWorks() {
     obra.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     obra.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (accessDeniedModal) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: '40px 20px'
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: '12px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+          padding: '40px',
+          maxWidth: '500px',
+          width: '100%',
+          minWidth: '320px'
+        }}>
+          <h2 style={{ 
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            color: '#dc2626',
+            margin: '0 0 16px 0'
+          }}>
+            🔒 Acesso Negado
+          </h2>
+          <p style={{
+            color: '#64748b',
+            lineHeight: 1.7,
+            margin: '0 0 32px 0',
+            fontSize: '1.05rem'
+          }}>
+            Apenas administradores podem gerir obras arquivadas.
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'center'
+          }}>
+            <button 
+              style={{
+                padding: '12px 32px',
+                borderRadius: '8px',
+                border: 'none',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '1rem',
+                minWidth: '200px',
+                background: '#059669',
+                color: 'white',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#047857';
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = '#059669';
+                e.target.style.transform = 'translateY(0)';
+              }}
+              onClick={() => navigate("/")}
+            >
+              Voltar para Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="archived-page">

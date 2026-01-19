@@ -71,6 +71,9 @@ export default function Layout() {
           <NavLink to="/archived" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
             📦 Obras Arquivadas
           </NavLink>
+          <NavLink to="/account" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+            👤 A minha conta
+          </NavLink>
           {user?.role === 'A' && (
             <>
               <NavLink to="/users" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>

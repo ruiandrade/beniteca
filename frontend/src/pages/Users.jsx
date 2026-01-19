@@ -14,6 +14,12 @@ export default function Users() {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwdLoading, setPwdLoading] = useState(false);
+  const [pwdError, setPwdError] = useState('');
+  const [pwdSuccess, setPwdSuccess] = useState('');
 
   // Apenas admin pode acessar
   useEffect(() => {
@@ -100,6 +106,48 @@ export default function Users() {
       loadUsers();
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const startEditPassword = (u) => {
+    setEditingUserId(u.id);
+    setNewPassword('');
+    setConfirmPassword('');
+    setPwdError('');
+    setPwdSuccess('');
+  };
+
+  const submitEditPassword = async (u) => {
+    setPwdError('');
+    setPwdSuccess('');
+    if (!newPassword || newPassword.length < 6) {
+      setPwdError('A password deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwdError('As passwords não coincidem.');
+      return;
+    }
+    try {
+      setPwdLoading(true);
+      const res = await fetch(`/api/users/${u.id}/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ newPassword })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Erro ao mudar password');
+      }
+      setPwdSuccess('Password atualizada com sucesso.');
+      setEditingUserId(null);
+    } catch (err) {
+      setPwdError(err.message);
+    } finally {
+      setPwdLoading(false);
     }
   };
 
@@ -319,6 +367,22 @@ export default function Users() {
           background: #dc2626;
         }
 
+        .btn-compact {
+          background: #e5e7eb;
+          color: #374151;
+          border: none;
+          padding: 6px 12px;
+          border-radius: 4px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .btn-compact:hover {
+          background: #d1d5db;
+        }
+
         .empty-state {
           text-align: center;
           padding: 48px 32px;
@@ -444,6 +508,31 @@ export default function Users() {
                       >
                         Desativar
                       </button>
+                      <div style={{ marginTop: 8 }}>
+                        <button
+                          className="btn-compact"
+                          onClick={() => startEditPassword(u)}
+                          title="Mudar password deste utilizador"
+                        >
+                          Mudar Password
+                        </button>
+                      </div>
+                      {editingUserId === u.id && (
+                        <div style={{ marginTop: 8, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                          {pwdError && <div className="alert alert-error" style={{ marginBottom: 8 }}>{pwdError}</div>}
+                          {pwdSuccess && <div className="alert alert-success" style={{ marginBottom: 8 }}>{pwdSuccess}</div>}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            <input type="password" placeholder="Nova password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                            <input type="password" placeholder="Confirmar password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <button className="btn-primary" onClick={() => submitEditPassword(u)} disabled={pwdLoading}>
+                              {pwdLoading ? 'A atualizar...' : 'Guardar'}
+                            </button>
+                            <button className="btn-secondary" onClick={() => setEditingUserId(null)}>Cancelar</button>
+                          </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -490,6 +579,31 @@ export default function Users() {
                       >
                         Reativar
                       </button>
+                      <div style={{ marginTop: 8 }}>
+                        <button
+                          className="btn-compact"
+                          onClick={() => startEditPassword(u)}
+                          title="Mudar password deste utilizador"
+                        >
+                          Mudar Password
+                        </button>
+                      </div>
+                      {editingUserId === u.id && (
+                        <div style={{ marginTop: 8, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                          {pwdError && <div className="alert alert-error" style={{ marginBottom: 8 }}>{pwdError}</div>}
+                          {pwdSuccess && <div className="alert alert-success" style={{ marginBottom: 8 }}>{pwdSuccess}</div>}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            <input type="password" placeholder="Nova password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                            <input type="password" placeholder="Confirmar password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <button className="btn-primary" onClick={() => submitEditPassword(u)} disabled={pwdLoading}>
+                              {pwdLoading ? 'A atualizar...' : 'Guardar'}
+                            </button>
+                            <button className="btn-secondary" onClick={() => setEditingUserId(null)}>Cancelar</button>
+                          </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

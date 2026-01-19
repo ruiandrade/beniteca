@@ -12,5 +12,7 @@ router.get('/:id', authenticate, requireAdmin, userController.getById);
 router.post('/', authenticate, requireAdmin, userController.create);
 router.put('/:id', authenticate, requireAdmin, userController.update);
 router.delete('/:id', authenticate, requireAdmin, userController.delete);
+// Admin can change any user's password
+router.post('/:id/change-password', authenticate, requireAdmin, userController.changePasswordForUser);
 
 module.exports = router;

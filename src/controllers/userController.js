@@ -1,4 +1,5 @@
 const userService = require('../services/userService');
+const authService = require('../services/authService');
 
 class UserController {
   async create(req, res) {
@@ -65,6 +66,20 @@ class UserController {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  }
+
+  async changePasswordForUser(req, res) {
+    try {
+      const { id } = req.params;
+      const { newPassword } = req.body;
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ error: 'Password inválida' });
+      }
+      await authService.setPassword(parseInt(id, 10), newPassword);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
   }
 }

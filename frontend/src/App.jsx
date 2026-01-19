@@ -13,6 +13,7 @@ import Presencas from './pages/Presencas';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Permissions from './pages/Permissions';
+import MyAccount from './pages/MyAccount';
 import Login from './pages/Login';
 import './App.css';
 
@@ -46,6 +47,7 @@ function App() {
             <Route path="reports" element={<Reports />} />
             <Route path="users" element={<Users />} />
             <Route path="permissions" element={<Permissions />} />
+            <Route path="account" element={<MyAccount />} />
           </Route>
         )}
         <Route path="*" element={<Navigate to={token ? "/obras" : "/login"} replace />} />
