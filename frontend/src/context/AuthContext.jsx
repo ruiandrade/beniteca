@@ -1,5 +1,4 @@
 import React, { createContext, useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 export const AuthContext = createContext();
 
@@ -10,7 +9,6 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const inactivityTimerRef = useRef(null);
-  const navigate = useNavigate();
 
   // Resetar timer de inatividade
   const resetInactivityTimer = () => {
@@ -107,7 +105,8 @@ export function AuthProvider({ children }) {
       alert('Token expirado. Por favor faça login novamente.');
     }
     
-    navigate('/login');
+    // Usar window.location em vez de navigate (AuthProvider está fora do Router)
+    window.location.href = '/login';
   };
 
   const changePassword = async (newPassword) => {
