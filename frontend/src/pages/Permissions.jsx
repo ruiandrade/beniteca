@@ -11,6 +11,8 @@ export default function Permissions() {
   const { token, user } = useAuth();
   const [obras, setObras] = useState([]);
   const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]); // Todos os users do sistema
+  const [obraUserIds, setObraUserIds] = useState({}); // { obraId: [userIds] }
   const [loading, setLoading] = useState(false);
   const [selectedObra, setSelectedObra] = useState(null);
   const [permissions, setPermissions] = useState({});
@@ -40,7 +42,33 @@ export default function Permissions() {
       });
       if (!obrasRes.ok) throw new Error('Erro ao carregar obras');
       const obrasData = await obrasRes.json();
-      setObras(obrasData.filter(o => o.status !== 'completed'));
+      const filteredObras = obrasData.filter(o => o.status !== 'completed');
+      setObras(filteredObras);
+
+      // Carregar todos os utilizadores ativos do sistema
+      const usersRes = await fetch('/api/users?active=1', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!usersRes.ok) throw new Error('Erro ao carregar utilizadores');
+      const usersData = await usersRes.json();
+      setAllUsers(usersData);
+
+      // Carregar users associados a cada obra
+      const userIdsMap = {};
+      await Promise.all(filteredObras.map(async (obra) => {
+        try {
+          const res = await fetch(`/api/permissions/level/${obra.id}/users`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const obraUsers = await res.json();
+            userIdsMap[obra.id] = obraUsers.map(u => u.id);
+          }
+        } catch (err) {
+          console.error(`Erro ao carregar users da obra ${obra.id}:`, err);
+        }
+      }));
+      setObraUserIds(userIdsMap);
     } catch (err) {
       setError(`Erro ao carregar dados: ${err.message}`);
     } finally {
@@ -77,7 +105,6 @@ export default function Permissions() {
       setPermissions(permMap);
       setSelectedObra(levelId);
       setExpandedObra(levelId);
-      setSelectedUsers([]); // Limpar seleção de users
     } catch (err) {
       setError(`Erro ao carregar permissões: ${err.message}`);
     }
@@ -128,7 +155,7 @@ export default function Permissions() {
   };
 
   const selectAllFilteredUsers = () => {
-    const filtered = users.filter(u =>
+    const filtered = allUsers.filter(u =>
       u.email.toLowerCase().includes(searchTermUsers.toLowerCase()) ||
       (u.name && u.name.toLowerCase().includes(searchTermUsers.toLowerCase()))
     );
@@ -138,6 +165,23 @@ export default function Permissions() {
   const clearUserSelection = () => {
     setSelectedUsers([]);
   };
+
+  // Filtrar obras baseado nos utilizadores selecionados
+  const filteredObras = obras.filter(obra => {
+    // Filtro de pesquisa por nome
+    if (!obra.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
+  
+    // Se não há users selecionados, mostrar todas as obras
+    if (selectedUsers.length === 0) {
+      return true;
+    }
+  
+    // Mostrar apenas obras onde pelo menos um dos users selecionados tem permissões
+    const obraUsers = obraUserIds[obra.id] || [];
+    return selectedUsers.some(userId => obraUsers.includes(userId));
+  });
 
   if (user?.role !== 'A') {
     return (
@@ -544,7 +588,7 @@ export default function Permissions() {
             </div>
 
             <div className="users-dropdown-list">
-              {users.filter(u =>
+              {allUsers.filter(u =>
                 u.email.toLowerCase().includes(searchTermUsers.toLowerCase()) ||
                 (u.name && u.name.toLowerCase().includes(searchTermUsers.toLowerCase()))
               ).length === 0 ? (
@@ -552,7 +596,7 @@ export default function Permissions() {
                   Nenhum trabalhador encontrado
                 </div>
               ) : (
-                users.filter(u =>
+                allUsers.filter(u =>
                   u.email.toLowerCase().includes(searchTermUsers.toLowerCase()) ||
                   (u.name && u.name.toLowerCase().includes(searchTermUsers.toLowerCase()))
                 ).map(u => (
@@ -595,22 +639,17 @@ export default function Permissions() {
 
       {loading ? (
         <div className="loading-text">A carregar...</div>
-      ) : obras.length === 0 ? (
+      ) : filteredObras.length === 0 ? (
         <div className="empty-state">
-          <p>Nenhuma obra encontrada</p>
+          <p>
+            {selectedUsers.length > 0 
+              ? 'Nenhuma obra encontrada para os utilizadores selecionados' 
+              : 'Nenhuma obra encontrada'}
+          </p>
         </div>
       ) : (
         <div className="obras-list">
-          {obras.filter(obra => 
-            obra.name.toLowerCase().includes(searchTerm.toLowerCase())
-          ).length === 0 ? (
-            <div className="empty-state">
-              <p>Nenhuma obra encontrada com "{searchTerm}"</p>
-            </div>
-          ) : (
-            obras.filter(obra => 
-              obra.name.toLowerCase().includes(searchTerm.toLowerCase())
-            ).map(obra => (
+          {filteredObras.map(obra => (
             <div key={obra.id} className="obra-card">
               <div
                 className="obra-header"
@@ -687,8 +726,7 @@ export default function Permissions() {
                 </div>
               )}
             </div>
-            ))
-          )}
+          ))}
         </div>
       )}
     </div>

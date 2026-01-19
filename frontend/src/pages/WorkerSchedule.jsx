@@ -18,10 +18,19 @@ export default function WorkerSchedule() {
   const [openLevelsDropdown, setOpenLevelsDropdown] = useState(false);
   const [myWorksIds, setMyWorksIds] = useState([]);
   const [myWorksMap, setMyWorksMap] = useState({});
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     loadMyWorks();
   }, [token]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     if (myWorksIds.length > 0 && Object.keys(myWorksMap).length > 0) {
@@ -39,9 +48,10 @@ export default function WorkerSchedule() {
   const loadMyWorks = async () => {
     try {
       const works = await getMyWorks(token);
-      const ids = works.map(w => w.id);
+      const activeWorks = works.filter(w => w.status === 'active');
+      const ids = activeWorks.map(w => w.id);
       const map = {};
-      works.forEach(w => {
+      activeWorks.forEach(w => {
         map[w.id] = w.name;
       });
       setMyWorksIds(ids);
@@ -330,6 +340,53 @@ export default function WorkerSchedule() {
             <p className="ws-empty">Escolha o intervalo para ver alocações.</p>
           ) : pivotData.length === 0 ? (
             <p className="ws-empty">Sem resultados para os filtros aplicados.</p>
+          ) : isMobile ? (
+            <div className="ws-mobile-list">
+              {pivotData.map((level) => (
+                <div key={level.id} className="ws-card">
+                  <div className="ws-card-header">
+                    <div className="ws-card-obra">{level.levelName}</div>
+                  </div>
+                  <div className="ws-card-body">
+                    {level.users.map((user) => (
+                      <div key={user.userId} className="ws-card-user">
+                        <div className="ws-card-user-header">
+                          <div className="ws-card-user-name">{user.userName}</div>
+                          {user.userCar && <div className="ws-card-user-car">🚗 {user.userCar}</div>}
+                        </div>
+                        <div className="ws-card-user-days">
+                          {days.map((day) => {
+                            const slot = user.slots[day] || { m: false, a: false };
+                            const showMorning = slotFilter === 'both' || slotFilter === 'morning';
+                            const showAfternoon = slotFilter === 'both' || slotFilter === 'afternoon';
+                            
+                            if (!slot.m && !slot.a) return null;
+                            
+                            return (
+                              <div key={day} className="ws-card-day">
+                                <div className="ws-card-day-date">{day}</div>
+                                <div className="ws-card-day-periods">
+                                  {showMorning && (
+                                    <span className={`ws-chip ${slot.m ? 'active' : ''}`}>
+                                      🌅 Manhã
+                                    </span>
+                                  )}
+                                  {showAfternoon && (
+                                    <span className={`ws-chip ${slot.a ? 'active' : ''}`}>
+                                      🌤️ Tarde
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <table className="ws-table">
               <thead>
@@ -602,6 +659,123 @@ export default function WorkerSchedule() {
         }
         .cell.off {
           background: #fff;
+        }
+
+        /* Mobile Layout */
+        @media (max-width: 768px) {
+          .ws-bg {
+            padding: 12px;
+          }
+          .ws-container {
+            padding: 16px;
+          }
+          .ws-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .ws-title {
+            font-size: 1.3rem;
+          }
+          .ws-sub {
+            font-size: 0.85rem;
+          }
+          .ws-filters {
+            grid-template-columns: 1fr;
+          }
+          .ws-table {
+            display: none;
+          }
+          .ws-mobile-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 12px 0;
+          }
+          .ws-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          }
+          .ws-card-header {
+            background: linear-gradient(135deg, #01a383 0%, #059669 100%);
+            padding: 14px 16px;
+            color: white;
+          }
+          .ws-card-obra {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+          }
+          .ws-card-body {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          .ws-card-user {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 12px;
+            background: #f9fafb;
+          }
+          .ws-card-user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .ws-card-user-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e293b;
+          }
+          .ws-card-user-car {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 600;
+          }
+          .ws-card-user-days {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .ws-card-day {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+          }
+          .ws-card-day-date {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 8px;
+          }
+          .ws-card-day-periods {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+          .ws-chip {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid #e2e8f0;
+            background: #f1f5f9;
+            color: #64748b;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+          }
+          .ws-chip.active {
+            background: #dcfce7;
+            color: #166534;
+            border-color: #86efac;
+          }
         }
       `}</style>
     </div>

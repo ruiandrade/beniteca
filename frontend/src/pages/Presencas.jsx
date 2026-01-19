@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 
 export default function Presencas() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [works, setWorks] = useState([]);
   const [selectedWork, setSelectedWork] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -11,12 +11,21 @@ export default function Presencas() {
   const [overtimeHours, setOvertimeHours] = useState({});
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState({ type: null, title: '', message: '', onConfirm: null });
+  const [isMobile, setIsMobile] = useState(false);
 
   const SLOTS = ["m", "a"]; // Morning, Afternoon
 
   useEffect(() => {
     fetchWorks();
   }, [user]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   const fetchWorks = async () => {
     try {
@@ -62,7 +71,9 @@ export default function Presencas() {
         // Fetch user details
         const userDetails = await Promise.all(
           uniqueUsers.map(async (userId) => {
-            const userRes = await fetch(`/api/users/${userId}`);
+            const userRes = await fetch(`/api/users/${userId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (userRes.ok) return await userRes.json();
             const userData = data.find(d => d.userId === userId);
             return { id: userId, name: userData?.name || `User ${userId}` };
@@ -244,89 +255,141 @@ export default function Presencas() {
         {users.length > 0 && (
           <div className="presencas-grid-section">
             <h2>Registar Presenças</h2>
-            <div className="presencas-grid">
-              {/* Header com slots */}
-              <div className="presencas-grid-header">
-                <div className="presencas-grid-cell presencas-grid-user">Utilizador</div>
-                {SLOTS.map(slot => (
-                  <div key={slot} className="presencas-grid-slot-header">
-                    <div className="presencas-grid-slot-title">{slot === "m" ? "🌅 Manhã" : "🌤️ Tarde"}</div>
-                    <div className="presencas-grid-slot-sub">
-                      <span>Presença</span>
-                      <span>Notas</span>
+            {isMobile ? (
+              <div className="presencas-mobile-list">
+                {users.map(user => (
+                  <div key={user.id} className="presencas-card">
+                    <div className="presencas-card-header">
+                      <div className="presencas-card-name">{user.name}</div>
+                      <div className="presencas-card-extra">
+                        <span>Horas Extra</span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="24"
+                          value={overtimeHours[user.id] || ''}
+                          onChange={(e) => handleOvertimeChange(user.id, parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    <div className="presencas-card-body">
+                      {SLOTS.map(slot => {
+                        const key = `${user.id}-${slot}`;
+                        const data = presencas[key] || { appeared: null, observations: "", recordId: null };
+                        const slotLabel = slot === 'm' ? 'Manhã' : 'Tarde';
+                        return (
+                          <div key={slot} className="presencas-card-slot">
+                            <div className="presencas-card-slot-title">{slot === 'm' ? '🌅' : '🌤️'} {slotLabel}</div>
+                            <div className="presencas-card-presence">
+                              <label className={`presencas-chip ${data.appeared === 'yes' ? 'active' : ''}`} onClick={() => handleToggleAppeared(user.id, slot, 'yes')}>
+                                Sim
+                              </label>
+                              <label className={`presencas-chip ${data.appeared === 'no' ? 'active' : ''}`} onClick={() => handleToggleAppeared(user.id, slot, 'no')}>
+                                Não
+                              </label>
+                            </div>
+                            <textarea
+                              className="presencas-card-notes"
+                              value={data.observations}
+                              onChange={(e) => handleObservationChange(user.id, slot, e.target.value)}
+                              placeholder="Notas (opcional)..."
+                              rows="3"
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
-                <div className="presencas-grid-cell" style={{ fontWeight: 600, background: '#fef3c7' }}>⏰ Horas Extra</div>
               </div>
-
-              {/* Linhas com users */}
-              {users.map(user => (
-                <div key={user.id} className="presencas-grid-row">
-                  <div className="presencas-grid-cell presencas-grid-user">
-                    {user.name}
-                  </div>
-                  {SLOTS.map(slot => {
-                    const key = `${user.id}-${slot}`;
-                    const data = presencas[key] || { appeared: null, observations: "", recordId: null };
-                    
-                    return (
-                      <div key={slot} className="presencas-slot-cell">
-                        <div className="presencas-appearance">
-                          <label className="presencas-radio">
-                            <input
-                              type="radio"
-                              name={`${key}-appearance`}
-                              value="yes"
-                              checked={data.appeared === 'yes'}
-                              onChange={() => handleToggleAppeared(user.id, slot, 'yes')}
-                            />
-                            Sim
-                          </label>
-                          <label className="presencas-radio">
-                            <input
-                              type="radio"
-                              name={`${key}-appearance`}
-                              value="no"
-                              checked={data.appeared === 'no'}
-                              onChange={() => handleToggleAppeared(user.id, slot, 'no')}
-                            />
-                            Não
-                          </label>
-                        </div>
-
-                        <div className="presencas-notes-field">
-                          <textarea
-                            value={data.observations}
-                            onChange={(e) => handleObservationChange(user.id, slot, e.target.value)}
-                            placeholder="Notas (opcional)..."
-                            rows="3"
-                          />
-                        </div>
+            ) : (
+              <div className="presencas-grid">
+                {/* Header com slots */}
+                <div className="presencas-grid-header">
+                  <div className="presencas-grid-cell presencas-grid-user">Utilizador</div>
+                  {SLOTS.map(slot => (
+                    <div key={slot} className="presencas-grid-slot-header">
+                      <div className="presencas-grid-slot-title">{slot === "m" ? "🌅 Manhã" : "🌤️ Tarde"}</div>
+                      <div className="presencas-grid-slot-sub">
+                        <span>Presença</span>
+                        <span>Notas</span>
                       </div>
-                    );
-                  })}
-                  <div className="presencas-grid-cell" style={{ background: '#fffbeb', padding: '8px' }}>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      max="24"
-                      value={overtimeHours[user.id] || ''}
-                      onChange={(e) => handleOvertimeChange(user.id, parseFloat(e.target.value) || 0)}
-                      placeholder="0"
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
+                    </div>
+                  ))}
+                  <div className="presencas-grid-cell" style={{ fontWeight: 600, background: '#fef3c7' }}>⏰ Horas Extra</div>
                 </div>
-              ))}
-            </div>
+
+                {/* Linhas com users */}
+                {users.map(user => (
+                  <div key={user.id} className="presencas-grid-row">
+                    <div className="presencas-grid-cell presencas-grid-user">
+                      {user.name}
+                    </div>
+                    {SLOTS.map(slot => {
+                      const key = `${user.id}-${slot}`;
+                      const data = presencas[key] || { appeared: null, observations: "", recordId: null };
+                      
+                      return (
+                        <div key={slot} className="presencas-slot-cell">
+                          <div className="presencas-appearance">
+                            <label className="presencas-radio">
+                              <input
+                                type="radio"
+                                name={`${key}-appearance`}
+                                value="yes"
+                                checked={data.appeared === 'yes'}
+                                onChange={() => handleToggleAppeared(user.id, slot, 'yes')}
+                              />
+                              Sim
+                            </label>
+                            <label className="presencas-radio">
+                              <input
+                                type="radio"
+                                name={`${key}-appearance`}
+                                value="no"
+                                checked={data.appeared === 'no'}
+                                onChange={() => handleToggleAppeared(user.id, slot, 'no')}
+                              />
+                              Não
+                            </label>
+                          </div>
+
+                          <div className="presencas-notes-field">
+                            <textarea
+                              value={data.observations}
+                              onChange={(e) => handleObservationChange(user.id, slot, e.target.value)}
+                              placeholder="Notas (opcional)..."
+                              rows="3"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="presencas-grid-cell" style={{ background: '#fffbeb', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#92400e' }}>⏰ Horas Extra</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="24"
+                        value={overtimeHours[user.id] || ''}
+                        onChange={(e) => handleOvertimeChange(user.id, parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Botão Guardar */}
             <button 
@@ -708,6 +771,130 @@ export default function Presencas() {
         
         .presencas-modal-btn:hover {
           opacity: 0.9;
+        }
+
+        /* Mobile layout */
+        @media (max-width: 768px) {
+          .presencas-container {
+            padding: 16px;
+          }
+          .presencas-title {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+          }
+          .presencas-filters {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .presencas-field {
+            min-width: 100%;
+          }
+          .presencas-btn-load {
+            width: 100%;
+            text-align: center;
+          }
+          .presencas-grid {
+            display: none;
+          }
+          .presencas-grid-section h2 {
+            font-size: 1.25rem;
+          }
+          .presencas-mobile-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          .presencas-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+            padding: 12px;
+          }
+          .presencas-card-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 10px;
+          }
+          .presencas-card-name {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 1rem;
+          }
+          .presencas-card-extra {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #475569;
+          }
+          .presencas-card-extra input {
+            width: 72px;
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.9rem;
+          }
+          .presencas-card-body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .presencas-card-slot {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .presencas-card-slot-title {
+            font-weight: 700;
+            color: #01a383;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .presencas-card-presence {
+            display: flex;
+            gap: 8px;
+          }
+          .presencas-chip {
+            flex: 1;
+            border: 1px solid #d1d5db;
+            border-radius: 999px;
+            padding: 8px 10px;
+            text-align: center;
+            font-weight: 600;
+            color: #475569;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+          }
+          .presencas-chip.active {
+            background: #dcfce7;
+            color: #166534;
+            border-color: #86efac;
+          }
+          .presencas-card-notes {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 0.95rem;
+            min-height: 70px;
+            resize: vertical;
+            background: #fff;
+          }
+          .presencas-btn-save {
+            position: sticky;
+            bottom: 12px;
+            z-index: 10;
+          }
         }
       `}</style>
     </div>

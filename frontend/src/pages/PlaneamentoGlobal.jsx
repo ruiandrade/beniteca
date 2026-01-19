@@ -19,6 +19,7 @@ export default function PlaneamentoGlobal() {
   const [addingUser, setAddingUser] = useState({}); // { obraId: boolean }
   const [selected, setSelected] = useState(new Set()); // userId::obraId::day::period
   const [expandedObras, setExpandedObras] = useState(new Set());
+  const [isMobile, setIsMobile] = useState(false);
 
   const [modal, setModal] = useState({ type: null, title: '', message: '', onConfirm: null, data: null });
 
@@ -55,6 +56,14 @@ export default function PlaneamentoGlobal() {
     setToDate(toIso);
     handleSelectDates(fromIso, toIso);
   }, [token, user]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   const loadObras = async () => {
     try {
@@ -620,6 +629,83 @@ export default function PlaneamentoGlobal() {
 
         {days.length === 0 ? (
           <p className="pg-empty">Escolha o intervalo para ver o planeamento.</p>
+        ) : isMobile ? (
+          <div className="pg-mobile-list">
+            {filteredObras.map((obra) => {
+              const users = obraUsers[obra.id] || [];
+              
+              return (
+                <div key={obra.id} className="pg-card">
+                  <div className="pg-card-header">
+                    <div className="pg-card-obra">{obra.name}</div>
+                    {obra.description && (
+                      <div className="pg-card-obra-desc">{obra.description}</div>
+                    )}
+                  </div>
+                  <div className="pg-card-body">
+                    {users.map((user) => (
+                      <div key={user.id} className="pg-card-user">
+                        <div className="pg-card-user-header">
+                          <div className="pg-card-user-name">{user.name}</div>
+                          <div className="pg-card-user-actions">
+                            <button
+                              className="pg-mobile-select-all"
+                              onClick={() => selectAllWeekdays(user.id, obra.id)}
+                              title="Selecionar todos os dias úteis"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              className="pg-mobile-remove"
+                              onClick={() => handleRemoveUserFromObra(obra.id, user.assocId, user.id)}
+                              title="Remover utilizador"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                        <div className="pg-card-user-days">
+                          {days.map((d) => {
+                            const keyMorning = `${user.id}::${obra.id}::${d}::m`;
+                            const keyAfternoon = `${user.id}::${obra.id}::${d}::a`;
+                            const morningActive = selected.has(keyMorning);
+                            const afternoonActive = selected.has(keyAfternoon);
+                            const morningConflict = morningActive && (conflictCounts[`${user.id}::${d}::m`] || 0) > 1;
+                            const afternoonConflict = afternoonActive && (conflictCounts[`${user.id}::${d}::a`] || 0) > 1;
+                            const isPast = d < todayIso;
+                            const dow = new Date(d).getDay();
+                            const isWeekend = dow === 0 || dow === 6;
+                            
+                            if (!morningActive && !afternoonActive) return null;
+                            
+                            return (
+                              <div key={d} className={`pg-card-day ${isWeekend ? 'weekend' : ''}`}>
+                                <div className="pg-card-day-date">{d}</div>
+                                <div className="pg-card-day-periods">
+                                  <span 
+                                    className={`pg-chip ${morningActive ? 'active' : ''} ${morningConflict ? 'conflict' : ''} ${isPast ? 'disabled' : ''}`}
+                                    onClick={() => !isPast && toggleCell(user.id, obra.id, d, 'm')}
+                                  >
+                                    🌅 Manhã {morningConflict && '⚠️'}
+                                  </span>
+                                  <span 
+                                    className={`pg-chip ${afternoonActive ? 'active' : ''} ${afternoonConflict ? 'conflict' : ''} ${isPast ? 'disabled' : ''}`}
+                                    onClick={() => !isPast && toggleCell(user.id, obra.id, d, 'a')}
+                                  >
+                                    🌤️ Tarde {afternoonConflict && '⚠️'}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="pg-table-wrap">
             <table className="pg-table">
@@ -1306,38 +1392,141 @@ export default function PlaneamentoGlobal() {
             text-align: center;
           }
           .pg-table-wrap {
-            margin: 0 -8px;
-            padding-bottom: 8px;
-            -webkit-overflow-scrolling: touch;
-          }
-          .pg-table th, .pg-table td {
-            font-size: 0.85rem;
-            padding: 6px;
-          }
-          .pg-table th:first-child, .pg-table td:first-child {
-            width: 160px;
-            min-width: 160px;
-            max-width: 160px;
-            left: 0;
-          }
-          .pg-table th:nth-child(2), .pg-table td:nth-child(2) {
-            width: 120px;
-            min-width: 120px;
-            max-width: 120px;
-            left: 160px;
-          }
-          .pg-user-email {
             display: none;
           }
-          .pg-cell {
-            min-width: 64px;
+          .pg-mobile-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 12px 0;
           }
-          .pg-period {
-            min-height: 28px;
+          .pg-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          }
+          .pg-card-header {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            padding: 14px 16px;
+            color: white;
+          }
+          .pg-card-obra {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+          }
+          .pg-card-obra-desc {
             font-size: 0.85rem;
+            margin-top: 4px;
+            opacity: 0.9;
           }
-          .pg-select-all-btn, .pg-remove-user-btn {
-            width: 100%;
+          .pg-card-body {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          .pg-card-user {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 12px;
+            background: #f9fafb;
+          }
+          .pg-card-user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .pg-card-user-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e293b;
+          }
+          .pg-card-user-actions {
+            display: flex;
+            gap: 8px;
+          }
+          .pg-mobile-select-all, .pg-mobile-remove {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+          }
+          .pg-mobile-select-all {
+            color: #059669;
+          }
+          .pg-mobile-select-all:active {
+            background: #d1fae5;
+          }
+          .pg-mobile-remove {
+            color: #dc2626;
+          }
+          .pg-mobile-remove:active {
+            background: #fee2e2;
+          }
+          .pg-card-user-days {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .pg-card-day {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+          }
+          .pg-card-day.weekend {
+            background: #f8fafc;
+          }
+          .pg-card-day-date {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 8px;
+          }
+          .pg-card-day-periods {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+          .pg-chip {
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid #e2e8f0;
+            background: #f1f5f9;
+            color: #64748b;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+          }
+          .pg-chip.active {
+            background: #dcfce7;
+            color: #166534;
+            border-color: #86efac;
+          }
+          .pg-chip.conflict {
+            background: #fef9c3;
+            color: #92400e;
+            border-color: #fcd34d;
+          }
+          .pg-chip.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
           }
         }
       `}</style>
