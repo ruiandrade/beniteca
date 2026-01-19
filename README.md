@@ -2,16 +2,25 @@
 
 Production-ready construction project management system ("obras") with hierarchical levels, materials tracking, document management, and photo uploads.
 
+## 📚 Documentação Completa
+
+- **[📖 Documentação do Sistema](docs/SYSTEM_DOCUMENTATION.md)**: Guia completo - arquitetura, base de dados, UI, permissões, fluxos
+- **[⚡ Referência Rápida](docs/QUICK_REFERENCE.md)**: Cheat sheet - APIs, padrões, troubleshooting
+- **[🔐 Segurança e Autenticação](docs/AUTH_SECURITY.md)**: JWT, token expiration, auto-logout
+- **[📊 Importação de Hierarquia](docs/HIERARCHY_IMPORT.md)**: Import de estrutura desde Excel
+
 ## 🏗️ Features
 
 - **Hierarchical Project Structure**: Unlimited depth levels and sublevels
+- **Team Planning**: Daily worker allocation with morning/afternoon periods
+- **Attendance Tracking**: Mark presence, observations, overtime hours
 - **Materials Management**: Track materials with delivery and assembly status
 - **Document Management**: Upload and organize project documents
-- **Photo Management**: Organize photos by project phase (Before/During/After)
-- **Level Tree Navigation**: Visual tree sidebar for easy navigation
-- **Notes System**: Add notes to any level
+- **Photo Management**: Organize photos by project phase (Before/During/After/Issues)
+- **Granular Permissions**: Object-level access control per user per work
+- **Reports & Dashboard**: KPIs, timelines, material ratios
 - **Azure Integration**: SQL Database + Blob Storage
-- **Responsive UI**: Desktop-optimized React interface
+- **Responsive UI**: Desktop tables + mobile card layouts
 
 ## 🚀 Tech Stack
 
@@ -41,6 +50,11 @@ Production-ready construction project management system ("obras") with hierarchi
 │   │   └── App.jsx      # Main app + routing
 │   └── dist/            # Production build (generated)
 ├── migrations/          # SQL migration scripts
+├── docs/               # Complete documentation
+│   ├── SYSTEM_DOCUMENTATION.md  # Full system guide
+│   ├── QUICK_REFERENCE.md       # Quick reference
+│   ├── AUTH_SECURITY.md         # Security guide
+│   └── HIERARCHY_IMPORT.md      # Import guide
 ├── .env.example        # Environment template
 ├── DEPLOYMENT.md       # Full deployment guide
 └── AZURE_CHECKLIST.md  # Step-by-step Azure setup
