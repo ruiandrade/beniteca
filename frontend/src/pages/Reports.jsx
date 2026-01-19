@@ -18,10 +18,6 @@ export default function Reports() {
 
   // Check admin access
   useEffect(() => {
-    if (user && user.role !== 'A') {
-      setError('Apenas administradores podem aceder aos relatórios');
-      return;
-    }
     loadObras();
     // Set default date range (Monday to Friday of current week)
     const today = new Date();
@@ -134,15 +130,6 @@ export default function Reports() {
       setError('Erro ao gerar PDF');
     }
   };
-
-  if (user && user.role !== 'A') {
-    return (
-      <div style={{ padding: '32px', textAlign: 'center' }}>
-        <h1>🔒 Acesso Negado</h1>
-        <p>Apenas administradores podem aceder a esta página.</p>
-      </div>
-    );
-  }
 
   // Preview Mode
   if (previewMode && reportData) {

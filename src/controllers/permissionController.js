@@ -67,8 +67,9 @@ class PermissionController {
     try {
       const userId = req.user.id;
       const { levelId } = req.params;
+      const { objectType } = req.query;
       
-      const permission = await permissionService.getUserWorkPermission(userId, levelId);
+      const permission = await permissionService.getUserWorkPermission(userId, levelId, objectType);
       
       if (!permission) {
         return res.status(403).json({ error: 'Sem acesso a esta obra' });

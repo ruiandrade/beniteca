@@ -2,23 +2,20 @@
 > beniteca@1.0.0 start
 > node index.js
 
-[dotenv@17.2.3] injecting env (10) from .env.development -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (10) from .env.development -- tip: ⚙️  override existing env vars with { override: true }
 Loaded environment from .env.development
 ✅ Server running on port 3000 in development mode
 📊 Database: Connected
 📦 Blob Storage: Connected
+SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+    at JSON.parse (<anonymous>)
+    at parse (/workspaces/beniteca/node_modules/body-parser/lib/types/json.js:74:19)
+    at /workspaces/beniteca/node_modules/body-parser/lib/read.js:163:18
+    at AsyncResource.runInAsyncScope (node:async_hooks:214:14)
+    at invokeCallback (/workspaces/beniteca/node_modules/raw-body/index.js:238:16)
+    at done (/workspaces/beniteca/node_modules/raw-body/index.js:227:7)
+    at IncomingMessage.onEnd (/workspaces/beniteca/node_modules/raw-body/index.js:287:7)
+    at IncomingMessage.emit (node:events:508:28)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
 Conectado ao Azure SQL ✅
-📊 Report Stats for Obra 1021:
-   Total All-Time Completed: 344
-   Last Month (12/1/2025 - 12/31/2025): 0
-   Current Month 1/2026 (1/1/2026 - 1/31/2026): 344
-   Current Week (1/12/2026 - 1/18/2026): 164
-   Report Date Range: 2026-01-12 - 2026-01-16
-📊 Report Stats for Obra 1021:
-   Total All-Time Completed: 344
-   Last Month (12/1/2025 - 12/31/2025): 0
-   Current Month 1/2026 (1/1/2026 - 1/31/2026): 344
-   Current Week (1/12/2026 - 1/18/2026): 164
-   Report Date Range: 2026-01-12 - 2026-01-16
-📋 getAll - Retornando 24 users
-📋 getAll - Retornando 24 users

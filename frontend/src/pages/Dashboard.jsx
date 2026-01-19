@@ -74,7 +74,7 @@ function ObraCard({ obra, onSelect, getBarColor, getBarBgColor, getNameColor, ra
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [obras, setObras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,9 +89,44 @@ export default function Dashboard() {
   const [toWeek, setToWeek] = useState(16);
   const [ratioCache, setRatioCache] = useState({});
   const [dashboardView, setDashboardView] = useState("cards"); // "cards" ou "reports"
+  const [accessDeniedModal, setAccessDeniedModal] = useState(false);
 
   const handleRatioLoaded = (obraId, ratio) => {
     setRatioCache(prev => ({ ...prev, [obraId]: ratio }));
+  };
+
+  const checkAccess = async (levelId) => {
+    // Admin sempre tem acesso
+    if (user?.role === 'A') return true;
+
+    // Para non-admin, verificar se tem permissão na obra raiz
+    try {
+      // Encontrar a obra raiz
+      let currentId = levelId;
+      let rootId = levelId;
+      for (let i = 0; i < 100; i++) {
+        const res = await fetch(`/api/levels/${currentId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) break;
+        const data = await res.json();
+        rootId = currentId;
+        if (!data.parentId) break;
+        currentId = data.parentId;
+      }
+
+      // Verificar se o user tem acesso a essa obra raiz
+      const accessRes = await fetch(`/api/permissions/work/${rootId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (!accessRes.ok) return false;
+      const perm = await accessRes.json();
+      return perm && perm.permissionLevel;
+    } catch (err) {
+      console.error('Erro ao verificar acesso:', err);
+      return false;
+    }
   };
 
   useEffect(() => {
@@ -115,7 +150,14 @@ export default function Dashboard() {
     }
   }, [selectedObra]);
 
-  const handleObraClick = (obra) => {
+  const handleObraClick = async (obra) => {
+    // Verificar acesso
+    const hasAccess = await checkAccess(obra.id);
+    if (!hasAccess) {
+      setAccessDeniedModal(true);
+      return;
+    }
+    
     setNavigationStack([...navigationStack, selectedObra].filter(Boolean));
     setSelectedObra(obra);
     setActiveTab("gantt");
@@ -439,6 +481,85 @@ export default function Dashboard() {
     obra.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     obra.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Modal de acesso negado
+  if (accessDeniedModal) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: '40px 20px'
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: '12px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+          padding: '40px',
+          maxWidth: '500px',
+          width: '100%',
+          minWidth: '320px'
+        }}>
+          <h2 style={{ 
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            color: '#dc2626',
+            margin: '0 0 16px 0'
+          }}>
+            🔒 Acesso Negado
+          </h2>
+          <p style={{
+            color: '#64748b',
+            lineHeight: 1.7,
+            margin: '0 0 32px 0',
+            fontSize: '1.05rem'
+          }}>
+            Você não tem permissão para acessar esta obra.
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'center'
+          }}>
+            <button 
+              style={{
+                padding: '12px 32px',
+                borderRadius: '8px',
+                border: 'none',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '1rem',
+                minWidth: '200px',
+                background: '#059669',
+                color: 'white',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#047857';
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = '#059669';
+                e.target.style.transform = 'translateY(0)';
+              }}
+              onClick={() => {
+                setAccessDeniedModal(false);
+              }}
+            >
+              Voltar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Main cards view
   if (!selectedObra) {

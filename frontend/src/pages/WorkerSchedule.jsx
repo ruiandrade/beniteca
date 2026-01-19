@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { getMyWorks } from '../services/permissionService';
 
 export default function WorkerSchedule() {
+  const { token, user } = useAuth();
   const [allocations, setAllocations] = useState([]);
   const [days, setDays] = useState([]);
   const [fromDate, setFromDate] = useState('');
@@ -13,17 +16,40 @@ export default function WorkerSchedule() {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [openUsersDropdown, setOpenUsersDropdown] = useState(false);
   const [openLevelsDropdown, setOpenLevelsDropdown] = useState(false);
+  const [myWorksIds, setMyWorksIds] = useState([]);
+  const [myWorksMap, setMyWorksMap] = useState({});
 
   useEffect(() => {
-    const today = new Date();
-    const to = new Date();
-    to.setDate(today.getDate() + 6);
-    const fromIso = today.toISOString().slice(0, 10);
-    const toIso = to.toISOString().slice(0, 10);
-    setFromDate(fromIso);
-    setToDate(toIso);
-    handleSelectDates(fromIso, toIso);
-  }, []);
+    loadMyWorks();
+  }, [token]);
+
+  useEffect(() => {
+    if (myWorksIds.length > 0 && Object.keys(myWorksMap).length > 0) {
+      const today = new Date();
+      const to = new Date();
+      to.setDate(today.getDate() + 6);
+      const fromIso = today.toISOString().slice(0, 10);
+      const toIso = to.toISOString().slice(0, 10);
+      setFromDate(fromIso);
+      setToDate(toIso);
+      handleSelectDates(fromIso, toIso);
+    }
+  }, [myWorksIds, myWorksMap]);
+
+  const loadMyWorks = async () => {
+    try {
+      const works = await getMyWorks(token);
+      const ids = works.map(w => w.id);
+      const map = {};
+      works.forEach(w => {
+        map[w.id] = w.name;
+      });
+      setMyWorksIds(ids);
+      setMyWorksMap(map);
+    } catch (err) {
+      console.error('Erro ao carregar obras:', err);
+    }
+  };
 
   const buildDays = (from, to) => {
     const start = new Date(from);
@@ -50,7 +76,7 @@ export default function WorkerSchedule() {
       return;
     }
     setDays(buildDays(fromVal, toVal));
-    await loadAllocations(fromVal, toVal);
+    await loadAllocations(fromVal, toVal, myWorksMap);
   };
 
   const fetchLevels = async (ids) => {
@@ -74,21 +100,31 @@ export default function WorkerSchedule() {
     return map;
   };
 
-  const loadAllocations = async (from, to) => {
+  const loadAllocations = async (from, to, worksMap) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/level-user-days?from=${from}&to=${to}`);
       if (!res.ok) throw new Error('Falha ao carregar alocações');
 
       const data = await res.json();
-      const levelIds = data.map(d => d.levelId);
-      const levelMap = await fetchLevels(levelIds);
-      setLevelsMap(levelMap);
-      setAllocations(data.map(d => ({ ...d, levelName: levelMap[d.levelId] || `Obra ${d.levelId}` })));
+      
+      // Filtrar apenas obras do user (se não for admin)
+      const filteredData = myWorksIds.length > 0 
+        ? data.filter(d => myWorksIds.includes(d.levelId))
+        : data;
+      
+      // Usar worksMap para nomes das obras
+      const newLevelsMap = {};
+      myWorksIds.forEach(id => {
+        newLevelsMap[id] = worksMap[id] || `Obra ${id}`;
+      });
+      
+      setLevelsMap(newLevelsMap);
+      setAllocations(filteredData.map(d => ({ ...d, levelName: newLevelsMap[d.levelId] || `Obra ${d.levelId}` })));
 
       // Seleciona todas por defeito na primeira carga
-      if (selectedLevels.length === 0 && levelIds.length > 0) {
-        setSelectedLevels(Array.from(new Set(levelIds)));
+      if (selectedLevels.length === 0 && myWorksIds.length > 0) {
+        setSelectedLevels(Array.from(new Set(myWorksIds)));
       }
     } catch (err) {
       setError('Erro ao carregar alocações');

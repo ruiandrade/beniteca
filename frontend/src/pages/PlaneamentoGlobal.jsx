@@ -281,6 +281,33 @@ export default function PlaneamentoGlobal() {
       if (!res.ok) {
         throw new Error('Erro ao adicionar utilizador à obra');
       }
+
+      // Buscar dados do user para verificar se é admin
+      const userRes = await fetch(`/api/users/${userId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const userData = await userRes.json();
+
+      // Atribuir permissões por defeito
+      const objectTypes = ['LEVELS', 'MATERIALS', 'NOTES', 'PHOTOS', 'DOCUMENTS', 'CALENDAR'];
+      const permissionLevel = userData.role === 'A' ? 'W' : 'R'; // Admins = Escrita, outros = Leitura
+      
+      for (const objectType of objectTypes) {
+        await fetch('/api/permissions/assign', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userId: parseInt(userId),
+            levelId: obraId,
+            objectType,
+            permission: permissionLevel
+          })
+        });
+      }
+
       await refreshObraUsers(obraId);
       setSelectedNewUser((prev) => ({ ...prev, [obraId]: '' }));
       setModal({

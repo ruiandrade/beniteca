@@ -1,13 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
 
 export default function ManageLevels() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, token } = useAuth();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "sublevels");
   const [work, setWork] = useState(null);
+  const [accessDeniedModal, setAccessDeniedModal] = useState(false);
+  const [userPermission, setUserPermission] = useState(null); // 'R', 'W', ou null (para LEVELS)
+  const [userPermissionMaterials, setUserPermissionMaterials] = useState(null);
+  const [userPermissionNotes, setUserPermissionNotes] = useState(null);
+  const [userPermissionPhotos, setUserPermissionPhotos] = useState(null);
+  const [userPermissionDocuments, setUserPermissionDocuments] = useState(null); // 'R', 'W', ou null (para MATERIALS)
   const [breadcrumb, setBreadcrumb] = useState([]);
   const [sublevels, setSublevels] = useState([]);
   const [draggingSublevelId, setDraggingSublevelId] = useState(null);
@@ -202,11 +210,64 @@ export default function ManageLevels() {
     }
   }, [activeTab, work, contentsFilter, contentsSearch, contentsOffset]);
 
+  const checkAccess = async (levelId) => {
+    // Admin sempre tem acesso
+    if (user?.role === 'A') return true;
+
+    // Para non-admin, verificar se tem permissão na obra raiz
+    try {
+      // Encontrar a obra raiz
+      let currentId = levelId;
+      let rootId = levelId;
+      for (let i = 0; i < 100; i++) {
+        const res = await fetch(`/api/levels/${currentId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) break;
+        const data = await res.json();
+        rootId = currentId;
+        if (!data.parentId) break;
+        currentId = data.parentId;
+      }
+
+      // Verificar se o user tem acesso a essa obra raiz
+      const accessRes = await fetch(`/api/permissions/work/${rootId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (!accessRes.ok) return false;
+      const perm = await accessRes.json();
+      return perm && perm.permissionLevel;
+    } catch (err) {
+      console.error('Erro ao verificar acesso:', err);
+      return false;
+    }
+  };
+
   const fetchWork = async () => {
     try {
       const res = await fetch(`/api/levels/${id}`);
       if (res.ok) {
         const data = await res.json();
+        
+        // Verificar acesso
+        const hasAccess = await checkAccess(id);
+        if (!hasAccess) {
+          setAccessDeniedModal(true);
+          return;
+        }
+
+        // Buscar permissão do user para LEVELS nesta obra
+        await fetchUserPermission(id);
+        
+        // Buscar permissão do user para MATERIALS nesta obra
+        await fetchObjectTypePermission(id, 'MATERIALS', setUserPermissionMaterials);
+        
+        // Buscar permissões para outros object types
+        await fetchObjectTypePermission(id, 'NOTES', setUserPermissionNotes);
+        await fetchObjectTypePermission(id, 'PHOTOS', setUserPermissionPhotos);
+        await fetchObjectTypePermission(id, 'DOCUMENTS', setUserPermissionDocuments);
+
         setWork(data);
         setEditName(data.name || "");
         setEditDesc(data.description || "");
@@ -218,6 +279,49 @@ export default function ManageLevels() {
       }
     } catch (err) {
       console.error("Erro ao carregar obra:", err);
+    }
+  };
+
+  const fetchUserPermission = async (levelId) => {
+    await fetchObjectTypePermission(levelId, 'LEVELS', setUserPermission);
+  };
+
+  const fetchObjectTypePermission = async (levelId, objectType, setPermissionState) => {
+    // Admin sempre tem Write
+    if (user?.role === 'A') {
+      setPermissionState('W');
+      return;
+    }
+
+    try {
+      // Encontrar a obra raiz
+      let currentId = levelId;
+      let rootId = levelId;
+      for (let i = 0; i < 100; i++) {
+        const res = await fetch(`/api/levels/${currentId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) break;
+        const data = await res.json();
+        rootId = currentId;
+        if (!data.parentId) break;
+        currentId = data.parentId;
+      }
+
+      // Buscar permissão para objectType
+      const res = await fetch(`/api/permissions/work/${rootId}?objectType=${objectType}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const perm = await res.json();
+        setPermissionState(perm?.permissionLevel || 'R');
+      } else {
+        setPermissionState('R');
+      }
+    } catch (err) {
+      console.error(`Erro ao buscar permissão para ${objectType}:`, err);
+      setPermissionState('R');
     }
   };
 
@@ -1555,6 +1659,86 @@ export default function ManageLevels() {
   const visibleCompleted = sublevels.filter((s) => s.status === 'completed' && !s.hidden);
   const hiddenSublevels = sublevels.filter((s) => s.hidden);
 
+  // Se acesso negado, mostrar apenas o modal e bloquear a página
+  if (accessDeniedModal) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: '40px 20px'
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: '12px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+          padding: '40px',
+          maxWidth: '500px',
+          width: '100%',
+          minWidth: '320px'
+        }}>
+          <h2 style={{ 
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            color: '#dc2626',
+            margin: '0 0 16px 0'
+          }}>
+            🔒 Acesso Negado
+          </h2>
+          <p style={{
+            color: '#64748b',
+            lineHeight: 1.7,
+            margin: '0 0 32px 0',
+            fontSize: '1.05rem'
+          }}>
+            Você não tem permissão para acessar esta obra.
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'center'
+          }}>
+            <button 
+              style={{
+                padding: '12px 32px',
+                borderRadius: '8px',
+                border: 'none',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '1rem',
+                minWidth: '200px',
+                background: '#059669',
+                color: 'white',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#047857';
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = '#059669';
+                e.target.style.transform = 'translateY(0)';
+              }}
+              onClick={() => {
+                setAccessDeniedModal(false);
+                navigate('/obras');
+              }}
+            >
+              Ir para As Minhas Obras
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ml-bg">
       <div className="ml-layout">
@@ -1620,7 +1804,16 @@ export default function ManageLevels() {
               ✓ {completedCount}/{sublevels.filter(s => !s.hidden).length} níveis concluídos
             </p>
           )}
-          <button onClick={() => setEditMode(!editMode)} className="ml-edit-btn">
+          <button 
+            onClick={() => userPermission === 'W' && setEditMode(!editMode)} 
+            disabled={userPermission === 'R'}
+            style={{
+              opacity: userPermission === 'R' ? 0.5 : 1,
+              cursor: userPermission === 'R' ? 'not-allowed' : 'pointer'
+            }}
+            title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+            className="ml-edit-btn"
+          >
             {editMode ? "Cancelar Edição" : "✏ Editar Detalhes"}
           </button>
         </div>
@@ -1685,7 +1878,8 @@ export default function ManageLevels() {
         {work && work.parentId !== undefined && (
           <div style={{ marginTop: '16px', marginBottom: '16px' }}>
             <button 
-              onClick={() => moveMode ? setMoveMode(false) : handleOpenMoveMode()} 
+              onClick={() => userPermission === 'W' && (moveMode ? setMoveMode(false) : handleOpenMoveMode())}
+              disabled={userPermission === 'R'}
               className="ml-move-btn"
               style={{
                 background: moveMode ? '#f87171' : '#8b5cf6',
@@ -1693,9 +1887,11 @@ export default function ManageLevels() {
                 border: 'none',
                 borderRadius: '8px',
                 padding: '10px 16px',
-                cursor: 'pointer',
+                cursor: userPermission === 'R' ? 'not-allowed' : 'pointer',
+                opacity: userPermission === 'R' ? 0.5 : 1,
                 fontWeight: '600'
               }}
+              title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : ''}
             >
               {moveMode ? "Cancelar Movimento" : "↕️ Mover na Hierarquia"}
             </button>
@@ -1785,7 +1981,16 @@ export default function ManageLevels() {
           <div className="ml-tab-content">
             <div className="ml-section-header">
               <h2>Subníveis</h2>
-              <button onClick={() => setShowSublevelForm(!showSublevelForm)} className="ml-add-btn">
+              <button 
+                onClick={() => userPermission === 'W' && setShowSublevelForm(!showSublevelForm)} 
+                className="ml-add-btn"
+                disabled={userPermission === 'R'}
+                style={{
+                  opacity: userPermission === 'R' ? 0.5 : 1,
+                  cursor: userPermission === 'R' ? 'not-allowed' : 'pointer'
+                }}
+                title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+              >
                 {showSublevelForm ? "Cancelar" : "+ Adicionar Subnível"}
               </button>
             </div>
@@ -1880,16 +2085,38 @@ export default function ManageLevels() {
                               )}
                             </div>
                             <div className="ml-item-actions">
-                              <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete" title="Ocultar">👁️</button>
-                              <button onClick={() => handleRemoveSublevel(sub.id)} className="ml-btn-remove" title="Remover permanentemente">🗑️</button>
                               <button 
-                                onClick={() => handleToggleComplete(sub.id, sub.status === 'completed')} 
-                                className={sub.status === 'completed' ? "ml-btn-completed" : "ml-btn-incomplete"}
-                                title={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.status === 'completed' ? "Marcar como não concluído" : "Marcar como concluído")}
-                                disabled={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
+                                onClick={() => userPermission === 'W' && handleDeleteSublevel(sub.id)} 
+                                className="ml-btn-delete" 
+                                title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : 'Ocultar'}
+                                disabled={userPermission === 'R'}
                                 style={{
-                                  opacity: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
-                                  cursor: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
+                                  opacity: userPermission === 'R' ? 0.5 : 1,
+                                  cursor: userPermission === 'R' ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                👁️
+                              </button>
+                              <button 
+                                onClick={() => userPermission === 'W' && handleRemoveSublevel(sub.id)} 
+                                className="ml-btn-remove" 
+                                title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : 'Remover permanentemente'}
+                                disabled={userPermission === 'R'}
+                                style={{
+                                  opacity: userPermission === 'R' ? 0.5 : 1,
+                                  cursor: userPermission === 'R' ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                🗑️
+                              </button>
+                              <button 
+                                onClick={() => userPermission === 'W' && handleToggleComplete(sub.id, sub.status === 'completed')} 
+                                className={sub.status === 'completed' ? "ml-btn-completed" : "ml-btn-incomplete"}
+                                title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.status === 'completed' ? "Marcar como não concluído" : "Marcar como concluído"))}
+                                disabled={userPermission === 'R' || (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount)}
+                                style={{
+                                  opacity: (userPermission === 'R' || (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount)) ? 0.5 : 1,
+                                  cursor: (userPermission === 'R' || (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount)) ? 'not-allowed' : 'pointer'
                                 }}
                               >
                                 {sub.status === 'completed' ? "✓" : "○"}
@@ -1923,16 +2150,38 @@ export default function ManageLevels() {
                               )}
                             </div>
                             <div className="ml-item-actions" onClick={(e) => e.stopPropagation()}>
-                              <button onClick={() => handleDeleteSublevel(sub.id)} className="ml-btn-delete" title="Ocultar">👁️</button>
-                              <button onClick={() => handleRemoveSublevel(sub.id)} className="ml-btn-remove" title="Remover permanentemente">🗑️</button>
                               <button 
-                                onClick={() => handleToggleComplete(sub.id, sub.status === 'completed')} 
-                                className={sub.status === 'completed' ? "ml-btn-completed" : "ml-btn-incomplete"}
-                                title={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.status === 'completed' ? "Marcar como não concluído" : "Marcar como concluído")}
-                                disabled={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
+                                onClick={() => userPermission === 'W' && handleDeleteSublevel(sub.id)} 
+                                className="ml-btn-delete" 
+                                title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : 'Ocultar'}
+                                disabled={userPermission === 'R'}
                                 style={{
-                                  opacity: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
-                                  cursor: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
+                                  opacity: userPermission === 'R' ? 0.5 : 1,
+                                  cursor: userPermission === 'R' ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                👁️
+                              </button>
+                              <button 
+                                onClick={() => userPermission === 'W' && handleRemoveSublevel(sub.id)} 
+                                className="ml-btn-remove" 
+                                title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : 'Remover permanentemente'}
+                                disabled={userPermission === 'R'}
+                                style={{
+                                  opacity: userPermission === 'R' ? 0.5 : 1,
+                                  cursor: userPermission === 'R' ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                🗑️
+                              </button>
+                              <button 
+                                onClick={() => userPermission === 'W' && handleToggleComplete(sub.id, sub.status === 'completed')} 
+                                className={sub.status === 'completed' ? "ml-btn-completed" : "ml-btn-incomplete"}
+                                title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.status === 'completed' ? "Marcar como não concluído" : "Marcar como concluído"))}
+                                disabled={userPermission === 'R' || (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount)}
+                                style={{
+                                  opacity: (userPermission === 'R' || (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount)) ? 0.5 : 1,
+                                  cursor: (userPermission === 'R' || (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount)) ? 'not-allowed' : 'pointer'
                                 }}
                               >
                                 {sub.status === 'completed' ? "✓" : "○"}
@@ -1966,16 +2215,38 @@ export default function ManageLevels() {
                               )}
                             </div>
                             <div className="ml-item-actions" onClick={(e) => e.stopPropagation()}>
-                              <button onClick={() => handleShowSublevel(sub.id)} className="ml-btn-show" title="Mostrar">👁️‍🗨️</button>
-                              <button onClick={() => handleRemoveSublevel(sub.id)} className="ml-btn-remove" title="Remover permanentemente">🗑️</button>
                               <button 
-                                onClick={() => handleToggleComplete(sub.id, sub.status === 'completed')} 
-                                className={sub.status === 'completed' ? "ml-btn-completed" : "ml-btn-incomplete"}
-                                title={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.status === 'completed' ? "Marcar como não concluído" : "Marcar como concluído")}
-                                disabled={sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount}
+                                onClick={() => userPermission === 'W' && handleShowSublevel(sub.id)} 
+                                className="ml-btn-show" 
+                                title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : 'Mostrar'}
+                                disabled={userPermission === 'R'}
                                 style={{
-                                  opacity: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 0.5 : 1,
-                                  cursor: sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? 'not-allowed' : 'pointer'
+                                  opacity: userPermission === 'R' ? 0.5 : 1,
+                                  cursor: userPermission === 'R' ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                👁️‍🗨️
+                              </button>
+                              <button 
+                                onClick={() => userPermission === 'W' && handleRemoveSublevel(sub.id)} 
+                                className="ml-btn-remove" 
+                                title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : 'Remover permanentemente'}
+                                disabled={userPermission === 'R'}
+                                style={{
+                                  opacity: userPermission === 'R' ? 0.5 : 1,
+                                  cursor: userPermission === 'R' ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                🗑️
+                              </button>
+                              <button 
+                                onClick={() => userPermission === 'W' && handleToggleComplete(sub.id, sub.status === 'completed')} 
+                                className={sub.status === 'completed' ? "ml-btn-completed" : "ml-btn-incomplete"}
+                                title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount ? "Encerre todos os filhos antes" : (sub.status === 'completed' ? "Marcar como não concluído" : "Marcar como concluído"))}
+                                disabled={userPermission === 'R' || (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount)}
+                                style={{
+                                  opacity: (userPermission === 'R' || (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount)) ? 0.5 : 1,
+                                  cursor: (userPermission === 'R' || (sub.status !== 'completed' && sub.childrenCount > 0 && sub.completedChildren < sub.childrenCount)) ? 'not-allowed' : 'pointer'
                                 }}
                               >
                                 {sub.status === 'completed' ? "✓" : "○"}
@@ -2008,7 +2279,12 @@ export default function ManageLevels() {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="ml-btn-secondary"
-                      disabled={importingHierarchy}
+                      disabled={importingHierarchy || userPermission === 'R'}
+                      style={{
+                        opacity: (importingHierarchy || userPermission === 'R') ? 0.5 : 1,
+                        cursor: (importingHierarchy || userPermission === 'R') ? 'not-allowed' : 'pointer'
+                      }}
+                      title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : ''}
                     >
                       {importingHierarchy ? "A importar..." : "Importar hierarquia via Excel"}
                     </button>
@@ -2295,7 +2571,16 @@ export default function ManageLevels() {
           <div className="ml-tab-content">
             <div className="ml-section-header">
               <h2>Materiais</h2>
-              <button onClick={() => setShowMaterialForm(!showMaterialForm)} className="ml-add-btn">
+              <button 
+                onClick={() => userPermissionMaterials === 'W' && setShowMaterialForm(!showMaterialForm)}
+                disabled={userPermissionMaterials === 'R'}
+                style={{
+                  opacity: userPermissionMaterials === 'R' ? 0.5 : 1,
+                  cursor: userPermissionMaterials === 'R' ? 'not-allowed' : 'pointer'
+                }}
+                title={userPermissionMaterials === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+                className="ml-add-btn"
+              >
                 {showMaterialForm ? "Cancelar" : "+ Adicionar Material"}
               </button>
             </div>
@@ -2694,9 +2979,14 @@ export default function ManageLevels() {
                       Descarregar template Excel
                     </button>
                     <button
-                      onClick={() => materialFileInputRef.current?.click()}
+                      onClick={() => userPermissionMaterials === 'W' && materialFileInputRef.current?.click()}
                       className="ml-btn-secondary"
-                      disabled={importingMaterials}
+                      disabled={importingMaterials || userPermissionMaterials === 'R'}
+                      style={{
+                        opacity: userPermissionMaterials === 'R' ? 0.5 : 1,
+                        cursor: userPermissionMaterials === 'R' ? 'not-allowed' : 'pointer'
+                      }}
+                      title={userPermissionMaterials === 'R' ? 'Você tem apenas permissão de leitura' : ''}
                     >
                       {importingMaterials ? "A importar..." : "Importar materiais via Excel"}
                     </button>
@@ -2745,6 +3035,7 @@ export default function ManageLevels() {
                 type="button"
                 className="ml-btn"
                 onClick={async () => {
+                  if (userPermissionNotes === 'R') return;
                   const text = notes[0]?.description || "";
                   const res = await fetch(`/api/levels/${id}`, {
                     method: "PUT",
@@ -2762,6 +3053,12 @@ export default function ManageLevels() {
                     });
                   }
                 }}
+                disabled={userPermissionNotes === 'R'}
+                style={{
+                  opacity: userPermissionNotes === 'R' ? 0.5 : 1,
+                  cursor: userPermissionNotes === 'R' ? 'not-allowed' : 'pointer'
+                }}
+                title={userPermissionNotes === 'R' ? 'Você tem apenas permissão de leitura' : ''}
               >
                 Guardar Notas
               </button>
@@ -2774,7 +3071,10 @@ export default function ManageLevels() {
           <div className="ml-tab-content">
             <div className="ml-section-header">
               <h2>Fotografias</h2>
-              <button onClick={() => setShowPhotoForm(!showPhotoForm)} className="ml-add-btn">
+              <button
+                onClick={() => setShowPhotoForm(!showPhotoForm)}
+                className="ml-add-btn"
+              >
                 {showPhotoForm ? "Cancelar" : "+ Adicionar Foto"}
               </button>
             </div>
@@ -2853,13 +3153,29 @@ export default function ManageLevels() {
                           />
                           <div className="ml-photo-actions">
                             <button
-                              onClick={() => handleTogglePhotoRole(photo.id, photo.role || 'B')}
+                              onClick={() => userPermissionPhotos === 'W' && handleTogglePhotoRole(photo.id, photo.role || 'B')}
+                              disabled={userPermissionPhotos === 'R'}
                               className="ml-btn-toggle-role"
-                              title={photo.role === 'C' ? 'Cliente (clique para Backend)' : 'Backend (clique para Cliente)'}
+                              title={userPermissionPhotos === 'R' ? 'Você tem apenas permissão de leitura' : (photo.role === 'C' ? 'Cliente (clique para Backend)' : 'Backend (clique para Cliente)')}
+                              style={{
+                                opacity: userPermissionPhotos === 'R' ? 0.5 : 1,
+                                cursor: userPermissionPhotos === 'R' ? 'not-allowed' : 'pointer'
+                              }}
                             >
                               {photo.role === 'C' ? '👤' : '🏢'}
                             </button>
-                            <button onClick={() => handleDeletePhoto(photo.id)} className="ml-btn-delete-photo">🗑️</button>
+                            <button
+                              onClick={() => userPermissionPhotos === 'W' && handleDeletePhoto(photo.id)}
+                              disabled={userPermissionPhotos === 'R'}
+                              className="ml-btn-delete-photo"
+                              style={{
+                                opacity: userPermissionPhotos === 'R' ? 0.5 : 1,
+                                cursor: userPermissionPhotos === 'R' ? 'not-allowed' : 'pointer'
+                              }}
+                              title={userPermissionPhotos === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+                            >
+                              🗑️
+                            </button>
                           </div>
                           {photo.observacoes && (
                             <div className="ml-photo-info">
@@ -2881,7 +3197,16 @@ export default function ManageLevels() {
           <div className="ml-tab-content">
             <div className="ml-section-header">
               <h2>Documentos</h2>
-              <button onClick={() => setShowDocumentForm(!showDocumentForm)} className="ml-add-btn">
+              <button
+                onClick={() => userPermissionDocuments === 'W' && setShowDocumentForm(!showDocumentForm)}
+                disabled={userPermissionDocuments === 'R'}
+                style={{
+                  opacity: userPermissionDocuments === 'R' ? 0.5 : 1,
+                  cursor: userPermissionDocuments === 'R' ? 'not-allowed' : 'pointer'
+                }}
+                title={userPermissionDocuments === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+                className="ml-add-btn"
+              >
                 {showDocumentForm ? "Cancelar" : "+ Adicionar Documento"}
               </button>
             </div>
@@ -3810,18 +4135,17 @@ export default function ManageLevels() {
           align-items: center;
           justify-content: center;
           z-index: 9999;
-          padding: 20px;
+          padding: 40px 20px;
         }
         .ml-modal-content {
           position: relative;
-          max-width: 90vw;
-          max-height: 90vh;
           background: #fff;
           border-radius: 12px;
           box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-          padding: 32px;
+          padding: 40px;
           max-width: 500px;
-          width: 90%;
+          width: 100%;
+          min-width: 320px;
           animation: slideIn 0.3s ease-out;
         }
         @keyframes slideIn {
@@ -3861,32 +4185,33 @@ export default function ManageLevels() {
 
         /* Notification Modal Styles */
         .ml-modal-title {
-          font-size: 1.25rem;
+          font-size: 1.5rem;
           font-weight: 700;
           color: #1e293b;
-          margin: 0 0 12px 0;
+          margin: 0 0 16px 0;
         }
         .ml-modal-message {
           color: #64748b;
-          line-height: 1.6;
-          margin: 0 0 24px 0;
-          font-size: 1rem;
+          line-height: 1.7;
+          margin: 0 0 32px 0;
+          font-size: 1.05rem;
           white-space: pre-wrap;
           word-wrap: break-word;
         }
         .ml-modal-actions {
           display: flex;
           gap: 12px;
-          justify-content: flex-end;
+          justify-content: center;
         }
         .ml-modal-btn {
-          padding: 10px 20px;
-          border-radius: 6px;
+          padding: 12px 32px;
+          border-radius: 8px;
           border: none;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
-          font-size: 0.95rem;
+          font-size: 1rem;
+          min-width: 200px;
         }
         .ml-modal-btn-cancel {
           background: #e2e8f0;
@@ -3894,6 +4219,7 @@ export default function ManageLevels() {
         }
         .ml-modal-btn-cancel:hover {
           background: #cbd5e1;
+          transform: translateY(-2px);
         }
         .ml-modal-btn-confirm {
           background: #059669;
@@ -3901,6 +4227,7 @@ export default function ManageLevels() {
         }
         .ml-modal-btn-confirm:hover {
           background: #047857;
+          transform: translateY(-2px);
         }
         .ml-modal-btn-danger {
           background: #dc2626;
@@ -3908,6 +4235,7 @@ export default function ManageLevels() {
         }
         .ml-modal-btn-danger:hover {
           background: #b91c1c;
+          transform: translateY(-2px);
         }
         
         /* Fix form and field overflow */

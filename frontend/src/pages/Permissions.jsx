@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-const OBJECT_TYPES = ['LEVELS', 'MATERIALS', 'NOTES', 'PHOTOS', 'DOCUMENTS', 'DASHBOARD', 'CALENDAR'];
+const OBJECT_TYPES = ['LEVELS', 'MATERIALS', 'NOTES', 'PHOTOS', 'DOCUMENTS'];
 const PERMISSION_LEVELS = [
-  { value: 'N', label: 'Sem Acesso', color: '#ef4444' },
   { value: 'R', label: 'Leitura', color: '#f59e0b' },
   { value: 'W', label: 'Escrita', color: '#10b981' }
 ];
@@ -57,6 +56,7 @@ export default function Permissions() {
       });
       if (!res.ok) throw new Error('Erro ao carregar permissões');
       const data = await res.json();
+      console.log('Permissões carregadas:', data);
       
       // Estruturar permissões por userId
       const permMap = {};
@@ -64,6 +64,7 @@ export default function Permissions() {
         if (!permMap[p.userId]) permMap[p.userId] = {};
         permMap[p.userId][p.objectType] = p.permissionLevel;
       });
+      console.log('permMap estruturado:', permMap);
       
       // Carregar apenas os users associados a esta obra
       const usersRes = await fetch(`/api/permissions/level/${levelId}/users`, {
@@ -87,51 +88,27 @@ export default function Permissions() {
       setError('');
       setSuccess('');
 
-      // Se a permissão for 'N', deletar a permissão
-      if (newPermission === 'N') {
-        const res = await fetch('/api/permissions/remove', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            userId,
-            levelId: selectedObra,
-            objectType
-          })
-        });
-        if (!res.ok) throw new Error('Erro ao remover permissão');
-      } else {
-        // Caso contrário, atribuir
-        const res = await fetch('/api/permissions/assign', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            userId,
-            levelId: selectedObra,
-            objectType,
-            permission: newPermission
-          })
-        });
-        if (!res.ok) throw new Error('Erro ao atribuir permissão');
-      }
+      // Atribuir permissão
+      const res = await fetch('/api/permissions/assign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId,
+          levelId: selectedObra,
+          objectType,
+          permission: newPermission
+        })
+      });
+      if (!res.ok) throw new Error('Erro ao atribuir permissão');
 
       // Atualizar estado local
       setPermissions(prev => {
         const newPerms = { ...prev };
         if (!newPerms[userId]) newPerms[userId] = {};
-        if (newPermission === 'N') {
-          delete newPerms[userId][objectType];
-          if (Object.keys(newPerms[userId]).length === 0) {
-            delete newPerms[userId];
-          }
-        } else {
-          newPerms[userId][objectType] = newPermission;
-        }
+        newPerms[userId][objectType] = newPermission;
         return newPerms;
       });
 

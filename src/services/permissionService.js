@@ -55,10 +55,11 @@ class PermissionService {
   async getPermissionsByLevel(levelId) {
     const pool = await getConnection();
     const query = `
-      SELECT p.*, u.name as userName, u.email as userEmail
-      FROM Permission p
-      JOIN [User] u ON p.userId = u.id
-      WHERE p.levelId = @levelId
+      SELECT uwp.userId, uwp.levelId, uwp.objectType, uwp.permissionLevel, u.name as userName, u.email as userEmail
+      FROM [UserWorkPermission] uwp
+      JOIN [User] u ON uwp.userId = u.id
+      WHERE uwp.levelId = @levelId
+      ORDER BY u.name ASC, uwp.objectType ASC
     `;
     const result = await pool.request()
       .input('levelId', sql.Int, parseInt(levelId))
@@ -86,7 +87,6 @@ class PermissionService {
           INNER JOIN [UserWorkPermission] uwp ON l.id = uwp.levelId
           LEFT JOIN [User] cm ON l.constructionManagerId = cm.id
           WHERE uwp.userId = @userId
-            AND uwp.objectType = 'LEVELS'
             AND uwp.permissionLevel IN ('R', 'W')
           ORDER BY l.name ASC
         `);
@@ -152,18 +152,19 @@ class PermissionService {
    * @param {number} levelId 
    * @returns {Promise<Object>}
    */
-  async getUserWorkPermission(userId, levelId) {
+  async getUserWorkPermission(userId, levelId, objectType = 'LEVELS') {
     try {
       const pool = await getConnection();
       const result = await pool.request()
         .input('userId', sql.Int, userId)
         .input('levelId', sql.Int, levelId)
+        .input('objectType', sql.VarChar, objectType)
         .query(`
           SELECT userId, levelId, objectType, permissionLevel
           FROM [UserWorkPermission]
           WHERE userId = @userId
             AND levelId = @levelId
-            AND objectType = 'LEVELS'
+            AND objectType = @objectType
         `);
       return result.recordset[0] || null;
     } catch (err) {
@@ -173,8 +174,7 @@ class PermissionService {
   }
 
   /**
-   * Get users associated with a specific level/obra (from LevelUser table)
-   * with their permissions
+   * Get users associated with a specific level/obra with their permissions
    * @param {number} levelId 
    * @returns {Promise<Array>}
    */
@@ -184,10 +184,10 @@ class PermissionService {
       const result = await pool.request()
         .input('levelId', sql.Int, levelId)
         .query(`
-          SELECT u.id, u.name, u.email, u.status, u.active
+          SELECT DISTINCT u.id, u.name, u.email, u.status, u.active
           FROM [User] u
-          INNER JOIN [LevelUser] lu ON u.id = lu.userId
-          WHERE lu.levelId = @levelId
+          INNER JOIN [UserWorkPermission] uwp ON u.id = uwp.userId
+          WHERE uwp.levelId = @levelId
           ORDER BY u.name ASC
         `);
       return result.recordset;

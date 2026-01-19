@@ -62,6 +62,7 @@ export default function Equipa() {
     e.preventDefault();
     if (!selectedUserId) return;
     try {
+      // 1. Adicionar user à equipa
       const res = await fetch('/api/level-users', {
         method: 'POST',
         headers: { 
@@ -70,12 +71,39 @@ export default function Equipa() {
         },
         body: JSON.stringify({ levelId: id, userId: selectedUserId })
       });
-      if (res.ok) {
-        await fetchLevelUsers();
-        setSelectedUserId('');
-      } else {
+      if (!res.ok) {
         alert('Erro ao associar utilizador');
+        return;
       }
+
+      // 2. Buscar dados do user para verificar se é admin
+      const userRes = await fetch(`/api/users/${selectedUserId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const userData = await userRes.json();
+
+      // 3. Atribuir permissões por defeito
+      const objectTypes = ['LEVELS', 'MATERIALS', 'NOTES', 'PHOTOS', 'DOCUMENTS', 'CALENDAR'];
+      const permissionLevel = userData.role === 'A' ? 'W' : 'R'; // Admins = Escrita, outros = Leitura
+      
+      for (const objectType of objectTypes) {
+        await fetch('/api/permissions/assign', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userId: parseInt(selectedUserId),
+            levelId: parseInt(id),
+            objectType,
+            permission: permissionLevel
+          })
+        });
+      }
+
+      await fetchLevelUsers();
+      setSelectedUserId('');
     } catch (err) {
       alert('Erro ao associar utilizador: ' + err.message);
     }
