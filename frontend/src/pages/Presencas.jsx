@@ -148,10 +148,24 @@ export default function Presencas() {
       for (const [key, data] of Object.entries(presencas)) {
         const userId = key.split('-')[0];
         const period = key.split('-')[1];
+        
+        // Determine if overtime should go to this period
+        let periodOvertimeHours = 0;
+        if (period === 'm') {
+          // Check if afternoon exists; if not, put overtime on morning
+          const afternoonKey = `${userId}-a`;
+          if (!presencas[afternoonKey]?.recordId && (overtimeHours[userId] || 0) > 0) {
+            periodOvertimeHours = overtimeHours[userId];
+          }
+        } else if (period === 'a') {
+          // If afternoon exists, put overtime here
+          periodOvertimeHours = overtimeHours[userId] || 0;
+        }
+        
         const payload = {
           appeared: data.appeared,
           observations: data.observations || "",
-          overtimeHours: period === 'a' ? (overtimeHours[userId] || 0) : 0
+          overtimeHours: periodOvertimeHours
         };
 
         if (data.recordId && data.appeared) {
@@ -175,7 +189,7 @@ export default function Presencas() {
               period: key.split('-')[1],
               appeared: data.appeared,
               observations: data.observations || "",
-              overtimeHours: period === 'a' ? (overtimeHours[userId] || 0) : 0
+              overtimeHours: periodOvertimeHours
             })
           });
           if (!res.ok) throw new Error('Erro ao criar presença');
@@ -188,6 +202,30 @@ export default function Presencas() {
               recordId: created.id || created.recordId || prev[key]?.recordId
             }
           }));
+        }
+      }
+
+      // After processing all presencas, create afternoon record for overtime if needed
+      for (const userId of users.map(u => u.id)) {
+        const afternoonKey = `${userId}-a`;
+        const overtimeValue = overtimeHours[userId] || 0;
+        
+        // If overtime > 0 but no afternoon record exists, create one (afternoon exists but was never marked)
+        if (overtimeValue > 0 && !presencas[afternoonKey]?.recordId && presencas[`${userId}-m`]?.recordId) {
+          const res = await fetch('/api/level-user-days', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              levelId: selectedWork,
+              userId,
+              day: selectedDate,
+              period: 'a',
+              appeared: null, // No presence marked, just overtime
+              observations: "",
+              overtimeHours: overtimeValue
+            })
+          });
+          if (!res.ok) throw new Error('Erro ao criar registo de horas extra');
         }
       }
 

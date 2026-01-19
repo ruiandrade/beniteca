@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const userService = require('./userService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_EXPIRES_IN = '7d'; // Token expira após 7 dias
 
 class AuthService {
   async login(email, password) {

@@ -81,7 +81,8 @@ export default function Planeamento() {
         data.forEach((r) => {
           const day = (r.day || '').slice(0, 10);
           const period = r.period || 'm';
-          if (day) next.add(`${r.userId}::${day}::${period}`);
+          // Filter out 'eh' period (overtime hours are tracked separately)
+          if (day && period !== 'eh') next.add(`${r.userId}::${day}::${period}`);
         });
         setSelected(next);
       }
