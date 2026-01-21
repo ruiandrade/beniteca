@@ -33,6 +33,7 @@ export default function ManageLevels() {
   const [showSublevelForm, setShowSublevelForm] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [showNoteForm, setShowNoteForm] = useState(false);
+  const [notesEditing, setNotesEditing] = useState(false);
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [showDocumentForm, setShowDocumentForm] = useState(false);
 
@@ -429,6 +430,7 @@ export default function ManageLevels() {
       if (res.ok) {
         const data = await res.json();
         setPhotos(data);
+        setNotesEditing(false);
       }
     } catch (err) {
       console.error("Erro ao carregar fotos:", err);
@@ -1772,6 +1774,15 @@ export default function ManageLevels() {
     );
   }
 
+  // Contadores auxiliares para mostrar nos separadores
+  const sublevelsCount = (sublevels || []).filter((s) => !s.hidden).length;
+  const materialsCount = (materials || []).length;
+  const notesCount = (notes || []).filter((n) => (n?.description || '').trim().length > 0).length;
+  const photosCount = (photos || []).length;
+  const documentsCount = (documents || []).length;
+  const allContentsCount = (allContents?.counts?.materials || 0) + (allContents?.counts?.photos || 0) + (allContents?.counts?.documents || 0);
+  const notePreviewText = (notes?.[0]?.description || '').trim();
+
   return (
     <div className="ml-bg">
       <div className="ml-layout">
@@ -1997,7 +2008,7 @@ export default function ManageLevels() {
             onClick={() => setActiveTab("sublevels")}
             title="Subníveis"
           >
-            🏗️
+            🏗️ ({sublevelsCount})
           </button>
           {work && !work.parentId && (
             <button
@@ -2005,7 +2016,7 @@ export default function ManageLevels() {
               onClick={() => setActiveTab("allContents")}
               title="Todos os Anexos"
             >
-              📎
+              📎 ({allContentsCount})
             </button>
           )}
           <button
@@ -2013,31 +2024,73 @@ export default function ManageLevels() {
             onClick={() => setActiveTab("materials")}
             title="Materiais"
           >
-            📦
+            📦 ({materialsCount})
           </button>
           <button
             className={activeTab === "notes" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("notes")}
             title="Notas"
           >
-            📝
+            📝 ({notesCount})
           </button>
           <button
             className={activeTab === "photos" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("photos")}
             title="Fotografias"
           >
-            📸
+            📸 ({photosCount})
           </button>
           <button
             className={activeTab === "documents" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("documents")}
             title="Documentos"
           >
-            📄
+            📄 ({documentsCount})
           </button>
           {/* Equipa tab removida — agora é página dedicada */}
         </div>
+
+        {activeTab === "sublevels" && (
+          <div className="ml-note-preview" style={{
+            margin: '12px 0 8px',
+            padding: '14px 14px 12px',
+            background: '#fffaf0',
+            border: '1px solid #f59e0b',
+            borderRadius: '10px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            position: 'relative'
+          }}>
+            <div style={{
+              fontWeight: 700,
+              marginBottom: '6px',
+              color: '#92400e',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span role="img" aria-label="note">🗒️</span>
+              <span>Notas do nível (só leitura)</span>
+            </div>
+            <div style={{
+              whiteSpace: 'pre-wrap',
+              color: '#78350f',
+              lineHeight: 1.5,
+              fontFamily: '"Segoe UI", Tahoma, sans-serif',
+              fontSize: '0.95rem'
+            }}>
+              {notePreviewText ? notePreviewText : 'Sem notas.'}
+            </div>
+            <div style={{
+              position: 'absolute',
+              top: '10px',
+              right: '12px',
+              fontSize: '0.75rem',
+              color: '#c2410c'
+            }}>
+              visualização
+            </div>
+          </div>
+        )}
 
         {/* ========== TAB: SUBNÍVEIS ========== */}
         {activeTab === "sublevels" && (
@@ -3082,49 +3135,94 @@ export default function ManageLevels() {
         {activeTab === "notes" && (
           <div className="ml-tab-content">
             <div className="ml-section-header">
-              <h2>Notas</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span role="img" aria-label="notes">📝</span>
+                Notas
+                {userPermissionNotes !== 'R' && (
+                  <button
+                    type="button"
+                    onClick={() => setNotesEditing(true)}
+                    className="ml-btn" 
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '0.9rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                    disabled={notesEditing}
+                    title={notesEditing ? 'Já em edição' : 'Editar notas'}
+                  >
+                    ✏️ Editar
+                  </button>
+                )}
+              </h2>
             </div>
 
             <div className="ml-form">
               <div className="ml-field">
-                <label>Notas do nível</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span role="img" aria-label="note">🗒️</span>
+                  <span>Notas do nível</span>
+                </label>
                 <textarea
                   rows="5"
                   value={notes[0]?.description || ""}
                   onChange={(e) => setNotes([{ id: id, description: e.target.value }])}
+                  readOnly={!notesEditing}
+                  style={{
+                    background: notesEditing ? 'white' : '#f8fafc',
+                    borderColor: notesEditing ? '#cbd5e1' : '#e2e8f0',
+                    cursor: notesEditing ? 'text' : 'not-allowed'
+                  }}
                 />
               </div>
-              <button
-                type="button"
-                className="ml-btn"
-                onClick={async () => {
-                  if (userPermissionNotes === 'R') return;
-                  const text = notes[0]?.description || "";
-                  const res = await fetch(`/api/levels/${id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ notes: text }),
-                  });
-                  if (res.ok) {
-                    await fetchNotes();
-                  } else {
-                    setModal({
-                      type: 'error',
-                      title: 'Erro',
-                      message: 'Erro ao salvar notas',
-                      onConfirm: null,
-                    });
-                  }
-                }}
-                disabled={userPermissionNotes === 'R'}
-                style={{
-                  opacity: userPermissionNotes === 'R' ? 0.5 : 1,
-                  cursor: userPermissionNotes === 'R' ? 'not-allowed' : 'pointer'
-                }}
-                title={userPermissionNotes === 'R' ? 'Você tem apenas permissão de leitura' : ''}
-              >
-                Guardar Notas
-              </button>
+              {notesEditing && (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="ml-btn"
+                    onClick={async () => {
+                      if (userPermissionNotes === 'R') return;
+                      const text = notes[0]?.description || "";
+                      const res = await fetch(`/api/levels/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ notes: text }),
+                      });
+                      if (res.ok) {
+                        await fetchNotes();
+                        setNotesEditing(false);
+                      } else {
+                        setModal({
+                          type: 'error',
+                          title: 'Erro',
+                          message: 'Erro ao salvar notas',
+                          onConfirm: null,
+                        });
+                      }
+                    }}
+                    disabled={userPermissionNotes === 'R'}
+                    style={{
+                      opacity: userPermissionNotes === 'R' ? 0.5 : 1,
+                      cursor: userPermissionNotes === 'R' ? 'not-allowed' : 'pointer'
+                    }}
+                    title={userPermissionNotes === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+                  >
+                    Guardar
+                  </button>
+                  <button
+                    type="button"
+                    className="ml-btn ml-btn-secondary"
+                    onClick={() => {
+                      fetchNotes();
+                      setNotesEditing(false);
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
