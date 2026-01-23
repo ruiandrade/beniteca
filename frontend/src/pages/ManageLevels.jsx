@@ -33,7 +33,6 @@ export default function ManageLevels() {
   const [showSublevelForm, setShowSublevelForm] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [showNoteForm, setShowNoteForm] = useState(false);
-  const [notesEditing, setNotesEditing] = useState(false);
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [showDocumentForm, setShowDocumentForm] = useState(false);
 
@@ -116,6 +115,10 @@ export default function ManageLevels() {
   const [contentsSearch, setContentsSearch] = useState('');
   const [contentsOffset, setContentsOffset] = useState(0);
   const [contentsLoading, setContentsLoading] = useState(false);
+
+  // Estado para seleção múltipla de subníveis
+  const [selectedSublevels, setSelectedSublevels] = useState(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
 
   // Estado para modal de notificação
   const [modal, setModal] = useState({ type: null, title: '', message: '', onConfirm: null });
@@ -430,7 +433,6 @@ export default function ManageLevels() {
       if (res.ok) {
         const data = await res.json();
         setPhotos(data);
-        setNotesEditing(false);
       }
     } catch (err) {
       console.error("Erro ao carregar fotos:", err);
@@ -650,6 +652,122 @@ export default function ManageLevels() {
         }
       }
     );
+  };
+
+  // Função para contar todos os níveis leaf (sem filhos) recursivamente
+  const countLeafNodes = async (levelIds) => {
+    let leafCount = 0;
+    
+    const countRecursive = async (levelId) => {
+      const res = await fetch(`/api/levels?parentId=${levelId}`);
+      if (!res.ok) return;
+      const children = await res.json();
+      
+      if (children.length === 0) {
+        // É leaf node
+        leafCount++;
+      } else {
+        // Tem filhos, contar recursivamente
+        await Promise.all(children.map(child => countRecursive(child.id)));
+      }
+    };
+    
+    await Promise.all(levelIds.map(id => countRecursive(id)));
+    return leafCount;
+  };
+
+  // Função para apagar múltiplos subníveis
+  const handleDeleteSelectedSublevels = async () => {
+    if (selectedSublevels.size === 0) {
+      setModal({
+        type: 'error',
+        title: 'Erro',
+        message: 'Nenhum subnível selecionado.',
+        onConfirm: null,
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Contar níveis leaf que serão apagados
+      const leafCount = await countLeafNodes(Array.from(selectedSublevels));
+      
+      confirmWithModal(
+        'Apagar Subníveis Selecionados',
+        `Tem certeza que deseja apagar ${selectedSublevels.size} subnível(s) selecionado(s)?\n\n⚠️ ATENÇÃO: Esta operação irá apagar ${leafCount} nível(eis) final(is) e toda a sua descendência de forma PERMANENTE.\n\nEsta ação não pode ser revertida.`,
+        async () => {
+          setLoading(true);
+          let successCount = 0;
+          let errorCount = 0;
+          
+          for (const sublevelId of selectedSublevels) {
+            try {
+              const res = await fetch(`/api/levels/${sublevelId}`, {
+                method: 'DELETE',
+              });
+              if (res.ok) {
+                successCount++;
+              } else {
+                errorCount++;
+              }
+            } catch (err) {
+              errorCount++;
+            }
+          }
+          
+          setLoading(false);
+          setSelectedSublevels(new Set());
+          setSelectionMode(false);
+          await fetchSublevels();
+          
+          if (errorCount === 0) {
+            setModal({
+              type: 'success',
+              title: 'Sucesso',
+              message: `${successCount} subnível(is) apagado(s) com sucesso!`,
+              onConfirm: null,
+            });
+          } else {
+            setModal({
+              type: 'error',
+              title: 'Erro Parcial',
+              message: `${successCount} subnível(is) apagado(s), mas ${errorCount} falharam.`,
+              onConfirm: null,
+            });
+          }
+        }
+      );
+    } catch (err) {
+      setModal({
+        type: 'error',
+        title: 'Erro',
+        message: 'Erro ao contar níveis a apagar.',
+        onConfirm: null,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Toggle seleção de um subnível
+  const toggleSublevelSelection = (sublevelId) => {
+    const next = new Set(selectedSublevels);
+    if (next.has(sublevelId)) {
+      next.delete(sublevelId);
+    } else {
+      next.add(sublevelId);
+    }
+    setSelectedSublevels(next);
+  };
+
+  // Selecionar/desselecionar todos
+  const toggleSelectAll = () => {
+    if (selectedSublevels.size === sublevels.length) {
+      setSelectedSublevels(new Set());
+    } else {
+      setSelectedSublevels(new Set(sublevels.map(s => s.id)));
+    }
   };
 
   const handleShowSublevel = async (sublevelId) => {
@@ -1774,15 +1892,6 @@ export default function ManageLevels() {
     );
   }
 
-  // Contadores auxiliares para mostrar nos separadores
-  const sublevelsCount = (sublevels || []).filter((s) => !s.hidden).length;
-  const materialsCount = (materials || []).length;
-  const notesCount = (notes || []).filter((n) => (n?.description || '').trim().length > 0).length;
-  const photosCount = (photos || []).length;
-  const documentsCount = (documents || []).length;
-  const allContentsCount = (allContents?.counts?.materials || 0) + (allContents?.counts?.photos || 0) + (allContents?.counts?.documents || 0);
-  const notePreviewText = (notes?.[0]?.description || '').trim();
-
   return (
     <div className="ml-bg">
       <div className="ml-layout">
@@ -2008,7 +2117,7 @@ export default function ManageLevels() {
             onClick={() => setActiveTab("sublevels")}
             title="Subníveis"
           >
-            🏗️ ({sublevelsCount})
+            🏗️
           </button>
           {work && !work.parentId && (
             <button
@@ -2016,7 +2125,7 @@ export default function ManageLevels() {
               onClick={() => setActiveTab("allContents")}
               title="Todos os Anexos"
             >
-              📎 ({allContentsCount})
+              📎
             </button>
           )}
           <button
@@ -2024,73 +2133,31 @@ export default function ManageLevels() {
             onClick={() => setActiveTab("materials")}
             title="Materiais"
           >
-            📦 ({materialsCount})
+            📦
           </button>
           <button
             className={activeTab === "notes" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("notes")}
             title="Notas"
           >
-            📝 ({notesCount})
+            📝
           </button>
           <button
             className={activeTab === "photos" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("photos")}
             title="Fotografias"
           >
-            📸 ({photosCount})
+            📸
           </button>
           <button
             className={activeTab === "documents" ? "ml-tab ml-tab-active" : "ml-tab"}
             onClick={() => setActiveTab("documents")}
             title="Documentos"
           >
-            📄 ({documentsCount})
+            📄
           </button>
           {/* Equipa tab removida — agora é página dedicada */}
         </div>
-
-        {activeTab === "sublevels" && (
-          <div className="ml-note-preview" style={{
-            margin: '12px 0 8px',
-            padding: '14px 14px 12px',
-            background: '#fffaf0',
-            border: '1px solid #f59e0b',
-            borderRadius: '10px',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-            position: 'relative'
-          }}>
-            <div style={{
-              fontWeight: 700,
-              marginBottom: '6px',
-              color: '#92400e',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <span role="img" aria-label="note">🗒️</span>
-              <span>Notas do nível (só leitura)</span>
-            </div>
-            <div style={{
-              whiteSpace: 'pre-wrap',
-              color: '#78350f',
-              lineHeight: 1.5,
-              fontFamily: '"Segoe UI", Tahoma, sans-serif',
-              fontSize: '0.95rem'
-            }}>
-              {notePreviewText ? notePreviewText : 'Sem notas.'}
-            </div>
-            <div style={{
-              position: 'absolute',
-              top: '10px',
-              right: '12px',
-              fontSize: '0.75rem',
-              color: '#c2410c'
-            }}>
-              visualização
-            </div>
-          </div>
-        )}
 
         {/* ========== TAB: SUBNÍVEIS ========== */}
         {activeTab === "sublevels" && (
@@ -2167,6 +2234,43 @@ export default function ManageLevels() {
                 <p className="ml-empty">Nenhum subnível encontrado.</p>
               ) : (
                 <>
+                  {/* Barra de ações de seleção múltipla */}
+                  {userPermission === 'W' && sublevels.length > 0 && (
+                    <div className="ml-selection-toolbar">
+                      <button 
+                        className="ml-btn-selection-toggle"
+                        onClick={() => {
+                          setSelectionMode(!selectionMode);
+                          setSelectedSublevels(new Set());
+                        }}
+                        title={selectionMode ? "Cancelar modo seleção" : "Ativar modo seleção múltipla"}
+                      >
+                        {selectionMode ? '✕' : '☑️'}
+                      </button>
+                      
+                      {selectionMode && (
+                        <>
+                          <button 
+                            className="ml-btn ml-btn-secondary"
+                            onClick={toggleSelectAll}
+                          >
+                            {selectedSublevels.size === sublevels.length ? '☐' : '☑️'} {selectedSublevels.size}/{sublevels.length}
+                          </button>
+                          
+                          {selectedSublevels.size > 0 && (
+                            <button 
+                              className="ml-btn ml-btn-danger"
+                              onClick={handleDeleteSelectedSublevels}
+                              disabled={loading}
+                            >
+                              🗑️ Apagar {selectedSublevels.size} Selecionado(s)
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                  
                   {/* Não Concluídos e Visíveis */}
                   {visibleNotCompleted.length > 0 && (
                     <>
@@ -2178,19 +2282,29 @@ export default function ManageLevels() {
                         {visibleNotCompleted.map((sub) => (
                           <div
                             key={sub.id}
-                            className={`ml-item ${draggingSublevelId === sub.id ? 'ml-item-dragging' : ''} ${dragOverSublevelId === sub.id ? 'ml-item-drop-target' : ''}`}
-                            draggable
-                            onDragStart={() => setDraggingSublevelId(sub.id)}
+                            className={`ml-item ${draggingSublevelId === sub.id ? 'ml-item-dragging' : ''} ${dragOverSublevelId === sub.id ? 'ml-item-drop-target' : ''} ${selectedSublevels.has(sub.id) ? 'ml-item-selected' : ''}`}
+                            draggable={!selectionMode}
+                            onDragStart={() => !selectionMode && setDraggingSublevelId(sub.id)}
                             onDragOver={(e) => e.preventDefault()}
-                            onDragEnter={() => setDragOverSublevelId(sub.id)}
-                            onDrop={() => handleDropOnSublevel(sub.id)}
+                            onDragEnter={() => !selectionMode && setDragOverSublevelId(sub.id)}
+                            onDrop={() => !selectionMode && handleDropOnSublevel(sub.id)}
                             onDragEnd={handleDragEndSublevel}
                           >
-                            <div className="ml-drag-handle" title="Arraste para reordenar">⋮⋮</div>
+                            {selectionMode && (
+                              <div className="ml-checkbox-container">
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedSublevels.has(sub.id)}
+                                  onChange={() => toggleSublevelSelection(sub.id)}
+                                  className="ml-selection-checkbox"
+                                />
+                              </div>
+                            )}
+                            {!selectionMode && <div className="ml-drag-handle" title="Arraste para reordenar">⋮⋮</div>}
                             <div 
                               className="ml-item-info"
-                              onClick={() => navigate(`/works/${sub.id}/levels`)}
-                              style={{ cursor: 'pointer' }}
+                              onClick={() => !selectionMode && navigate(`/works/${sub.id}/levels`)}
+                              style={{ cursor: selectionMode ? 'default' : 'pointer' }}
                             >
                               <h3>{sub.name}</h3>
                               <p>{sub.description}</p>
@@ -2252,10 +2366,21 @@ export default function ManageLevels() {
                         {visibleCompleted.map((sub) => (
                           <div 
                             key={sub.id} 
-                            className="ml-item ml-item-completed"
-                            onClick={() => navigate(`/works/${sub.id}/levels`)}
-                            style={{ cursor: 'pointer' }}
+                            className={`ml-item ml-item-completed ${selectedSublevels.has(sub.id) ? 'ml-item-selected' : ''}`}
+                            onClick={() => !selectionMode && navigate(`/works/${sub.id}/levels`)}
+                            style={{ cursor: selectionMode ? 'default' : 'pointer' }}
                           >
+                            {selectionMode && (
+                              <div className="ml-checkbox-container">
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedSublevels.has(sub.id)}
+                                  onChange={() => toggleSublevelSelection(sub.id)}
+                                  className="ml-selection-checkbox"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                            )}
                             <div className="ml-item-info">
                               <h3>{sub.name} <span className="ml-completed-badge">✓</span></h3>
                               <p>{sub.description}</p>
@@ -2317,10 +2442,21 @@ export default function ManageLevels() {
                         {hiddenSublevels.map((sub) => (
                           <div 
                             key={sub.id} 
-                            className="ml-item ml-item-hidden"
-                            onClick={() => navigate(`/works/${sub.id}/levels`)}
-                            style={{ cursor: 'pointer' }}
+                            className={`ml-item ml-item-hidden ${selectedSublevels.has(sub.id) ? 'ml-item-selected' : ''}`}
+                            onClick={() => !selectionMode && navigate(`/works/${sub.id}/levels`)}
+                            style={{ cursor: selectionMode ? 'default' : 'pointer' }}
                           >
+                            {selectionMode && (
+                              <div className="ml-checkbox-container">
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedSublevels.has(sub.id)}
+                                  onChange={() => toggleSublevelSelection(sub.id)}
+                                  className="ml-selection-checkbox"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                            )}
                             <div className="ml-item-info">
                               <h3>{sub.name}</h3>
                               <p>{sub.description}</p>
@@ -3135,94 +3271,49 @@ export default function ManageLevels() {
         {activeTab === "notes" && (
           <div className="ml-tab-content">
             <div className="ml-section-header">
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span role="img" aria-label="notes">📝</span>
-                Notas
-                {userPermissionNotes !== 'R' && (
-                  <button
-                    type="button"
-                    onClick={() => setNotesEditing(true)}
-                    className="ml-btn" 
-                    style={{
-                      padding: '8px 12px',
-                      fontSize: '0.9rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                    disabled={notesEditing}
-                    title={notesEditing ? 'Já em edição' : 'Editar notas'}
-                  >
-                    ✏️ Editar
-                  </button>
-                )}
-              </h2>
+              <h2>Notas</h2>
             </div>
 
             <div className="ml-form">
               <div className="ml-field">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span role="img" aria-label="note">🗒️</span>
-                  <span>Notas do nível</span>
-                </label>
+                <label>Notas do nível</label>
                 <textarea
                   rows="5"
                   value={notes[0]?.description || ""}
                   onChange={(e) => setNotes([{ id: id, description: e.target.value }])}
-                  readOnly={!notesEditing}
-                  style={{
-                    background: notesEditing ? 'white' : '#f8fafc',
-                    borderColor: notesEditing ? '#cbd5e1' : '#e2e8f0',
-                    cursor: notesEditing ? 'text' : 'not-allowed'
-                  }}
                 />
               </div>
-              {notesEditing && (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="ml-btn"
-                    onClick={async () => {
-                      if (userPermissionNotes === 'R') return;
-                      const text = notes[0]?.description || "";
-                      const res = await fetch(`/api/levels/${id}`, {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ notes: text }),
-                      });
-                      if (res.ok) {
-                        await fetchNotes();
-                        setNotesEditing(false);
-                      } else {
-                        setModal({
-                          type: 'error',
-                          title: 'Erro',
-                          message: 'Erro ao salvar notas',
-                          onConfirm: null,
-                        });
-                      }
-                    }}
-                    disabled={userPermissionNotes === 'R'}
-                    style={{
-                      opacity: userPermissionNotes === 'R' ? 0.5 : 1,
-                      cursor: userPermissionNotes === 'R' ? 'not-allowed' : 'pointer'
-                    }}
-                    title={userPermissionNotes === 'R' ? 'Você tem apenas permissão de leitura' : ''}
-                  >
-                    Guardar
-                  </button>
-                  <button
-                    type="button"
-                    className="ml-btn ml-btn-secondary"
-                    onClick={() => {
-                      fetchNotes();
-                      setNotesEditing(false);
-                    }}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
+              <button
+                type="button"
+                className="ml-btn"
+                onClick={async () => {
+                  if (userPermissionNotes === 'R') return;
+                  const text = notes[0]?.description || "";
+                  const res = await fetch(`/api/levels/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ notes: text }),
+                  });
+                  if (res.ok) {
+                    await fetchNotes();
+                  } else {
+                    setModal({
+                      type: 'error',
+                      title: 'Erro',
+                      message: 'Erro ao salvar notas',
+                      onConfirm: null,
+                    });
+                  }
+                }}
+                disabled={userPermissionNotes === 'R'}
+                style={{
+                  opacity: userPermissionNotes === 'R' ? 0.5 : 1,
+                  cursor: userPermissionNotes === 'R' ? 'not-allowed' : 'pointer'
+                }}
+                title={userPermissionNotes === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+              >
+                Guardar Notas
+              </button>
             </div>
           </div>
         )}
@@ -4451,6 +4542,59 @@ export default function ManageLevels() {
         }
         .ml-table tbody tr:last-child td {
           border-bottom: none;
+        }
+
+        /* Estilos para seleção múltipla de subníveis */
+        .ml-selection-toolbar {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 16px;
+          padding: 12px;
+          background: #f8fafc;
+          border-radius: 8px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        .ml-btn-selection-toggle {
+          background: #01a383;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 6px 10px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          font-weight: 600;
+          min-width: 40px;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .ml-btn-selection-toggle:hover {
+          background: #009070;
+          transform: scale(1.05);
+        }
+        .ml-checkbox-container {
+          padding: 0 8px;
+          display: flex;
+          align-items: center;
+        }
+        .ml-selection-checkbox {
+          width: 20px;
+          height: 20px;
+          cursor: pointer;
+          accent-color: #01a383;
+        }
+        .ml-item-selected {
+          background: #d1fae5 !important;
+          border-color: #01a383 !important;
+        }
+        .ml-btn-danger {
+          background: #ef4444;
+          color: white;
+        }
+        .ml-btn-danger:hover {
+          background: #dc2626;
         }
       `}</style>
     </div>

@@ -20,6 +20,7 @@ export default function PlaneamentoGlobal() {
   const [selected, setSelected] = useState(new Set()); // userId::obraId::day::period
   const [expandedObras, setExpandedObras] = useState(new Set());
   const [isMobile, setIsMobile] = useState(false);
+  const [expandedMobileUsers, setExpandedMobileUsers] = useState(new Set()); // "obraId::userId"
 
   const [modal, setModal] = useState({ type: null, title: '', message: '', onConfirm: null, data: null });
 
@@ -643,64 +644,82 @@ export default function PlaneamentoGlobal() {
                     )}
                   </div>
                   <div className="pg-card-body">
-                    {users.map((user) => (
-                      <div key={user.id} className="pg-card-user">
-                        <div className="pg-card-user-header">
-                          <div className="pg-card-user-name">{user.name}</div>
-                          <div className="pg-card-user-actions">
-                            <button
-                              className="pg-mobile-select-all"
-                              onClick={() => selectAllWeekdays(user.id, obra.id)}
-                              title="Selecionar todos os dias úteis"
+                    {users.map((user) => {
+                      const userKey = `${obra.id}::${user.id}`;
+                      const isUserExpanded = expandedMobileUsers.has(userKey);
+                      
+                      const toggleUserExpanded = () => {
+                        const next = new Set(expandedMobileUsers);
+                        if (next.has(userKey)) {
+                          next.delete(userKey);
+                        } else {
+                          next.add(userKey);
+                        }
+                        setExpandedMobileUsers(next);
+                      };
+                      
+                      return (
+                        <div key={user.id} className="pg-card-user">
+                          <div className="pg-card-user-header">
+                            <div 
+                              className="pg-card-user-name"
+                              onClick={toggleUserExpanded}
+                              style={{ cursor: 'pointer' }}
                             >
-                              ✓
-                            </button>
-                            <button
-                              className="pg-mobile-remove"
-                              onClick={() => handleRemoveUserFromObra(obra.id, user.assocId, user.id)}
-                              title="Remover utilizador"
-                            >
-                              ✕
-                            </button>
+                              <span className="pg-expand-icon" style={{ marginRight: '8px' }}>
+                                {isUserExpanded ? '▼' : '▶'}
+                              </span>
+                              {user.name}
+                            </div>
+                            <div className="pg-card-user-actions">
+                              <button
+                                className="pg-mobile-select-all"
+                                onClick={() => selectAllWeekdays(user.id, obra.id)}
+                                title="Selecionar todos os dias úteis"
+                              >
+                                ✓
+                              </button>
+                            </div>
                           </div>
+                          
+                          {isUserExpanded && (
+                            <div className="pg-card-user-days-expanded">
+                              {days.map((d) => {
+                                const keyMorning = `${user.id}::${obra.id}::${d}::m`;
+                                const keyAfternoon = `${user.id}::${obra.id}::${d}::a`;
+                                const morningActive = selected.has(keyMorning);
+                                const afternoonActive = selected.has(keyAfternoon);
+                                const morningConflict = morningActive && (conflictCounts[`${user.id}::${d}::m`] || 0) > 1;
+                                const afternoonConflict = afternoonActive && (conflictCounts[`${user.id}::${d}::a`] || 0) > 1;
+                                const isPast = d < todayIso;
+                                const dow = new Date(d).getDay();
+                                const isWeekend = dow === 0 || dow === 6;
+                                
+                                return (
+                                  <div key={d} className={`pg-card-day ${isWeekend ? 'weekend' : ''}`}>
+                                    <div className="pg-card-day-date">{d}</div>
+                                    <div className="pg-card-day-periods">
+                                      <span 
+                                        className={`pg-chip ${morningActive ? 'active' : ''} ${morningConflict ? 'conflict' : ''} ${isPast ? 'disabled' : ''}`}
+                                        onClick={() => !isPast && toggleCell(user.id, obra.id, d, 'm')}
+                                      >
+                                        🌅 Manhã {morningConflict && '⚠️'}
+                                      </span>
+                                      <span 
+                                        className={`pg-chip ${afternoonActive ? 'active' : ''} ${afternoonConflict ? 'conflict' : ''} ${isPast ? 'disabled' : ''}`}
+                                        onClick={() => !isPast && toggleCell(user.id, obra.id, d, 'a')}
+                                      >
+                                        🌤️ Tarde {afternoonConflict && '⚠️'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                        <div className="pg-card-user-days">
-                          {days.map((d) => {
-                            const keyMorning = `${user.id}::${obra.id}::${d}::m`;
-                            const keyAfternoon = `${user.id}::${obra.id}::${d}::a`;
-                            const morningActive = selected.has(keyMorning);
-                            const afternoonActive = selected.has(keyAfternoon);
-                            const morningConflict = morningActive && (conflictCounts[`${user.id}::${d}::m`] || 0) > 1;
-                            const afternoonConflict = afternoonActive && (conflictCounts[`${user.id}::${d}::a`] || 0) > 1;
-                            const isPast = d < todayIso;
-                            const dow = new Date(d).getDay();
-                            const isWeekend = dow === 0 || dow === 6;
-                            
-                            if (!morningActive && !afternoonActive) return null;
-                            
-                            return (
-                              <div key={d} className={`pg-card-day ${isWeekend ? 'weekend' : ''}`}>
-                                <div className="pg-card-day-date">{d}</div>
-                                <div className="pg-card-day-periods">
-                                  <span 
-                                    className={`pg-chip ${morningActive ? 'active' : ''} ${morningConflict ? 'conflict' : ''} ${isPast ? 'disabled' : ''}`}
-                                    onClick={() => !isPast && toggleCell(user.id, obra.id, d, 'm')}
-                                  >
-                                    🌅 Manhã {morningConflict && '⚠️'}
-                                  </span>
-                                  <span 
-                                    className={`pg-chip ${afternoonActive ? 'active' : ''} ${afternoonConflict ? 'conflict' : ''} ${isPast ? 'disabled' : ''}`}
-                                    onClick={() => !isPast && toggleCell(user.id, obra.id, d, 'a')}
-                                  >
-                                    🌤️ Tarde {afternoonConflict && '⚠️'}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -1445,6 +1464,13 @@ export default function PlaneamentoGlobal() {
             font-size: 1rem;
             font-weight: 700;
             color: #1e293b;
+            display: flex;
+            align-items: center;
+          }
+          .pg-expand-icon {
+            display: inline-block;
+            font-size: 0.85rem;
+            color: #64748b;
           }
           .pg-card-user-actions {
             display: flex;
@@ -1479,6 +1505,14 @@ export default function PlaneamentoGlobal() {
             display: flex;
             flex-direction: column;
             gap: 8px;
+          }
+          .pg-card-user-days-expanded {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
           }
           .pg-card-day {
             background: white;
