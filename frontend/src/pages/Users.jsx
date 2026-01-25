@@ -20,6 +20,10 @@ export default function Users() {
   const [pwdLoading, setPwdLoading] = useState(false);
   const [pwdError, setPwdError] = useState('');
   const [pwdSuccess, setPwdSuccess] = useState('');
+  const [editingUserData, setEditingUserData] = useState(null);
+  const [editUserError, setEditUserError] = useState('');
+  const [editUserSuccess, setEditUserSuccess] = useState('');
+  const [editUserLoading, setEditUserLoading] = useState(false);
 
   // Apenas admin pode acessar
   useEffect(() => {
@@ -148,6 +152,48 @@ export default function Users() {
       setPwdError(err.message);
     } finally {
       setPwdLoading(false);
+    }
+  };
+
+  const startEditUser = (u) => {
+    setEditingUserData({ id: u.id, name: u.name, status: u.status });
+    setEditUserError('');
+    setEditUserSuccess('');
+  };
+
+  const submitEditUser = async () => {
+    setEditUserError('');
+    setEditUserSuccess('');
+
+    if (!editingUserData.name || editingUserData.name.trim() === '') {
+      setEditUserError('O nome é obrigatório.');
+      return;
+    }
+
+    try {
+      setEditUserLoading(true);
+      const res = await fetch(`/api/users/${editingUserData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          name: editingUserData.name, 
+          status: editingUserData.status 
+        })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Erro ao atualizar utilizador');
+      }
+      setEditUserSuccess('Utilizador atualizado com sucesso.');
+      setEditingUserData(null);
+      loadUsers();
+    } catch (err) {
+      setEditUserError(err.message);
+    } finally {
+      setEditUserLoading(false);
     }
   };
 
@@ -511,12 +557,56 @@ export default function Users() {
                       <div style={{ marginTop: 8 }}>
                         <button
                           className="btn-compact"
+                          onClick={() => startEditUser(u)}
+                          title="Editar nome e role"
+                        >
+                          ✏️ Editar
+                        </button>
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <button
+                          className="btn-compact"
                           onClick={() => startEditPassword(u)}
                           title="Mudar password deste utilizador"
                         >
-                          Mudar Password
+                          🔑 Mudar Password
                         </button>
                       </div>
+                      {editingUserData?.id === u.id && (
+                        <div style={{ marginTop: 8, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                          {editUserError && <div className="alert alert-error" style={{ marginBottom: 8 }}>{editUserError}</div>}
+                          {editUserSuccess && <div className="alert alert-success" style={{ marginBottom: 8 }}>{editUserSuccess}</div>}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Nome</label>
+                              <input 
+                                type="text" 
+                                value={editingUserData.name} 
+                                onChange={(e) => setEditingUserData({...editingUserData, name: e.target.value})}
+                                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Role</label>
+                              <select 
+                                value={editingUserData.status} 
+                                onChange={(e) => setEditingUserData({...editingUserData, status: e.target.value})}
+                                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }}
+                              >
+                                <option value="O">Utilizador Normal</option>
+                                <option value="C">Cliente</option>
+                                <option value="A">Administrador</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <button className="btn-primary" onClick={submitEditUser} disabled={editUserLoading}>
+                              {editUserLoading ? 'A guardar...' : 'Guardar'}
+                            </button>
+                            <button className="btn-secondary" onClick={() => setEditingUserData(null)}>Cancelar</button>
+                          </div>
+                        </div>
+                      )}
                       {editingUserId === u.id && (
                         <div style={{ marginTop: 8, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
                           {pwdError && <div className="alert alert-error" style={{ marginBottom: 8 }}>{pwdError}</div>}
@@ -582,12 +672,56 @@ export default function Users() {
                       <div style={{ marginTop: 8 }}>
                         <button
                           className="btn-compact"
+                          onClick={() => startEditUser(u)}
+                          title="Editar nome e role"
+                        >
+                          ✏️ Editar
+                        </button>
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <button
+                          className="btn-compact"
                           onClick={() => startEditPassword(u)}
                           title="Mudar password deste utilizador"
                         >
-                          Mudar Password
+                          🔑 Mudar Password
                         </button>
                       </div>
+                      {editingUserData?.id === u.id && (
+                        <div style={{ marginTop: 8, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                          {editUserError && <div className="alert alert-error" style={{ marginBottom: 8 }}>{editUserError}</div>}
+                          {editUserSuccess && <div className="alert alert-success" style={{ marginBottom: 8 }}>{editUserSuccess}</div>}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Nome</label>
+                              <input 
+                                type="text" 
+                                value={editingUserData.name} 
+                                onChange={(e) => setEditingUserData({...editingUserData, name: e.target.value})}
+                                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Role</label>
+                              <select 
+                                value={editingUserData.status} 
+                                onChange={(e) => setEditingUserData({...editingUserData, status: e.target.value})}
+                                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }}
+                              >
+                                <option value="O">Utilizador Normal</option>
+                                <option value="C">Cliente</option>
+                                <option value="A">Administrador</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <button className="btn-primary" onClick={submitEditUser} disabled={editUserLoading}>
+                              {editUserLoading ? 'A guardar...' : 'Guardar'}
+                            </button>
+                            <button className="btn-secondary" onClick={() => setEditingUserData(null)}>Cancelar</button>
+                          </div>
+                        </div>
+                      )}
                       {editingUserId === u.id && (
                         <div style={{ marginTop: 8, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
                           {pwdError && <div className="alert alert-error" style={{ marginBottom: 8 }}>{pwdError}</div>}

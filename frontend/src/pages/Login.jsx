@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -7,8 +7,25 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('');
   const navigate = useNavigate();
   const { login, user: authUser } = useAuth();
+
+  useEffect(() => {
+    // Carregar logo da empresa
+    const fetchLogo = async () => {
+      try {
+        const response = await fetch('/api/logo');
+        if (response.ok) {
+          const data = await response.json();
+          setLogoUrl(data.url);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar logo:', err);
+      }
+    };
+    fetchLogo();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,7 +54,9 @@ export default function Login() {
       <div className="login-container">
         <div className="login-card">
           <div className="login-header">
-            <h1 className="login-title">🏗️ Beniteca</h1>
+            {logoUrl && (
+              <img src={logoUrl} alt="Beniteca Logo" className="login-logo-img" />
+            )}
             <p className="login-subtitle">Sistema de Gestão de Obras</p>
           </div>
 
@@ -86,11 +105,12 @@ export default function Login() {
       <style>{`
         .login-bg {
           min-height: 100vh;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #01a383 0%, #047857 100%);
           display: flex;
           align-items: center;
           justify-content: center;
           padding: 16px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         }
         .login-container {
           width: 100%;
@@ -99,23 +119,34 @@ export default function Login() {
         .login-card {
           background: #fff;
           border-radius: 16px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-          padding: 40px 32px;
+          box-shadow: 0 20px 60px rgba(1, 163, 131, 0.25);
+          padding: 48px 32px;
+          border: 1px solid #d1fae5;
         }
         .login-header {
           text-align: center;
           margin-bottom: 32px;
         }
+        .login-logo-img {
+          max-width: 200px;
+          height: auto;
+          margin-bottom: 24px;
+          display: block;
+          margin-left: auto;
+          margin-right: auto;
+        }
         .login-title {
-          font-size: 2rem;
+          font-size: 2.2rem;
           font-weight: 800;
-          color: #1e293b;
+          color: #01a383;
           margin: 0 0 8px;
+          letter-spacing: -0.02em;
         }
         .login-subtitle {
-          color: #64748b;
-          font-size: 0.95rem;
+          color: #047857;
+          font-size: 1rem;
           margin: 0;
+          font-weight: 500;
         }
         .login-error {
           background: #fee2e2;
@@ -139,26 +170,27 @@ export default function Login() {
         }
         .login-field label {
           font-weight: 600;
-          color: #334155;
+          color: #047857;
           font-size: 0.9rem;
         }
         .login-field input {
           padding: 12px;
-          border: 2px solid #e2e8f0;
+          border: 2px solid #d1fae5;
           border-radius: 8px;
           font-size: 1rem;
-          transition: border-color 0.2s;
+          transition: border-color 0.2s, box-shadow 0.2s;
         }
         .login-field input:focus {
           outline: none;
-          border-color: #667eea;
+          border-color: #01a383;
+          box-shadow: 0 0 0 3px rgba(1, 163, 131, 0.1);
         }
         .login-field input:disabled {
-          background: #f8fafc;
+          background: #f0fdf9;
           cursor: not-allowed;
         }
         .login-btn {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #01a383 0%, #047857 100%);
           color: #fff;
           border: none;
           border-radius: 8px;
@@ -170,7 +202,7 @@ export default function Login() {
         }
         .login-btn:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+          box-shadow: 0 10px 25px rgba(1, 163, 131, 0.3);
         }
         .login-btn:disabled {
           opacity: 0.6;
@@ -178,13 +210,14 @@ export default function Login() {
         }
         .login-footer {
           text-align: center;
-          border-top: 1px solid #e2e8f0;
+          border-top: 1px solid #d1fae5;
           padding-top: 16px;
         }
         .login-help {
-          color: #64748b;
+          color: #047857;
           font-size: 0.85rem;
           margin: 0;
+          font-weight: 500;
         }
       `}</style>
     </div>
