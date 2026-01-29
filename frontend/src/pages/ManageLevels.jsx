@@ -420,7 +420,9 @@ export default function ManageLevels() {
       const res = await fetch(`/api/levels/${id}`);
       if (res.ok) {
         const data = await res.json();
-        setNotes([{ id: data.id, description: data.notes || "" }]);
+        const nextNotes = data.notes || "";
+        setNotes([{ id: data.id, description: nextNotes }]);
+        setNoteText(nextNotes);
       }
     } catch (err) {
       console.error("Erro ao carregar notas:", err);
@@ -1376,11 +1378,41 @@ export default function ManageLevels() {
       });
       if (!res.ok) throw new Error("Erro ao atualizar nota");
       await fetchNotes();
-      setNoteText("");
       setShowNoteForm(false);
       setNoteErrors({});
     } catch (err) {
       setNoteErrors({ submit: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveNotes = async (e) => {
+    e.preventDefault();
+    if (userPermissionNotes === 'R') return;
+    const errors = {};
+    if (!noteText.trim()) errors.text = "Texto é obrigatório";
+    setNoteErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/levels/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: noteText }),
+      });
+      if (!res.ok) throw new Error("Erro ao salvar notas");
+      await fetchNotes();
+      setNoteErrors({});
+    } catch (err) {
+      setNoteErrors({ submit: err.message });
+      setModal({
+        type: 'error',
+        title: 'Erro',
+        message: 'Erro ao salvar notas',
+        onConfirm: null,
+      });
     } finally {
       setLoading(false);
     }
@@ -1620,56 +1652,69 @@ export default function ManageLevels() {
         topLevelParent = await parentRes.json();
       }
 
-      // Recursivamente construir árvore com filhos
-      const buildTreeNode = async (levelId) => {
-        const levelRes = await fetch(`/api/levels/${levelId}`);
-        if (!levelRes.ok) return null;
-        const levelData = await levelRes.json();
+      // Usar o endpoint de hierarquia otimizado que retorna tudo de uma vez
+      const hierarchyRes = await fetch(`/api/levels/${topLevelParent.id}/hierarchy`);
+      if (!hierarchyRes.ok) throw new Error('Falha ao carregar hierarquia');
+      
+      const rawHierarchy = await hierarchyRes.json();
+      if (!rawHierarchy) throw new Error('Hierarquia vazia');
 
-        const childrenRes = await fetch(`/api/levels?parentId=${levelId}`);
-        const children = childrenRes.ok ? await childrenRes.json() : [];
-
-        const childNodes = [];
-        for (const child of children) {
-          const childNode = await buildTreeNode(child.id);
-          if (childNode) childNodes.push(childNode);
-        }
-
-        return {
-          id: levelData.id,
-          name: levelData.name,
-          children: childNodes
-        };
-      };
-
-      // Obter descendentes do level atual para excluir
-      const getDescendantIds = async (levelId) => {
-        const res = await fetch(`/api/levels?parentId=${levelId}`);
-        if (!res.ok) return [];
-        const subs = await res.json();
-        let ids = subs.map(s => s.id);
-        for (const sub of subs) {
-          const deeper = await getDescendantIds(sub.id);
-          ids = [...ids, ...deeper];
+      // rawHierarchy já vem no formato correto {level: {...}, children: [...]}
+      // Obter IDs de descendentes do level atual para excluir
+      const getDescendantIds = (node) => {
+        if (!node || !node.level) return [];
+        const ids = [];
+        if (node.level.id === parseInt(id)) {
+          // Este é o nível atual, incluir todos os seus descendentes
+          const collectIds = (n) => {
+            if (n && n.children) {
+              n.children.forEach(child => {
+                if (child && child.level) {
+                  ids.push(child.level.id);
+                  collectIds(child);
+                }
+              });
+            }
+          };
+          collectIds(node);
+        } else if (node.children) {
+          node.children.forEach(child => {
+            const childIds = getDescendantIds(child);
+            ids.push(...childIds);
+          });
         }
         return ids;
       };
 
-      const descendantIds = await getDescendantIds(id);
+      const descendantIds = [parseInt(id), ...getDescendantIds(rawHierarchy)];
+
+      // Converter a resposta em tree format simples para o renderTreeNode
+      const convertToTree = (node) => {
+        if (!node || !node.level) return null;
+        return {
+          id: node.level.id,
+          name: node.level.name,
+          children: (node.children || []).map(convertToTree).filter(Boolean)
+        };
+      };
 
       // Filtrar a árvore para remover o nível atual e seus descendentes
       const filterTree = (node) => {
+        if (!node) return null;
         if (node.id === parseInt(id) || descendantIds.includes(node.id)) {
           return null;
         }
         return {
           ...node,
-          children: node.children.map(filterTree).filter(Boolean)
+          children: (node.children || []).map(filterTree).filter(Boolean)
         };
       };
 
-      const tree = await buildTreeNode(topLevelParent.id);
+      const tree = convertToTree(rawHierarchy);
+      if (!tree) throw new Error('Erro ao converter hierarquia');
+      
       const filteredTree = filterTree(tree);
+      if (!filteredTree) throw new Error('Nenhum nó disponível para mover');
       
       setLevelTree(filteredTree);
       setExpandedNodes(new Set([filteredTree.id])); // Expandir raiz por padrão
@@ -2162,6 +2207,14 @@ export default function ManageLevels() {
         {/* ========== TAB: SUBNÍVEIS ========== */}
         {activeTab === "sublevels" && (
           <div className="ml-tab-content">
+            {(noteText || notes[0]?.description) && (
+              <div className="ml-notes-readonly" aria-live="polite">
+                <div className="ml-notes-readonly-header">📝 Notas</div>
+                <div className="ml-notes-readonly-body">
+                  {noteText || notes[0]?.description}
+                </div>
+              </div>
+            )}
             <div className="ml-section-header">
               <h2>Subníveis</h2>
               <button 
@@ -3274,47 +3327,30 @@ export default function ManageLevels() {
               <h2>Notas</h2>
             </div>
 
-            <div className="ml-form">
+            <form className="ml-form" onSubmit={handleSaveNotes}>
               <div className="ml-field">
                 <label>Notas do nível</label>
                 <textarea
                   rows="5"
-                  value={notes[0]?.description || ""}
-                  onChange={(e) => setNotes([{ id: id, description: e.target.value }])}
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
                 />
+                {noteErrors.text && <span className="ml-error">{noteErrors.text}</span>}
               </div>
+              {noteErrors.submit && <div className="ml-error">{noteErrors.submit}</div>}
               <button
-                type="button"
+                type="submit"
                 className="ml-btn"
-                onClick={async () => {
-                  if (userPermissionNotes === 'R') return;
-                  const text = notes[0]?.description || "";
-                  const res = await fetch(`/api/levels/${id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ notes: text }),
-                  });
-                  if (res.ok) {
-                    await fetchNotes();
-                  } else {
-                    setModal({
-                      type: 'error',
-                      title: 'Erro',
-                      message: 'Erro ao salvar notas',
-                      onConfirm: null,
-                    });
-                  }
-                }}
-                disabled={userPermissionNotes === 'R'}
+                disabled={userPermissionNotes === 'R' || loading}
                 style={{
                   opacity: userPermissionNotes === 'R' ? 0.5 : 1,
                   cursor: userPermissionNotes === 'R' ? 'not-allowed' : 'pointer'
                 }}
                 title={userPermissionNotes === 'R' ? 'Você tem apenas permissão de leitura' : ''}
               >
-                Guardar Notas
+                {loading ? "A guardar..." : "Guardar Notas"}
               </button>
-            </div>
+            </form>
           </div>
         )}
 
@@ -3809,6 +3845,26 @@ export default function ManageLevels() {
           animation: fadeIn 0.3s;
           max-width: 100%;
           overflow-x: hidden;
+        }
+        .ml-notes-readonly {
+          background: #f3f4f6;
+          border: 1px solid #e5e7eb;
+          border-left: 4px solid #9ca3af;
+          border-radius: 10px;
+          padding: 12px 16px;
+          margin-bottom: 16px;
+        }
+        .ml-notes-readonly-header {
+          font-weight: 600;
+          color: #6b7280;
+          margin-bottom: 6px;
+          font-size: 0.95rem;
+        }
+        .ml-notes-readonly-body {
+          white-space: pre-wrap;
+          color: #4b5563;
+          font-size: 0.95rem;
+          line-height: 1.5;
         }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(8px); }

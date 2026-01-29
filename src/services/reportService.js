@@ -68,7 +68,7 @@ class ReportService {
     const completedTasks = leafLevels.filter(l => l.status === 'completed').length;
     const pendingTasks = totalTasks - completedTasks;
 
-    // 3. Get direct children for progress view with calculated progress
+    // 3. Get direct children for progress view with calculated progress - 3 levels deep
     const directChildrenRes = await pool.request()
       .input('obraId', sql.Int, obraIdNum)
       .query(`
@@ -79,7 +79,8 @@ class ReportService {
           l.startDate,
           l.endDate,
           l.hidden,
-          l.[order]
+          l.[order],
+          0 AS level
         FROM [Level] l
         WHERE l.parentId = @obraId
         ORDER BY l.[order], l.id
@@ -87,8 +88,42 @@ class ReportService {
 
     const directChildren = directChildrenRes.recordset;
     
-    // Calculate progress % for each direct child (% of completed descendants)
-    const progressData = directChildren.map(child => {
+    // Function to get 3 levels of children for a given parent
+    const getHierarchyLevels = async (parentId, depth = 0) => {
+      if (depth >= 3) return [];
+      
+      const childRes = await pool.request()
+        .input('parentId', sql.Int, parentId)
+        .query(`
+          SELECT 
+            l.id,
+            l.name,
+            l.status,
+            l.startDate,
+            l.endDate,
+            l.hidden,
+            l.[order],
+            ${depth + 1} AS level
+          FROM [Level] l
+          WHERE l.parentId = @parentId
+          ORDER BY l.[order], l.id
+        `);
+      
+      const children = childRes.recordset;
+      const result = [...children];
+      
+      // Recursively get children of each child
+      for (const child of children) {
+        const grandchildren = await getHierarchyLevels(child.id, depth + 1);
+        result.push(...grandchildren);
+      }
+      
+      return result;
+    };
+
+    // Build hierarchical progress data with 3 levels
+    const progressData = [];
+    for (const child of directChildren) {
       const descendants = allLevels.filter(l => this.isDescendantOf(l, child, allLevels));
       const leafDescendants = descendants.filter(d => 
         !allLevels.some(l => l.parentId === d.id)
@@ -98,13 +133,62 @@ class ReportService {
         ? Math.round((completedDescendants / leafDescendants.length) * 100) 
         : 0;
       
-      return {
+      progressData.push({
         id: child.id,
         name: child.name,
         progressPercent,
-        status: child.status
-      };
-    });
+        status: child.status,
+        level: 1,
+        children: []
+      });
+
+      // Get children (level 2)
+      const level2Children = await getHierarchyLevels(child.id, 0);
+      const level2ByParent = {};
+      level2Children.filter(l => l.level === 1).forEach(l => {
+        const descendants = allLevels.filter(d => this.isDescendantOf(d, l, allLevels));
+        const leafDescendants = descendants.filter(d => 
+          !allLevels.some(dl => dl.parentId === d.id)
+        );
+        const completedDescendants = leafDescendants.filter(d => d.status === 'completed').length;
+        const progressPercent = leafDescendants.length > 0 
+          ? Math.round((completedDescendants / leafDescendants.length) * 100) 
+          : 0;
+        
+        progressData[progressData.length - 1].children.push({
+          id: l.id,
+          name: l.name,
+          progressPercent,
+          status: l.status,
+          level: 2,
+          children: []
+        });
+      });
+
+      // Get grandchildren (level 3)
+      for (const level2Item of progressData[progressData.length - 1].children) {
+        const level3Children = await getHierarchyLevels(level2Item.id, 1);
+        level3Children.filter(l => l.level === 2).forEach(l => {
+          const descendants = allLevels.filter(d => this.isDescendantOf(d, l, allLevels));
+          const leafDescendants = descendants.filter(d => 
+            !allLevels.some(dl => dl.parentId === d.id)
+          );
+          const completedDescendants = leafDescendants.filter(d => d.status === 'completed').length;
+          const progressPercent = leafDescendants.length > 0 
+            ? Math.round((completedDescendants / leafDescendants.length) * 100) 
+            : 0;
+          
+          level2Item.children.push({
+            id: l.id,
+            name: l.name,
+            progressPercent,
+            status: l.status,
+            level: 3,
+            children: []
+          });
+        });
+      }
+    }
 
     // 4. Get materials for the obra (direct children only, by levelId)
     const materialsRes = await pool.request()

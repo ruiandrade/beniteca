@@ -116,15 +116,22 @@ export default function Reports() {
 
     const element = document.getElementById('report-content');
     const opt = {
-      margin: 10,
+      margin: [8, 8, 8, 8],
       filename: `Relatório-Obras-${fromDate}-${toDate}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
     try {
-      await html2pdf().set(opt).from(element).save();
+      // Clone the element to avoid modifying the original
+      const clone = element.cloneNode(true);
+      // Remove any excessive whitespace
+      clone.style.margin = '0';
+      clone.style.padding = '10px';
+      
+      await html2pdf().set(opt).from(clone).save();
     } catch (err) {
       console.error('Erro ao exportar PDF:', err);
       setError('Erro ao gerar PDF');
@@ -165,9 +172,9 @@ export default function Reports() {
           </button>
         </div>
 
-        <div id="report-content" style={{ background: '#fff', padding: '40px', borderRadius: '8px' }}>
+        <div id="report-content" style={{ background: '#fff', padding: '20px 10px', borderRadius: '8px' }}>
           {Object.entries(reportData).map(([obraId, data]) => (
-            <div key={obraId} style={{ marginBottom: '80px', pageBreakAfter: 'always' }}>
+            <div key={obraId} style={{ marginBottom: '0px', pageBreakAfter: 'avoid', pageBreakInside: 'avoid' }}>
               <ReportPage data={data} fromDate={fromDate} toDate={toDate} />
             </div>
           ))}
@@ -607,7 +614,7 @@ function ReportPage({ data, fromDate, toDate }) {
         </div>
       )}
 
-      {/* Progress da Obra - Simplified */}
+      {/* Progress da Obra - 3 Levels */}
       {progress.length > 0 && (
         <div style={{ marginBottom: '10px' }}>
           <h2 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#01a383', marginBottom: '6px', borderBottom: '1px solid #01a383', paddingBottom: '3px' }}>
@@ -615,31 +622,104 @@ function ReportPage({ data, fromDate, toDate }) {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '6px' }}>
             {progress.map((item) => (
-              <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', alignItems: 'center', padding: '6px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                <div>
-                  <div style={{ fontWeight: '600', marginBottom: '2px', color: '#1e293b', fontSize: '0.7rem' }}>
-                    {item.name}
-                  </div>
-                  <div style={{
-                    width: '100%',
-                    height: '12px',
-                    background: '#e2e8f0',
-                    borderRadius: '6px',
-                    overflow: 'hidden'
-                  }}>
+              <div key={item.id}>
+                {/* Level 1 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', alignItems: 'center', padding: '6px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                  <div>
+                    <div style={{ fontWeight: '600', marginBottom: '2px', color: '#1e293b', fontSize: '0.7rem' }}>
+                      {item.name}
+                    </div>
                     <div style={{
-                      height: '100%',
-                      width: `${item.progressPercent}%`,
-                      background: item.progressPercent >= 75 ? '#10b981' : item.progressPercent >= 50 ? '#f59e0b' : '#ef4444',
-                      transition: 'width 0.3s ease'
-                    }} />
+                      width: '100%',
+                      height: '12px',
+                      background: '#e2e8f0',
+                      borderRadius: '6px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${item.progressPercent}%`,
+                        background: item.progressPercent >= 75 ? '#10b981' : item.progressPercent >= 50 ? '#f59e0b' : '#ef4444',
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#01a383' }}>
+                      {item.progressPercent}%
+                    </div>
                   </div>
                 </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#01a383' }}>
-                    {item.progressPercent}%
+
+                {/* Level 2 - Children */}
+                {item.children && item.children.length > 0 && (
+                  <div style={{ paddingLeft: '12px', marginTop: '4px', display: 'grid', gap: '4px' }}>
+                    {item.children.map((child) => (
+                      <div key={child.id}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', alignItems: 'center', padding: '4px 6px', background: '#f0fdf9', borderRadius: '4px', border: '1px solid #d1fae5' }}>
+                          <div>
+                            <div style={{ fontWeight: '500', marginBottom: '2px', color: '#047857', fontSize: '0.65rem' }}>
+                              └─ {child.name}
+                            </div>
+                            <div style={{
+                              width: '100%',
+                              height: '10px',
+                              background: '#d1fae5',
+                              borderRadius: '4px',
+                              overflow: 'hidden'
+                            }}>
+                              <div style={{
+                                height: '100%',
+                                width: `${child.progressPercent}%`,
+                                background: child.progressPercent >= 75 ? '#059669' : child.progressPercent >= 50 ? '#d97706' : '#dc2626',
+                                transition: 'width 0.3s ease'
+                              }} />
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: '700', color: '#047857' }}>
+                              {child.progressPercent}%
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Level 3 - Grandchildren */}
+                        {child.children && child.children.length > 0 && (
+                          <div style={{ paddingLeft: '16px', marginTop: '2px', display: 'grid', gap: '3px' }}>
+                            {child.children.map((grandchild) => (
+                              <div key={grandchild.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '6px', alignItems: 'center', padding: '3px 4px', background: '#fafaf9', borderRadius: '3px', border: '1px solid #e5e7eb' }}>
+                                <div>
+                                  <div style={{ fontWeight: '400', marginBottom: '1px', color: '#6b7280', fontSize: '0.6rem' }}>
+                                    └─ {grandchild.name}
+                                  </div>
+                                  <div style={{
+                                    width: '100%',
+                                    height: '8px',
+                                    background: '#e5e7eb',
+                                    borderRadius: '3px',
+                                    overflow: 'hidden'
+                                  }}>
+                                    <div style={{
+                                      height: '100%',
+                                      width: `${grandchild.progressPercent}%`,
+                                      background: grandchild.progressPercent >= 75 ? '#0d9488' : grandchild.progressPercent >= 50 ? '#ca8a04' : '#b91c1c',
+                                      transition: 'width 0.3s ease'
+                                    }} />
+                                  </div>
+                                </div>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '0.65rem', fontWeight: '600', color: '#6b7280' }}>
+                                    {grandchild.progressPercent}%
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
             ))}
           </div>
