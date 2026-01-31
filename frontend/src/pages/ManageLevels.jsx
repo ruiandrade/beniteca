@@ -571,7 +571,10 @@ export default function ManageLevels() {
 
       const res = await fetch("/api/levels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           name: sublevelName,
           description: sublevelDesc,
@@ -589,7 +592,10 @@ export default function ManageLevels() {
       for (const ancestorId of targetsToReopen) {
         await fetch(`/api/levels/${ancestorId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({ status: 'active' }),
         });
       }
@@ -1028,7 +1034,10 @@ export default function ManageLevels() {
       // Send all entries in one request for transactional processing
       const res = await fetch("/api/levels/hierarchy/import-excel", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           rootId: parseInt(id, 10),
           entries: entries,

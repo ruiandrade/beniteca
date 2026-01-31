@@ -22,6 +22,8 @@ class LevelService {
       : parseInt(data.parentId);
     const constructionManagerId = data.constructionManagerId ? parseInt(data.constructionManagerId) : null;
     const siteDirectorId = data.siteDirectorId ? parseInt(data.siteDirectorId) : null;
+    const createdBy = data.createdBy ? parseInt(data.createdBy) : null;
+    console.log('📝 SERVICE - createLevel - createdBy value:', createdBy, 'from data.createdBy:', data.createdBy);
     // Check if parent exists if provided
     if (parentId) {
       const parentResult = await pool.request()
@@ -32,9 +34,9 @@ class LevelService {
     const orderValue = data.order !== undefined ? data.order : await this.getNextOrderValue(pool, parentId);
     // Insert new level
     const insertQuery = `
-      INSERT INTO Level (name, description, parentId, startDate, endDate, status, notes, coverImage, constructionManagerId, siteDirectorId, [order])
+      INSERT INTO Level (name, description, parentId, startDate, endDate, status, notes, coverImage, constructionManagerId, siteDirectorId, [order], createdBy)
       OUTPUT INSERTED.*
-      VALUES (@name, @description, @parentId, @startDate, @endDate, @status, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order)
+      VALUES (@name, @description, @parentId, @startDate, @endDate, @status, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order, @createdBy)
     `;
     const result = await pool.request()
       .input('name', sql.NVarChar, data.name)
@@ -48,6 +50,7 @@ class LevelService {
       .input('constructionManagerId', sql.Int, constructionManagerId)
       .input('siteDirectorId', sql.Int, siteDirectorId)
       .input('order', sql.Int, orderValue)
+      .input('createdBy', sql.Int, createdBy)
       .query(insertQuery);
     return result.recordset[0];
   }
@@ -76,10 +79,11 @@ class LevelService {
         .input('constructionManagerId', sql.Int, data.root.constructionManagerId ? parseInt(data.root.constructionManagerId) : null)
         .input('siteDirectorId', sql.Int, data.root.siteDirectorId ? parseInt(data.root.siteDirectorId) : null)
         .input('order', sql.Int, rootOrder)
+        .input('createdBy', sql.Int, data.root.createdBy ? parseInt(data.root.createdBy) : null)
         .query(`
-          INSERT INTO Level (name, description, parentId, startDate, endDate, status, notes, coverImage, constructionManagerId, siteDirectorId, [order])
+          INSERT INTO Level (name, description, parentId, startDate, endDate, status, notes, coverImage, constructionManagerId, siteDirectorId, [order], createdBy)
           OUTPUT INSERTED.*
-          VALUES (@name, @description, NULL, @startDate, @endDate, @status, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order)
+          VALUES (@name, @description, NULL, @startDate, @endDate, @status, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order, @createdBy)
         `);
       
       const rootId = rootResult.recordset[0].id;
@@ -99,10 +103,11 @@ class LevelService {
               .input('endDate', sql.DateTime, data.root.endDate)
               .input('status', sql.NVarChar, 'active')
               .input('order', sql.Int, childOrder)
+              .input('createdBy', sql.Int, data.root.createdBy ? parseInt(data.root.createdBy) : null)
               .query(`
-                INSERT INTO Level (name, description, parentId, startDate, endDate, status, [order])
+                INSERT INTO Level (name, description, parentId, startDate, endDate, status, [order], createdBy)
                 OUTPUT INSERTED.*
-                VALUES (@name, @description, @parentId, @startDate, @endDate, @status, @order)
+                VALUES (@name, @description, @parentId, @startDate, @endDate, @status, @order, @createdBy)
               `);
             
             const childId = childResult.recordset[0].id;
@@ -166,10 +171,11 @@ class LevelService {
           .input('endDate', sql.DateTime, entry.endDate || null)
           .input('status', sql.NVarChar, 'active')
           .input('order', sql.Int, orderValue)
+          .input('createdBy', sql.Int, data.createdBy ? parseInt(data.createdBy) : null)
           .query(`
-            INSERT INTO Level (name, description, parentId, startDate, endDate, status, [order])
+            INSERT INTO Level (name, description, parentId, startDate, endDate, status, [order], createdBy)
             OUTPUT INSERTED.*
-            VALUES (@name, @description, @parentId, @startDate, @endDate, @status, @order)
+            VALUES (@name, @description, @parentId, @startDate, @endDate, @status, @order, @createdBy)
           `);
 
         const createdId = result.recordset[0].id;

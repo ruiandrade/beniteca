@@ -236,7 +236,10 @@ export default function CreateWork() {
         };
         const res = await fetch("/api/levels/hierarchy/create", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify(hierarchyData)
         });
         if (!res.ok) throw new Error("Erro ao criar hierarquia");
@@ -245,7 +248,10 @@ export default function CreateWork() {
       } else {
         const workRes = await fetch("/api/levels", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({
             name,
             description,

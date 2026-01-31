@@ -4,7 +4,10 @@ const levelContentsService = require('../services/levelContentsService');
 class LevelController {
   async create(req, res) {
     try {
-      const level = await levelService.createLevel(req.body);
+      console.log('🔍 DEBUG create - req.user:', req.user);
+      const data = { ...req.body, createdBy: req.user?.id };
+      console.log('📝 DEBUG create - data:', { name: data.name, createdBy: data.createdBy });
+      const level = await levelService.createLevel(data);
       res.status(201).json(level);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -13,7 +16,8 @@ class LevelController {
 
   async createHierarchy(req, res) {
     try {
-      const levels = await levelService.createHierarchy(req.body);
+      const data = { ...req.body, root: { ...req.body.root, createdBy: req.user?.id } };
+      const levels = await levelService.createHierarchy(data);
       res.status(201).json(levels);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -22,7 +26,8 @@ class LevelController {
 
   async createHierarchyFromExcel(req, res) {
     try {
-      const result = await levelService.createHierarchyFromExcel(req.body);
+      const data = { ...req.body, createdBy: req.user?.id };
+      const result = await levelService.createHierarchyFromExcel(data);
       res.status(201).json(result);
     } catch (error) {
       res.status(400).json({ error: error.message });

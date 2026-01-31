@@ -25,11 +25,15 @@ CREATE TABLE [Level] (
   constructionManagerId INT,
   siteDirectorId INT,
   [order] INT NOT NULL DEFAULT 0,
+  createdBy INT, -- User who created/registered the level
+  closedBy INT, -- User who closed/completed the level
   createdAt DATETIME2 DEFAULT GETDATE(),
   updatedAt DATETIME2 DEFAULT GETDATE(),
   FOREIGN KEY (parentId) REFERENCES [Level](id),
   FOREIGN KEY (constructionManagerId) REFERENCES [User](id),
-  FOREIGN KEY (siteDirectorId) REFERENCES [User](id)
+  FOREIGN KEY (siteDirectorId) REFERENCES [User](id),
+  FOREIGN KEY (createdBy) REFERENCES [User](id),
+  FOREIGN KEY (closedBy) REFERENCES [User](id)
 );
 
 -- Material table
