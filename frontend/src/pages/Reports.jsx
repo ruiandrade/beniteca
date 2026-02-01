@@ -9,6 +9,7 @@ export default function Reports() {
   const [selectedObras, setSelectedObras] = useState(new Set());
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [progressLevels, setProgressLevels] = useState(1);
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState(null);
   const [previewMode, setPreviewMode] = useState(false);
@@ -175,7 +176,7 @@ export default function Reports() {
         <div id="report-content" style={{ background: '#fff', padding: '20px 10px', borderRadius: '8px' }}>
           {Object.entries(reportData).map(([obraId, data]) => (
             <div key={obraId} style={{ marginBottom: '0px', pageBreakAfter: 'avoid', pageBreakInside: 'avoid' }}>
-              <ReportPage data={data} fromDate={fromDate} toDate={toDate} />
+              <ReportPage data={data} fromDate={fromDate} toDate={toDate} progressLevels={progressLevels} />
             </div>
           ))}
         </div>
@@ -209,15 +210,17 @@ export default function Reports() {
         <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
           {/* Obra Selection - Dropdown */}
           <div style={{ marginBottom: '30px' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '15px', color: '#334155' }}>
-              Selecione as Obras
-            </h2>
-            <div ref={dropdownRef} style={{ position: 'relative', maxWidth: '400px' }}>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div ref={dropdownRef} style={{ position: 'relative', maxWidth: '400px', flex: '1 1 320px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#475569' }}>
+                  Selecionar Obras
+                </label>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 style={{
                   width: '100%',
-                  padding: '12px 15px',
+                  height: '42px',
+                  padding: '0 15px',
                   background: '#fff',
                   border: '2px solid #e2e8f0',
                   borderRadius: '8px',
@@ -288,6 +291,27 @@ export default function Reports() {
                 </div>
               )}
             </div>
+              <div style={{ flex: '0 0 180px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#475569' }}>
+                  Níveis de Progresso
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="3"
+                  value={progressLevels}
+                  onChange={(e) => setProgressLevels(Math.max(1, Math.min(3, parseInt(e.target.value || '1', 10))))}
+                  style={{
+                    width: '100%',
+                    height: '42px',
+                    padding: '0 10px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Date Range */}
@@ -295,7 +319,7 @@ export default function Reports() {
             <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '15px', color: '#334155' }}>
               Intervalo de Datas para o Relatório
             </h2>
-            <div style={{ display: 'flex', gap: '20px' }}>
+            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#475569' }}>
                   Data Inicial
@@ -358,7 +382,7 @@ export default function Reports() {
   );
 }
 
-function ReportPage({ data, fromDate, toDate }) {
+function ReportPage({ data, fromDate, toDate, progressLevels = 3 }) {
   const { token } = useAuth();
   const obra = data.obra;
   const kpis = data.kpis;
@@ -614,7 +638,7 @@ function ReportPage({ data, fromDate, toDate }) {
         </div>
       )}
 
-      {/* Progress da Obra - 3 Levels */}
+      {/* Progress da Obra */}
       {progress.length > 0 && (
         <div style={{ marginBottom: '10px' }}>
           <h2 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#01a383', marginBottom: '6px', borderBottom: '1px solid #01a383', paddingBottom: '3px' }}>
@@ -652,7 +676,7 @@ function ReportPage({ data, fromDate, toDate }) {
                 </div>
 
                 {/* Level 2 - Children */}
-                {item.children && item.children.length > 0 && (
+                {progressLevels >= 2 && item.children && item.children.length > 0 && (
                   <div style={{ paddingLeft: '12px', marginTop: '4px', display: 'grid', gap: '4px' }}>
                     {item.children.map((child) => (
                       <div key={child.id}>
@@ -684,7 +708,7 @@ function ReportPage({ data, fromDate, toDate }) {
                         </div>
 
                         {/* Level 3 - Grandchildren */}
-                        {child.children && child.children.length > 0 && (
+                        {progressLevels >= 3 && child.children && child.children.length > 0 && (
                           <div style={{ paddingLeft: '16px', marginTop: '2px', display: 'grid', gap: '3px' }}>
                             {child.children.map((grandchild) => (
                               <div key={grandchild.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '6px', alignItems: 'center', padding: '3px 4px', background: '#fafaf9', borderRadius: '3px', border: '1px solid #e5e7eb' }}>

@@ -534,7 +534,10 @@ export default function ManageLevels() {
     try {
       const res = await fetch('/api/levels/reorder', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ parentId: id, orderedIds }),
       });
       if (!res.ok) {
