@@ -56,7 +56,11 @@ class LevelController {
 
   async update(req, res) {
     try {
-      const level = await levelService.updateLevel(req.params.id, req.body);
+      const data = { ...req.body };
+      if (data.status === 'completed' && data.closedBy === undefined) {
+        data.closedBy = req.user?.id;
+      }
+      const level = await levelService.updateLevel(req.params.id, data);
       res.json(level);
     } catch (error) {
       res.status(400).json({ error: error.message });

@@ -324,6 +324,10 @@ class LevelService {
         fields.push('completedAt = GETDATE()');
       }
     }
+    if (data.closedBy !== undefined) {
+      fields.push('closedBy = @closedBy');
+      request.input('closedBy', sql.Int, data.closedBy ? parseInt(data.closedBy) : null);
+    }
     if (data.notes !== undefined) {
       fields.push('notes = @notes');
       request.input('notes', sql.NVarChar, data.notes);

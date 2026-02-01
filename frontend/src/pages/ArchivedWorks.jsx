@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function ArchivedWorks() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [obras, setObras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,8 +40,11 @@ export default function ArchivedWorks() {
     try {
       const res = await fetch(`/api/levels/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: 'active' })
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'active', closedBy: null })
       });
       if (res.ok) {
         await fetchObras();

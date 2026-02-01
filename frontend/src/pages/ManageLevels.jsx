@@ -158,11 +158,25 @@ export default function ManageLevels() {
   };
 
   const setLevelStatus = async (levelId, status) => {
-    await fetch(`/api/levels/${levelId}`, {
+    let payload = { status };
+    if (status === 'completed') {
+      payload = { status, closedBy: user?.id };
+    } else if (status === 'active') {
+      payload = { status, closedBy: null };
+    }
+
+    const res = await fetch(`/api/levels/${levelId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
     });
+
+    if (!res.ok) {
+      throw new Error('Erro ao alterar estado de conclusão');
+    }
   };
 
   // If all children of ancestor are completed, complete ancestor, then check its parent (cascade up)
@@ -596,7 +610,7 @@ export default function ManageLevels() {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
           },
-          body: JSON.stringify({ status: 'active' }),
+          body: JSON.stringify({ status: 'active', closedBy: null }),
         });
       }
       
@@ -866,37 +880,30 @@ export default function ManageLevels() {
     
     confirmWithModal(title, message, async () => {
       try {
-        const res = await fetch(`/api/levels/${sublevelId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: currentStatus ? 'active' : 'completed' }),
-        });
-        if (res.ok) {
-          // If completing the main work level, refresh its state
-          if (sublevelId == id) {
-            await fetchWork();
-          }
-          
-          // Se marcou como concluído, verificar se pode marcar o pai também
-          if (!currentStatus) {
-            // Cascade: se todos os irmãos concluídos, completa pai e continua a subir
-            await cascadeCompleteUpFrom(sublevelId);
-          } else {
-            // Se reabriu, garantir que todos os ancestrais ficam como não concluídos
-            await cascadeReopenUpFrom(sublevelId);
-          }
-          
-          await fetchSublevels();
+        const nextStatus = currentStatus ? 'active' : 'completed';
+        await setLevelStatus(sublevelId, nextStatus);
+
+        if (sublevelId == id) {
           await fetchWork();
-          setModal({
-            type: 'success',
-            title: 'Sucesso',
-            message: currentStatus ? 'Marcado como não concluído!' : 'Marcado como concluído!',
-            onConfirm: null,
-          });
-        } else {
-          throw new Error('Erro ao alterar estado de conclusão');
         }
+        
+        // Se marcou como concluído, verificar se pode marcar o pai também
+        if (!currentStatus) {
+          // Cascade: se todos os irmãos concluídos, completa pai e continua a subir
+          await cascadeCompleteUpFrom(sublevelId);
+        } else {
+          // Se reabriu, garantir que todos os ancestrais ficam como não concluídos
+          await cascadeReopenUpFrom(sublevelId);
+        }
+        
+        await fetchSublevels();
+        await fetchWork();
+        setModal({
+          type: 'success',
+          title: 'Sucesso',
+          message: currentStatus ? 'Marcado como não concluído!' : 'Marcado como concluído!',
+          onConfirm: null,
+        });
       } catch (err) {
         setModal({
           type: 'error',

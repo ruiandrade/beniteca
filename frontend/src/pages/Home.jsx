@@ -6,7 +6,7 @@ import WorkerSchedule from './WorkerSchedule';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { token, logout } = useAuth();
+  const { token, user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('list');
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -46,8 +46,11 @@ export default function Home() {
     try {
       const res = await fetch(`/api/levels/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'completed' }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'completed', closedBy: user?.id }),
       });
       if (!res.ok) throw new Error('Erro ao arquivar');
       loadLevels();
