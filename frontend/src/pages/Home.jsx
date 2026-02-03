@@ -30,9 +30,8 @@ export default function Home() {
     } catch (err) {
       console.error('Erro ao carregar obras:', err);
       if (err.status === 401) {
-        alert('Sessão expirada. Faça login novamente.');
-        logout();
-        navigate('/login');
+        // Não mostrar alert aqui - o AuthContext já mostra ao fazer logout
+        logout('expired');
         return;
       }
       alert(`Erro ao carregar obras: ${err.message}`);

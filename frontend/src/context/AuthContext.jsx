@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const inactivityTimerRef = useRef(null);
+  const isLoggingOutRef = useRef(false); // Prevenir múltiplos logouts simultâneos
 
   // Resetar timer de inatividade
   const resetInactivityTimer = () => {
@@ -87,6 +88,12 @@ export function AuthProvider({ children }) {
   };
 
   const logout = (reason = 'manual') => {
+    // Prevenir múltiplos logouts simultâneos (ex: múltiplos 401 em paralelo)
+    if (isLoggingOutRef.current) {
+      return;
+    }
+    isLoggingOutRef.current = true;
+
     setUser(null);
     setToken(null);
     localStorage.removeItem('authToken');
@@ -98,14 +105,14 @@ export function AuthProvider({ children }) {
       inactivityTimerRef.current = null;
     }
     
-    // Mostrar mensagem se foi por inatividade ou token expirado
+    // Mostrar apenas UMA mensagem, não importa quantos componentes chamem logout
     if (reason === 'inactivity') {
       alert('Sessão terminada por inatividade (4 horas sem uso).');
     } else if (reason === 'expired') {
       alert('Token expirado. Por favor faça login novamente.');
     }
     
-    // Usar window.location em vez de navigate (AuthProvider está fora do Router)
+    // Redirecionar para login
     window.location.href = '/login';
   };
 

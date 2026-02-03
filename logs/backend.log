@@ -2,20 +2,51 @@
 > beniteca@1.0.0 start
 > node index.js
 
-[dotenv@17.2.3] injecting env (10) from .env.development -- tip: ⚙️  override existing env vars with { override: true }
+[dotenv@17.2.3] injecting env (10) from .env.development -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
 Loaded environment from .env.development
 ✅ Server running on port 3000 in development mode
 📊 Database: Connected
 📦 Blob Storage: Connected
-SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
-    at JSON.parse (<anonymous>)
-    at parse (/workspaces/beniteca/node_modules/body-parser/lib/types/json.js:74:19)
-    at /workspaces/beniteca/node_modules/body-parser/lib/read.js:163:18
-    at AsyncResource.runInAsyncScope (node:async_hooks:214:14)
-    at invokeCallback (/workspaces/beniteca/node_modules/raw-body/index.js:238:16)
-    at done (/workspaces/beniteca/node_modules/raw-body/index.js:227:7)
-    at IncomingMessage.onEnd (/workspaces/beniteca/node_modules/raw-body/index.js:287:7)
-    at IncomingMessage.emit (node:events:508:28)
-    at endReadableNT (node:internal/streams/readable:1701:12)
-    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
 Conectado ao Azure SQL ✅
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
+🔐 AUTH DEBUG - token recebido: ✓ Sim
+🔐 AUTH DEBUG - payload: { sub: 1, role: 'A' }
+🔐 AUTH DEBUG - req.user definido: { id: 1, role: 'A' }
