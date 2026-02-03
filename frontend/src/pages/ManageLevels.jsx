@@ -653,7 +653,10 @@ export default function ManageLevels() {
         try {
           const res = await fetch(`/api/levels/${sublevelId}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({ hidden: true }),
           });
           if (res.ok) {
@@ -730,6 +733,9 @@ export default function ManageLevels() {
             try {
               const res = await fetch(`/api/levels/${sublevelId}`, {
                 method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
               });
               if (res.ok) {
                 successCount++;
@@ -799,7 +805,10 @@ export default function ManageLevels() {
     try {
       const res = await fetch(`/api/levels/${sublevelId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ hidden: false }),
       });
       if (res.ok) {
@@ -831,6 +840,9 @@ export default function ManageLevels() {
         try {
           const res = await fetch(`/api/levels/${sublevelId}`, {
             method: "DELETE",
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
           });
           if (res.ok) {
             await fetchSublevels();
@@ -1230,7 +1242,12 @@ export default function ManageLevels() {
       'Tem certeza que deseja deletar este material?',
       async () => {
         try {
-          const res = await fetch(`/api/materials/${materialId}`, { method: "DELETE" });
+          const res = await fetch(`/api/materials/${materialId}`, {
+            method: "DELETE",
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           if (res.ok) {
             await fetchMaterials();
             setModal({
@@ -1275,7 +1292,10 @@ export default function ManageLevels() {
 
       const res = await fetch(`/api/materials/${mat.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           description: mat.description,
           brand: mat.brand || null,
@@ -1356,7 +1376,12 @@ export default function ManageLevels() {
       'Tem certeza que deseja deletar este documento?',
       async () => {
         try {
-          const res = await fetch(`/api/documents/${docId}`, { method: "DELETE" });
+          const res = await fetch(`/api/documents/${docId}`, {
+            method: "DELETE",
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           if (res.ok) {
             await fetchDocuments();
             setModal({
@@ -1392,7 +1417,10 @@ export default function ManageLevels() {
     try {
       const res = await fetch(`/api/levels/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ notes: noteText }),
       });
       if (!res.ok) throw new Error("Erro ao atualizar nota");
@@ -1418,7 +1446,10 @@ export default function ManageLevels() {
     try {
       const res = await fetch(`/api/levels/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ notes: noteText }),
       });
       if (!res.ok) throw new Error("Erro ao salvar notas");
@@ -1443,7 +1474,12 @@ export default function ManageLevels() {
       'Tem certeza que deseja deletar esta nota?',
       async () => {
         try {
-          const res = await fetch(`/api/permissions/${noteId}`, { method: "DELETE" });
+          const res = await fetch(`/api/permissions/${noteId}`, {
+            method: "DELETE",
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           if (res.ok) {
             await fetchNotes();
             setModal({
@@ -1519,7 +1555,12 @@ export default function ManageLevels() {
       'Tem certeza que deseja deletar esta foto?',
       async () => {
         try {
-          const res = await fetch(`/api/photos/${photoId}`, { method: "DELETE" });
+          const res = await fetch(`/api/photos/${photoId}`, {
+            method: "DELETE",
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           if (res.ok) {
             await fetchPhotos();
             setModal({
@@ -1548,7 +1589,10 @@ export default function ManageLevels() {
     try {
       const res = await fetch(`/api/photos/${photoId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ role: newRole }),
       });
       if (res.ok) await fetchPhotos();
@@ -1644,7 +1688,10 @@ export default function ManageLevels() {
 
       const res = await fetch(`/api/levels/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Erro ao atualizar nível");
@@ -1764,7 +1811,10 @@ export default function ManageLevels() {
 
           const res = await fetch(`/api/levels/${id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify(payload),
           });
           
