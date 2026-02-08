@@ -2286,7 +2286,7 @@ export default function ManageLevels() {
           <div style={{ marginTop: '16px', marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button 
               onClick={() => userPermission === 'W' && (moveMode ? setMoveMode(false) : handleOpenMoveMode())}
-              disabled={userPermission === 'R'}
+              disabled={userPermission !== 'W'}
               className="ml-move-btn"
               style={{
                 background: moveMode ? '#f87171' : '#8b5cf6',
@@ -2294,17 +2294,18 @@ export default function ManageLevels() {
                 border: 'none',
                 borderRadius: '8px',
                 padding: '10px 16px',
-                cursor: userPermission === 'R' ? 'not-allowed' : 'pointer',
-                opacity: userPermission === 'R' ? 0.5 : 1,
+                cursor: userPermission !== 'W' ? 'not-allowed' : 'pointer',
+                opacity: userPermission !== 'W' ? 0.5 : 1,
                 fontWeight: '600'
               }}
-              title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+              title={userPermission !== 'W' ? 'Você não tem permissão para mover' : ''}
+              aria-label={moveMode ? "Cancelar Movimento" : "Mover na Hierarquia"}
             >
-              {moveMode ? "Cancelar Movimento" : "↕️ Mover na Hierarquia"}
+              {moveMode ? "✕" : "↕"}
             </button>
             <button 
               onClick={() => userPermission === 'W' && (cloneMode ? setCloneMode(false) : handleOpenCloneMode())}
-              disabled={userPermission === 'R'}
+              disabled={userPermission !== 'W'}
               className="ml-move-btn"
               style={{
                 background: cloneMode ? '#f59e0b' : '#0ea5e9',
@@ -2312,13 +2313,14 @@ export default function ManageLevels() {
                 border: 'none',
                 borderRadius: '8px',
                 padding: '10px 16px',
-                cursor: userPermission === 'R' ? 'not-allowed' : 'pointer',
-                opacity: userPermission === 'R' ? 0.5 : 1,
+                cursor: userPermission !== 'W' ? 'not-allowed' : 'pointer',
+                opacity: userPermission !== 'W' ? 0.5 : 1,
                 fontWeight: '600'
               }}
-              title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+              title={userPermission !== 'W' ? 'Você não tem permissão para clonar' : ''}
+              aria-label={cloneMode ? "Cancelar Clonagem" : "Clonar Hierarquia"}
             >
-              {cloneMode ? "Cancelar Clonagem" : "📄 Clonar Hierarquia"}
+              {cloneMode ? "✕" : "⧉"}
             </button>
           </div>
         )}
