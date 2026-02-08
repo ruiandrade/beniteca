@@ -34,6 +34,21 @@ class LevelController {
     }
   }
 
+  async cloneHierarchy(req, res) {
+    try {
+      const { id } = req.params;
+      const { parentId } = req.body || {};
+      const result = await levelService.cloneHierarchy({
+        sourceId: id,
+        targetParentId: parentId,
+        createdBy: req.user?.id
+      });
+      res.status(201).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   async getAll(req, res) {
     try {
       const { parentId } = req.query || {};

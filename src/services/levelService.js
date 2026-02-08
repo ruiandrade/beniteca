@@ -191,6 +191,71 @@ class LevelService {
     }
   }
 
+  async cloneHierarchy({ sourceId, targetParentId, createdBy }) {
+    const pool = await getConnection();
+    const tx = new sql.Transaction(pool);
+    await tx.begin();
+
+    try {
+      const hierarchy = await this.getHierarchyTree(sourceId);
+      if (!hierarchy) throw new Error('Level not found');
+
+      const normalizedParentId = (targetParentId === undefined || targetParentId === null || targetParentId === 'null')
+        ? null
+        : parseInt(targetParentId);
+
+      if (!normalizedParentId) {
+        throw new Error('Parent level is required');
+      }
+
+      const parentCheck = await pool.request()
+        .input('parentId', sql.Int, normalizedParentId)
+        .query('SELECT id FROM Level WHERE id = @parentId');
+      if (parentCheck.recordset.length === 0) {
+        throw new Error('Parent level not found');
+      }
+
+      const cloneNode = async (node, parentId) => {
+        const orderValue = await this.getNextOrderValue(pool, parentId, tx);
+        const req = new sql.Request(tx);
+        const result = await req
+          .input('name', sql.NVarChar, node.level.name)
+          .input('description', sql.NVarChar, node.level.description)
+          .input('parentId', sql.Int, parentId)
+          .input('startDate', sql.DateTime, node.level.startDate)
+          .input('endDate', sql.DateTime, node.level.endDate)
+          .input('status', sql.NVarChar, 'active')
+          .input('notes', sql.NVarChar, null)
+          .input('coverImage', sql.NVarChar, node.level.coverImage)
+          .input('constructionManagerId', sql.Int, node.level.constructionManagerId)
+          .input('siteDirectorId', sql.Int, node.level.siteDirectorId)
+          .input('order', sql.Int, orderValue)
+          .input('createdBy', sql.Int, createdBy ? parseInt(createdBy) : null)
+          .query(`
+            INSERT INTO Level (name, description, parentId, startDate, endDate, status, notes, coverImage, constructionManagerId, siteDirectorId, [order], createdBy)
+            OUTPUT INSERTED.*
+            VALUES (@name, @description, @parentId, @startDate, @endDate, @status, @notes, @coverImage, @constructionManagerId, @siteDirectorId, @order, @createdBy)
+          `);
+
+        const newId = result.recordset[0].id;
+
+        for (const child of node.children || []) {
+          await cloneNode(child, newId);
+        }
+
+        return newId;
+      };
+
+      const newRootId = await cloneNode(hierarchy, normalizedParentId);
+
+      await tx.commit();
+      return { id: newRootId, message: 'Hierarquia clonada com sucesso' };
+    } catch (err) {
+      await tx.rollback().catch(() => {});
+      throw err;
+    }
+  }
+
   async getLevels(filter = {}) {
     const pool = await getConnection();
     let query = `

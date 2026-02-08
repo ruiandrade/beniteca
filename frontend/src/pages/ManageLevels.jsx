@@ -99,6 +99,13 @@ export default function ManageLevels() {
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [moveErrors, setMoveErrors] = useState({});
 
+  // Estado para clonar level (criar nova hierarquia)
+  const [cloneMode, setCloneMode] = useState(false);
+  const [cloneParentId, setCloneParentId] = useState("");
+  const [cloneTree, setCloneTree] = useState(null);
+  const [cloneExpandedNodes, setCloneExpandedNodes] = useState(new Set());
+  const [cloneErrors, setCloneErrors] = useState({});
+
   // Estado para editar material
   const [editingMaterial, setEditingMaterial] = useState(null);
 
@@ -1707,8 +1714,14 @@ export default function ManageLevels() {
     }
   };
 
-  const buildLevelTree = async () => {
+  const buildHierarchyTree = async ({
+    excludeCurrentDescendants,
+    setTree,
+    setExpanded,
+    setErrors,
+  }) => {
     try {
+      if (!work) return;
       // Encontrar a obra mãe (top-level parent) do nível atual
       let topLevelParent = work;
       
@@ -1726,34 +1739,6 @@ export default function ManageLevels() {
       if (!rawHierarchy) throw new Error('Hierarquia vazia');
 
       // rawHierarchy já vem no formato correto {level: {...}, children: [...]}
-      // Obter IDs de descendentes do level atual para excluir
-      const getDescendantIds = (node) => {
-        if (!node || !node.level) return [];
-        const ids = [];
-        if (node.level.id === parseInt(id)) {
-          // Este é o nível atual, incluir todos os seus descendentes
-          const collectIds = (n) => {
-            if (n && n.children) {
-              n.children.forEach(child => {
-                if (child && child.level) {
-                  ids.push(child.level.id);
-                  collectIds(child);
-                }
-              });
-            }
-          };
-          collectIds(node);
-        } else if (node.children) {
-          node.children.forEach(child => {
-            const childIds = getDescendantIds(child);
-            ids.push(...childIds);
-          });
-        }
-        return ids;
-      };
-
-      const descendantIds = [parseInt(id), ...getDescendantIds(rawHierarchy)];
-
       // Converter a resposta em tree format simples para o renderTreeNode
       const convertToTree = (node) => {
         if (!node || !node.level) return null;
@@ -1764,29 +1749,60 @@ export default function ManageLevels() {
         };
       };
 
-      // Filtrar a árvore para remover o nível atual e seus descendentes
-      const filterTree = (node) => {
-        if (!node) return null;
-        if (node.id === parseInt(id) || descendantIds.includes(node.id)) {
-          return null;
-        }
-        return {
-          ...node,
-          children: (node.children || []).map(filterTree).filter(Boolean)
-        };
-      };
-
       const tree = convertToTree(rawHierarchy);
       if (!tree) throw new Error('Erro ao converter hierarquia');
-      
-      const filteredTree = filterTree(tree);
-      if (!filteredTree) throw new Error('Nenhum nó disponível para mover');
-      
-      setLevelTree(filteredTree);
-      setExpandedNodes(new Set([filteredTree.id])); // Expandir raiz por padrão
+
+      let finalTree = tree;
+      if (excludeCurrentDescendants) {
+        // Obter IDs de descendentes do level atual para excluir
+        const getDescendantIds = (node) => {
+          if (!node || !node.level) return [];
+          const ids = [];
+          if (node.level.id === parseInt(id)) {
+            // Este é o nível atual, incluir todos os seus descendentes
+            const collectIds = (n) => {
+              if (n && n.children) {
+                n.children.forEach(child => {
+                  if (child && child.level) {
+                    ids.push(child.level.id);
+                    collectIds(child);
+                  }
+                });
+              }
+            };
+            collectIds(node);
+          } else if (node.children) {
+            node.children.forEach(child => {
+              const childIds = getDescendantIds(child);
+              ids.push(...childIds);
+            });
+          }
+          return ids;
+        };
+
+        const descendantIds = [parseInt(id), ...getDescendantIds(rawHierarchy)];
+
+        const filterTree = (node) => {
+          if (!node) return null;
+          if (node.id === parseInt(id) || descendantIds.includes(node.id)) {
+            return null;
+          }
+          return {
+            ...node,
+            children: (node.children || []).map(filterTree).filter(Boolean)
+          };
+        };
+
+        finalTree = filterTree(tree);
+        if (!finalTree) throw new Error('Nenhum nó disponível para mover');
+      }
+
+      setTree(finalTree);
+      setExpanded(new Set([finalTree.id])); // Expandir raiz por padrão
+      setErrors({});
     } catch (err) {
       console.error('Erro ao construir árvore:', err);
-      setMoveErrors({ fetch: err.message });
+      setErrors({ fetch: err.message });
     }
   };
 
@@ -1851,11 +1867,32 @@ export default function ManageLevels() {
 
   const handleOpenMoveMode = async () => {
     setMoveMode(true);
-    await buildLevelTree();
+    setCloneMode(false);
+    setCloneParentId('');
+    setCloneErrors({});
+    await buildHierarchyTree({
+      excludeCurrentDescendants: true,
+      setTree: setLevelTree,
+      setExpanded: setExpandedNodes,
+      setErrors: setMoveErrors,
+    });
   };
 
-  const toggleNode = (nodeId) => {
-    setExpandedNodes(prev => {
+  const handleOpenCloneMode = async () => {
+    setCloneMode(true);
+    setMoveMode(false);
+    setNewParentId('');
+    setMoveErrors({});
+    await buildHierarchyTree({
+      excludeCurrentDescendants: false,
+      setTree: setCloneTree,
+      setExpanded: setCloneExpandedNodes,
+      setErrors: setCloneErrors,
+    });
+  };
+
+  const toggleNode = (nodeId, setExpanded) => {
+    setExpanded(prev => {
       const newSet = new Set(prev);
       if (newSet.has(nodeId)) {
         newSet.delete(nodeId);
@@ -1866,12 +1903,19 @@ export default function ManageLevels() {
     });
   };
 
-  const renderTreeNode = (node, depth = 0) => {
+  const renderTreeNode = (
+    node,
+    depth = 0,
+    expandedSet,
+    setExpanded,
+    selectedId,
+    setSelectedId
+  ) => {
     if (!node) return null;
     
     const hasChildren = node.children && node.children.length > 0;
-    const isExpanded = expandedNodes.has(node.id);
-    const isSelected = newParentId === node.id.toString();
+    const isExpanded = expandedSet.has(node.id);
+    const isSelected = selectedId === node.id.toString();
 
     return (
       <div key={node.id} style={{ marginLeft: `${depth * 20}px` }}>
@@ -1891,7 +1935,7 @@ export default function ManageLevels() {
             <span 
               onClick={(e) => {
                 e.stopPropagation();
-                toggleNode(node.id);
+                toggleNode(node.id, setExpanded);
               }}
               style={{
                 marginRight: '6px',
@@ -1907,7 +1951,7 @@ export default function ManageLevels() {
           )}
           {!hasChildren && <span style={{ marginRight: '6px', width: '20px' }}></span>}
           <span 
-            onClick={() => setNewParentId(node.id.toString())}
+            onClick={() => setSelectedId(node.id.toString())}
             style={{ flex: 1, fontSize: '0.9rem' }}
           >
             {node.name}
@@ -1915,10 +1959,76 @@ export default function ManageLevels() {
         </div>
         {isExpanded && hasChildren && (
           <div>
-            {node.children.map(child => renderTreeNode(child, depth + 1))}
+            {node.children.map(child => renderTreeNode(
+              child,
+              depth + 1,
+              expandedSet,
+              setExpanded,
+              selectedId,
+              setSelectedId
+            ))}
           </div>
         )}
       </div>
+    );
+  };
+
+  const handleCloneLevel = async () => {
+    const errors = {};
+    if (!cloneParentId) {
+      errors.parent = "Selecione um nível de destino";
+    }
+
+    setCloneErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    confirmWithModal(
+      'Clonar Nível',
+      'Tem certeza que deseja clonar este nível? Será criado um novo nível com toda a hierarquia descendente (sem fotos, documentos ou notas).',
+      async () => {
+        setLoading(true);
+        try {
+          const payload = {
+            parentId: parseInt(cloneParentId)
+          };
+
+          const res = await fetch(`/api/levels/${id}/clone`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!res.ok) throw new Error("Erro ao clonar nível");
+
+          const result = await res.json();
+          setCloneMode(false);
+          setCloneParentId('');
+          setCloneErrors({});
+          setModal({
+            type: 'success',
+            title: 'Sucesso',
+            message: 'Nível clonado com sucesso!',
+            onConfirm: null,
+          });
+
+          if (result?.id) {
+            navigate(`/works/${result.id}/levels`);
+          }
+        } catch (err) {
+          setCloneErrors({ submit: err.message });
+          setModal({
+            type: 'error',
+            title: 'Erro',
+            message: err.message,
+            onConfirm: null,
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
     );
   };
 
@@ -2173,7 +2283,7 @@ export default function ManageLevels() {
         )}
 
         {work && work.parentId !== undefined && (
-          <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+          <div style={{ marginTop: '16px', marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button 
               onClick={() => userPermission === 'W' && (moveMode ? setMoveMode(false) : handleOpenMoveMode())}
               disabled={userPermission === 'R'}
@@ -2191,6 +2301,24 @@ export default function ManageLevels() {
               title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : ''}
             >
               {moveMode ? "Cancelar Movimento" : "↕️ Mover na Hierarquia"}
+            </button>
+            <button 
+              onClick={() => userPermission === 'W' && (cloneMode ? setCloneMode(false) : handleOpenCloneMode())}
+              disabled={userPermission === 'R'}
+              className="ml-move-btn"
+              style={{
+                background: cloneMode ? '#f59e0b' : '#0ea5e9',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                cursor: userPermission === 'R' ? 'not-allowed' : 'pointer',
+                opacity: userPermission === 'R' ? 0.5 : 1,
+                fontWeight: '600'
+              }}
+              title={userPermission === 'R' ? 'Você tem apenas permissão de leitura' : ''}
+            >
+              {cloneMode ? "Cancelar Clonagem" : "📄 Clonar Hierarquia"}
             </button>
           </div>
         )}
@@ -2212,7 +2340,14 @@ export default function ManageLevels() {
                 maxHeight: '400px',
                 overflowY: 'auto'
               }}>
-                {levelTree ? renderTreeNode(levelTree) : <p>A carregar árvore...</p>}
+                {levelTree ? renderTreeNode(
+                  levelTree,
+                  0,
+                  expandedNodes,
+                  setExpandedNodes,
+                  newParentId,
+                  setNewParentId
+                ) : <p>A carregar árvore...</p>}
               </div>
               {!newParentId && <span className="ml-error">Por favor, selecione um nível de destino</span>}
               {moveErrors.parent && <span className="ml-error">{moveErrors.parent}</span>}
@@ -2221,6 +2356,43 @@ export default function ManageLevels() {
             {moveErrors.submit && <div className="ml-error">{moveErrors.submit}</div>}
             <button type="button" onClick={handleMoveLevel} className="ml-btn" disabled={loading || !newParentId}>
               {loading ? "A mover..." : "Confirmar Movimento"}
+            </button>
+          </div>
+        )}
+
+        {cloneMode && (
+          <div className="ml-edit-section">
+            <h2>Clonar Nível para Outro Local</h2>
+            <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+              Esta operação cria uma cópia deste nível e toda a sua hierarquia descendente.
+              Não serão copiados fotos, documentos ou notas.
+            </p>
+            <div className="ml-field">
+              <label>Selecionar Nível Pai de Destino *</label>
+              <div style={{
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                padding: '12px',
+                background: '#f9fafb',
+                maxHeight: '400px',
+                overflowY: 'auto'
+              }}>
+                {cloneTree ? renderTreeNode(
+                  cloneTree,
+                  0,
+                  cloneExpandedNodes,
+                  setCloneExpandedNodes,
+                  cloneParentId,
+                  setCloneParentId
+                ) : <p>A carregar árvore...</p>}
+              </div>
+              {!cloneParentId && <span className="ml-error">Por favor, selecione um nível de destino</span>}
+              {cloneErrors.parent && <span className="ml-error">{cloneErrors.parent}</span>}
+            </div>
+            {cloneErrors.fetch && <div className="ml-error">{cloneErrors.fetch}</div>}
+            {cloneErrors.submit && <div className="ml-error">{cloneErrors.submit}</div>}
+            <button type="button" onClick={handleCloneLevel} className="ml-btn" disabled={loading || !cloneParentId}>
+              {loading ? "A clonar..." : "Confirmar Clonagem"}
             </button>
           </div>
         )}

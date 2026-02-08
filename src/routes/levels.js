@@ -8,6 +8,7 @@ router.get('/tree/:id', levelController.getTree);
 router.put('/reorder', authenticate, levelController.reorder);
 router.post('/hierarchy/create', authenticate, levelController.createHierarchy);
 router.post('/hierarchy/import-excel', authenticate, levelController.createHierarchyFromExcel);
+router.post('/:id/clone', authenticate, levelController.cloneHierarchy);
 router.get('/:id/hierarchy', levelController.getHierarchy);
 router.get('/:id/ratio', levelController.getRatio);
 router.get('/:id/contents', levelController.getContents);
