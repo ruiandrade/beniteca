@@ -65,12 +65,20 @@ class LevelUserDayService {
         .query('SELECT userId FROM LevelUser WHERE levelId = @levelId');
       const allowedUserIds = new Set(luRes.recordset.map(r => r.userId));
 
-      // Clear existing records in range
+      // Clear existing empty records in range
+      // Keep any record that already has an attendance, observations or overtimeHours
       await new sql.Request(tx)
         .input('levelId', sql.Int, parseInt(levelId))
         .input('from', sql.Date, from)
         .input('to', sql.Date, to)
-        .query('DELETE FROM LevelUserDay WHERE levelId = @levelId AND [day] BETWEEN @from AND @to');
+        .query(`
+          DELETE FROM LevelUserDay
+          WHERE levelId = @levelId
+            AND [day] BETWEEN @from AND @to
+            AND (appeared IS NULL)
+            AND (overtimeHours IS NULL OR overtimeHours = 0)
+            AND (ISNULL(observations, '') = '')
+        `);
 
       // Deduplicate entries
       const uniqueEntries = [];

@@ -1,10 +1,23 @@
 const { BlobServiceClient } = require('@azure/storage-blob');
-const { AZURE_STORAGE_CONNECTION_STRING } = process.env;
 
-const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+const getBlobServiceClient = () => {
+  const { AZURE_STORAGE_CONNECTION_STRING } = process.env;
+
+  if (!AZURE_STORAGE_CONNECTION_STRING) {
+    return null;
+  }
+
+  return BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+};
 
 const getLogo = async (req, res) => {
   try {
+    const blobServiceClient = getBlobServiceClient();
+
+    if (!blobServiceClient) {
+      return res.status(503).json({ error: 'Blob storage not configured' });
+    }
+
     const containerClient = blobServiceClient.getContainerClient('beniteca-base');
     const blockBlobClient = containerClient.getBlockBlobClient('beniteca_logo.jpg');
 

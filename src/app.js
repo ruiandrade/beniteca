@@ -17,6 +17,17 @@ app.use(express.static(path.join(__dirname, '../public'), { index: false }));
 // Also expose under /public for direct access if needed
 app.use('/public', express.static(path.join(__dirname, '../public')));
 
+// Root route: in development, redirect to the Vite frontend; in production, serve the built app
+app.get('/', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    const frontendBuildPath = path.join(__dirname, '../frontend/dist/index.html');
+    return res.sendFile(frontendBuildPath);
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  return res.redirect(frontendUrl);
+});
+
 // API routes (mounted under /api for both dev and prod)
 app.use('/api', routes);
 

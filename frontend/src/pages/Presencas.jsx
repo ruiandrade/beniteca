@@ -11,6 +11,7 @@ export default function Presencas() {
   const [reportTo, setReportTo] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportRows, setReportRows] = useState([]);
+  const [reportMatrix, setReportMatrix] = useState(null);
   const [users, setUsers] = useState([]);
   const [presencas, setPresencas] = useState({});
   const [overtimeHours, setOvertimeHours] = useState({});
@@ -53,6 +54,12 @@ export default function Presencas() {
           filteredWorks = [];
         }
         
+        // Sort obras alphabetically by name for the dropdown
+        filteredWorks.sort((a, b) => {
+          const aName = (a.name || '').toString().trim();
+          const bName = (b.name || '').toString().trim();
+          return aName.localeCompare(bName, 'pt', { sensitivity: 'base' });
+        });
         setWorks(filteredWorks);
       }
     } catch (err) {
@@ -99,7 +106,10 @@ export default function Presencas() {
           };
           // Store overtime hours per user (not per period)
           if (record.overtimeHours !== null && record.overtimeHours !== undefined) {
-            overtimeMap[record.userId] = record.overtimeHours;
+            // Prefer afternoon overtime values; otherwise set if not already set
+            if (record.period === 'a' || overtimeMap[record.userId] === undefined) {
+              overtimeMap[record.userId] = record.overtimeHours;
+            }
           }
         });
         setPresencas(presencasMap);
@@ -210,13 +220,13 @@ export default function Presencas() {
         }
       }
 
-      // After processing all presencas, create afternoon record for overtime if needed
+      // After processing all presencas, create or update afternoon record for overtime if needed
       for (const userId of users.map(u => u.id)) {
         const afternoonKey = `${userId}-a`;
         const overtimeValue = overtimeHours[userId] || 0;
-        
-        // If overtime > 0 but no afternoon record exists, create one (afternoon exists but was never marked)
-        if (overtimeValue > 0 && !presencas[afternoonKey]?.recordId && presencas[`${userId}-m`]?.recordId) {
+
+        // If overtime > 0 but no afternoon record exists (or exists but we still want to ensure overtime saved), create/update it
+        if (overtimeValue > 0 && !(presencas[afternoonKey]?.recordId)) {
           const res = await fetch('/api/level-user-days', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -231,8 +241,19 @@ export default function Presencas() {
             })
           });
           if (!res.ok) throw new Error('Erro ao criar registo de horas extra');
+        } else if (overtimeValue > 0 && presencas[afternoonKey]?.recordId) {
+          // If afternoon record exists, ensure overtimeHours is updated
+          const res = await fetch(`/api/level-user-days/${presencas[afternoonKey].recordId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appeared: presencas[afternoonKey].appeared || null, observations: presencas[afternoonKey].observations || '', overtimeHours: overtimeValue })
+          });
+          if (!res.ok) throw new Error('Erro ao actualizar registo de horas extra');
         }
       }
+
+      // Refresh presencas to reflect saved overtime values
+      await fetchPresencas();
 
       setModal({
         type: 'success',
@@ -312,6 +333,26 @@ export default function Presencas() {
         grouped[userId].works[record.levelId] = (grouped[userId].works[record.levelId] || 0) + 1;
       });
 
+        // Also include overtime from records where appeared !== 'yes' (e.g., afternoon marked 'no')
+        data.forEach((record) => {
+          const oh = Number(record.overtimeHours || 0);
+          if (oh > 0) {
+            const userId = record.userId;
+            if (!grouped[userId]) {
+              grouped[userId] = {
+                userId,
+                name: record.name || `User ${userId}`,
+                email: record.email || '',
+                days: new Set(),
+                totalConfirmed: 0,
+                overtimeHours: 0,
+                works: {}
+              };
+            }
+            grouped[userId].overtimeHours += oh;
+          }
+        });
+
       const rows = Object.values(grouped)
         .map((u) => ({
           ...u,
@@ -325,6 +366,62 @@ export default function Presencas() {
         .sort((a, b) => a.name.localeCompare(b.name));
 
       setReportRows(rows);
+
+      // Build report matrix: rows = days, columns = users with confirmed presences
+      const usersOrdered = rows.filter(r => (r.totalConfirmed || 0) > 0).map(r => ({ userId: r.userId, name: r.name }));
+
+      // Helper to format date to YYYY-MM-DD
+      const fmt = (d) => {
+        const dt = new Date(d);
+        return dt.toISOString().slice(0, 10);
+      };
+
+      const start = new Date(reportFrom);
+      const end = new Date(reportTo);
+      const days = [];
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        days.push(fmt(new Date(d)));
+      }
+
+      const matrixRows = days.map((dayStr) => {
+        const cells = {};
+        usersOrdered.forEach(({ userId }) => {
+          // morning
+          const morningRec = data.find(r => r.userId === userId && (typeof r.day === 'string' ? r.day.split('T')[0] : new Date(r.day).toISOString().slice(0,10)) === dayStr && r.period === 'm' && r.appeared === 'yes');
+          const afternoonRec = data.find(r => r.userId === userId && (typeof r.day === 'string' ? r.day.split('T')[0] : new Date(r.day).toISOString().slice(0,10)) === dayStr && r.period === 'a' && r.appeared === 'yes');
+
+          const extractNum = (levelId) => {
+            const name = levelMap[levelId] || '';
+            const m = name.match(/\b(\d+)\b/);
+            return m ? m[1] : 'NA';
+          };
+
+          const morningVal = morningRec && morningRec.levelId ? extractNum(morningRec.levelId) : '';
+          const afternoonVal = afternoonRec && afternoonRec.levelId ? extractNum(afternoonRec.levelId) : '';
+
+          // Sum overtime for this user/day (both periods)
+          const overtimeSum = data.reduce((acc, r) => {
+            const rDay = (typeof r.day === 'string' ? r.day.split('T')[0] : new Date(r.day).toISOString().slice(0,10));
+            if (r.userId === userId && rDay === dayStr) return acc + Number(r.overtimeHours || 0);
+            return acc;
+          }, 0);
+
+          // If user has no confirmed presence for this day, leave cell blank
+          const hasConfirmed = Boolean(morningRec || afternoonRec);
+          if (!hasConfirmed) {
+            cells[userId] = null;
+          } else {
+            cells[userId] = {
+              morning: morningVal === '' ? 'NA' : morningVal,
+              afternoon: afternoonVal === '' ? 'NA' : afternoonVal,
+              overtime: overtimeSum
+            };
+          }
+        });
+        return { day: dayStr, cells };
+      });
+
+      setReportMatrix({ days, users: usersOrdered, rows: matrixRows });
     } catch (err) {
       setModal({
         type: 'error',
@@ -615,6 +712,53 @@ export default function Presencas() {
                 ))}
               </div>
             )}
+
+            {reportMatrix && reportMatrix.rows.length > 0 && (
+              <div className="presencas-matrix">
+                <h3>Matriz de Presenças por Dia</h3>
+                <div className="matrix-scroll">
+                  <table className="matrix-table">
+                    <thead>
+                      <tr>
+                        <th>Dia</th>
+                        {reportMatrix.users.map(u => (
+                          <th key={u.userId}>{u.name}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reportMatrix.rows.map(r => (
+                        <tr key={r.day}>
+                          <td className="matrix-day">{r.day}</td>
+                          {reportMatrix.users.map(u => {
+                            const c = r.cells[u.userId];
+                            if (!c) return <td key={u.userId} className="matrix-cell" />;
+                            return (
+                              <td key={u.userId} className="matrix-cell">
+                                <div className="matrix-cell-grid">
+                                  <div className="matrix-col">
+                                    <div className="matrix-col-label">M</div>
+                                    <div className="matrix-col-value">{c.morning}</div>
+                                  </div>
+                                  <div className="matrix-col">
+                                    <div className="matrix-col-label">A</div>
+                                    <div className="matrix-col-value">{c.afternoon}</div>
+                                  </div>
+                                  <div className="matrix-col">
+                                    <div className="matrix-col-label">HE</div>
+                                    <div className="matrix-col-value">{c.overtime.toFixed(2)}</div>
+                                  </div>
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -719,6 +863,18 @@ export default function Presencas() {
           margin-bottom: 6px;
           font-size: 0.95rem;
         }
+
+        .presencas-matrix { margin-top: 20px; }
+        .matrix-scroll { overflow: auto; }
+        .matrix-table { border-collapse: collapse; width: 100%; min-width: 800px; }
+        .matrix-table th, .matrix-table td { border: 1px solid #e6f4ef; padding: 8px; text-align: left; vertical-align: top; }
+        .matrix-day { width: 120px; font-weight: 700; }
+        .matrix-cell { white-space: nowrap; }
+        .matrix-metric { font-size: 0.9rem; color: #0f172a; }
+        .matrix-cell-grid { display: flex; gap: 12px; }
+        .matrix-col { display: flex; flex-direction: column; align-items: flex-start; min-width: 60px; }
+        .matrix-col-label { font-weight: 700; color: #475569; font-size: 0.85rem; }
+        .matrix-col-value { font-size: 0.95rem; color: #0f172a; }
         
         .presencas-field input,
         .presencas-field select {

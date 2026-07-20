@@ -74,7 +74,7 @@ export default function ManageLevels() {
 
   // Formulário de foto
   const [photoFile, setPhotoFile] = useState(null);
-  const [photoType, setPhotoType] = useState("issue");
+  const [photoType, setPhotoType] = useState("others");
   const [photoDesc, setPhotoDesc] = useState("");
   const [photoRole, setPhotoRole] = useState("B");
   const [photoErrors, setPhotoErrors] = useState({});
@@ -118,6 +118,21 @@ export default function ManageLevels() {
 
   // Estado para tab "Todos os Anexos"
   const [allContents, setAllContents] = useState({ materials: [], photos: [], documents: [], counts: { materials: 0, photos: 0, documents: 0 } });
+
+  // Helper to map material statuses to badge modifier classes
+  const getDeliveryClass = (status) => {
+    if (!status) return '';
+    if (status === 'Requested') return 'ml-badge--yellow';
+    if (status === 'Delivered') return 'ml-badge--green';
+    return '';
+  };
+
+  const getAssemblyClass = (status) => {
+    if (!status) return '';
+    if (status === 'Started') return 'ml-badge--yellow';
+    if (status === 'Finished') return 'ml-badge--green';
+    return '';
+  };
   const [contentsFilter, setContentsFilter] = useState('all'); // 'all', 'materials', 'photos', 'documents'
   const [contentsSearch, setContentsSearch] = useState('');
   const [contentsOffset, setContentsOffset] = useState(0);
@@ -1544,7 +1559,7 @@ export default function ManageLevels() {
       if (!res.ok) throw new Error("Erro ao criar foto");
       await fetchPhotos();
       setPhotoFile(null);
-      setPhotoType("issue");
+      setPhotoType("others");
       setPhotoRole("B");
       setPhotoDesc("");
       setShowPhotoForm(false);
@@ -3439,14 +3454,14 @@ export default function ManageLevels() {
                               />
                               <div style={{ flex: 1 }}>
                                 <div className="ml-status-badges">
-                                  <span className="ml-badge">Entrega: {
+                                  <span className={`ml-badge ${getDeliveryClass(mat.deliveryStatus)}`}>Entrega: {
                                     {
                                       'Not requested': 'Não pedido',
                                       'Requested': 'Pedido',
                                       'Delivered': 'Entregue'
                                     }[mat.deliveryStatus] || mat.deliveryStatus || 'Não pedido'
                                   }</span>
-                                  <span className="ml-badge">Montagem: {
+                                  <span className={`ml-badge ${getAssemblyClass(mat.assemblyStatus)}`}>Montagem: {
                                     {
                                       'Not started': 'Não iniciado',
                                       'Started': 'Iniciado',
@@ -3461,14 +3476,14 @@ export default function ManageLevels() {
                           {!mat.photoUrl && (
                             <>
                               <div className="ml-status-badges">
-                                <span className="ml-badge">Entrega: {
+                                <span className={`ml-badge ${getDeliveryClass(mat.deliveryStatus)}`}>Entrega: {
                                   {
                                     'Not requested': 'Não pedido',
                                     'Requested': 'Pedido',
                                   'Delivered': 'Entregue'
                                 }[mat.deliveryStatus] || mat.deliveryStatus || 'Não pedido'
                               }</span>
-                              <span className="ml-badge">Montagem: {
+                              <span className={`ml-badge ${getAssemblyClass(mat.assemblyStatus)}`}>Montagem: {
                                 {
                                   'Not started': 'Não iniciado',
                                   'Started': 'Iniciado',
@@ -3615,8 +3630,8 @@ export default function ManageLevels() {
                 <div className="ml-field">
                   <label>Tipo de Foto</label>
                   <select value={photoType} onChange={(e) => setPhotoType(e.target.value)}>
-                    <option value="issue">Inconformidade</option>
                     <option value="others">Outras</option>
+                    <option value="issue">Inconformidade</option>
                   </select>
                 </div>
                 <div className="ml-field">
@@ -4406,6 +4421,16 @@ export default function ManageLevels() {
           font-weight: 600;
           font-size: 0.85rem;
           border: 1px solid #bae6fd;
+        }
+        .ml-badge--yellow {
+          background: #fef3c7;
+          color: #92400e;
+          border: 1px solid #fde68a;
+        }
+        .ml-badge--green {
+          background: #d1fae5;
+          color: #065f46;
+          border: 1px solid #86efac;
         }
         .ml-date {
           color: #94a3b8;
