@@ -157,6 +157,144 @@ class LevelUserDayService {
     }
   }
 
+  async setRangeForLevels(levels = [], from, to) {
+    if (!from || !to) throw new Error('from and to are required');
+
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    if (Number.isNaN(fromDate) || Number.isNaN(toDate)) throw new Error('Invalid date format');
+    if (fromDate > toDate) throw new Error('from must be before or equal to to');
+
+    const pool = await getConnection();
+    const tx = new sql.Transaction(pool);
+    await tx.begin();
+
+    try {
+      const processedLevels = {};
+      const inserted = [];
+      const conflicts = [];
+
+      for (const level of levels) {
+        const levelId = parseInt(level.levelId, 10);
+        if (!levelId || processedLevels[levelId]) continue;
+
+        // Validate level exists and is root (parentId IS NULL)
+        const levelRes = await new sql.Request(tx)
+          .input('levelId', sql.Int, levelId)
+          .query('SELECT id, parentId FROM Level WHERE id = @levelId');
+        if (levelRes.recordset.length === 0) {
+          throw new Error(`Level ${levelId} not found`);
+        }
+        if (levelRes.recordset[0].parentId !== null) {
+          throw new Error('Only root obras can receive daily planning');
+        }
+
+        // Fetch allowed users for the level
+        const luRes = await new sql.Request(tx)
+          .input('levelId', sql.Int, levelId)
+          .query('SELECT userId FROM LevelUser WHERE levelId = @levelId');
+        const allowedUserIds = new Set(luRes.recordset.map(r => r.userId));
+
+        // Clear existing empty records in range for this level
+        await new sql.Request(tx)
+          .input('levelId', sql.Int, levelId)
+          .input('from', sql.Date, from)
+          .input('to', sql.Date, to)
+          .query(`
+            DELETE FROM LevelUserDay
+            WHERE levelId = @levelId
+              AND [day] BETWEEN @from AND @to
+              AND (appeared IS NULL)
+              AND (overtimeHours IS NULL OR overtimeHours = 0)
+              AND (ISNULL(observations, '') = '')
+          `);
+
+        processedLevels[levelId] = {
+          allowedUserIds,
+          entries: []
+        };
+      }
+
+      const seen = new Set();
+      for (const level of levels) {
+        const levelId = parseInt(level.levelId, 10);
+        if (!levelId || !processedLevels[levelId]) continue;
+
+        for (const e of level.entries || []) {
+          const userId = parseInt(e.userId, 10);
+          const day = e.day;
+          const period = e.period || 'm';
+          if (!userId || !day) continue;
+          if (!['m', 'a'].includes(period)) continue;
+          const allowedUserIds = processedLevels[levelId].allowedUserIds;
+          if (allowedUserIds.size > 0 && !allowedUserIds.has(userId)) continue;
+
+          const key = `${levelId}-${userId}-${day}-${period}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          processedLevels[levelId].entries.push({ userId, day, period });
+        }
+      }
+
+      for (const [levelId, info] of Object.entries(processedLevels)) {
+        for (const ent of info.entries) {
+          const conflictCheck = await new sql.Request(tx)
+            .input('userId', sql.Int, ent.userId)
+            .input('day', sql.Date, ent.day)
+            .input('period', sql.Char, ent.period)
+            .input('levelId', sql.Int, parseInt(levelId, 10))
+            .query(`
+              SELECT lud.levelId, l.name as obraName
+              FROM LevelUserDay lud
+              INNER JOIN Level l ON l.id = lud.levelId
+              WHERE lud.userId = @userId 
+                AND lud.[day] = @day 
+                AND lud.period = @period
+                AND lud.levelId != @levelId
+            `);
+
+          if (conflictCheck.recordset.length > 0) {
+            const conflict = conflictCheck.recordset[0];
+            conflicts.push({
+              userId: ent.userId,
+              day: ent.day,
+              period: ent.period,
+              conflictingObra: conflict.obraName
+            });
+            continue;
+          }
+
+          const ins = await new sql.Request(tx)
+            .input('levelId', sql.Int, parseInt(levelId, 10))
+            .input('userId', sql.Int, ent.userId)
+            .input('day', sql.Date, ent.day)
+            .input('period', sql.Char, ent.period)
+            .query(`
+              IF NOT EXISTS (
+                SELECT 1 FROM LevelUserDay WHERE levelId = @levelId AND userId = @userId AND [day] = @day AND period = @period
+              )
+              BEGIN
+                INSERT INTO LevelUserDay (levelId, userId, [day], period) OUTPUT INSERTED.* VALUES (@levelId, @userId, @day, @period)
+              END
+            `);
+          if (ins.recordset && ins.recordset[0]) inserted.push(ins.recordset[0]);
+        }
+      }
+
+      await tx.commit();
+
+      if (conflicts.length > 0) {
+        const errorMsg = `Conflitos detectados: ${conflicts.length} alocações ignoradas porque os utilizadores já estão noutras obras.`;
+        return { inserted, conflicts, error: errorMsg };
+      }
+
+      return { inserted, conflicts: [] };
+    } catch (err) {
+      await tx.rollback().catch(() => {});
+      throw err;
+    }
+  }
+
   async update(id, appeared, observations, overtimeHours = 0) {
     const pool = await getConnection();
     const result = await pool.request()

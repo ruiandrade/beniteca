@@ -45,6 +45,29 @@ class LevelUserDayController {
     }
   }
 
+  async setForMultipleLevels(req, res) {
+    try {
+      const { from, to, levels } = req.body;
+      if (!from || !to) return res.status(400).json({ error: 'from and to are required' });
+      if (!Array.isArray(levels)) return res.status(400).json({ error: 'levels is required' });
+
+      const result = await levelUserDayService.setRangeForLevels(levels, from, to);
+      
+      if (result.conflicts && result.conflicts.length > 0) {
+        return res.status(200).json({ 
+          saved: result.inserted.length,
+          conflicts: result.conflicts.length,
+          message: result.error,
+          conflictDetails: result.conflicts
+        });
+      }
+
+      res.status(200).json({ saved: result.inserted.length });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   async createSingle(req, res) {
     try {
       const { levelId, userId, day, period, appeared, observations, overtimeHours } = req.body;

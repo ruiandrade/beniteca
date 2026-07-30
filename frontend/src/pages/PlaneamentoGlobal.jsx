@@ -18,6 +18,8 @@ export default function PlaneamentoGlobal() {
   const [selectedNewUser, setSelectedNewUser] = useState({}); // { obraId: userId }
   const [addingUser, setAddingUser] = useState({}); // { obraId: boolean }
   const [selected, setSelected] = useState(new Set()); // userId::obraId::day::period
+  const [initialSelected, setInitialSelected] = useState(new Set());
+  const [initialRange, setInitialRange] = useState({ from: '', to: '' });
   const [expandedObras, setExpandedObras] = useState(new Set());
   const [isMobile, setIsMobile] = useState(false);
   const [expandedMobileUsers, setExpandedMobileUsers] = useState(new Set()); // "obraId::userId"
@@ -153,6 +155,8 @@ export default function PlaneamentoGlobal() {
         }
       });
       setSelected(nextSelected);
+      setInitialSelected(new Set(nextSelected));
+      setInitialRange({ from, to });
     } catch (err) {
       setError('Erro ao carregar alocações');
       console.error(err);
@@ -217,8 +221,7 @@ export default function PlaneamentoGlobal() {
     const weekdays = days.filter(day => {
       const dow = new Date(day).getDay();
       const isWeekend = dow === 0 || dow === 6;
-      const isPast = day < todayIso;
-      return !isWeekend && !isPast;
+      return !isWeekend;
     });
     
     // Check if all weekdays are already selected
@@ -250,8 +253,7 @@ export default function PlaneamentoGlobal() {
     const weekdays = days.filter(day => {
       const dow = new Date(day).getDay();
       const isWeekend = dow === 0 || dow === 6;
-      const isPast = day < todayIso;
-      return !isWeekend && !isPast;
+      return !isWeekend;
     });
     
     // Check if all users and weekdays are already selected
@@ -412,46 +414,76 @@ export default function PlaneamentoGlobal() {
     setLoading(true);
     setError('');
     try {
-      // Group by obra
-      const byObra = {};
-      Array.from(selected).forEach((key) => {
-        const [userId, obraId, day, period] = key.split('::');
-        if (!byObra[obraId]) byObra[obraId] = [];
-        byObra[obraId].push({ 
-          userId: parseInt(userId, 10), 
-          day, 
-          period 
-        });
-      });
-
-      // Save for each obra
-      const results = await Promise.all(Object.entries(byObra).map(async ([obraId, entries]) => {
-        const res = await fetch(`/api/level-user-days/level/${obraId}`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ from: fromDate, to: toDate, entries })
-        });
-        if (!res.ok) {
-          throw new Error(`Erro ao salvar obra ${obraId}`);
-        }
-        return await res.json();
+      const levels = obras.map((obra) => ({
+        levelId: obra.id,
+        entries: []
       }));
 
-      await loadAllocations(fromDate, toDate);
-      
-      // Check for conflicts
-      const totalConflicts = results.reduce((sum, r) => sum + (r.conflicts || 0), 0);
-      if (totalConflicts > 0) {
+      Array.from(selected).forEach((key) => {
+        const [userId, obraId, day, period] = key.split('::');
+        const level = levels.find((l) => l.levelId === parseInt(obraId, 10));
+        if (level) {
+          level.entries.push({
+            userId: parseInt(userId, 10),
+            day,
+            period
+          });
+        }
+      });
+
+      const hasSameSelection = initialSelected.size === selected.size &&
+        Array.from(selected).every((key) => initialSelected.has(key));
+
+      const hasSameRange = initialRange.from === fromDate && initialRange.to === toDate;
+      if (hasSameSelection && hasSameRange) {
         setModal({
-          type: 'alert',
-          title: 'Planeamento Aplicado',
-          message: `Planeamento aplicado com ${totalConflicts} conflito(s)!\n\nAlguns utilizadores já estavam alocados a outras obras nos mesmos períodos e foram ignorados.`,
+          type: 'success',
+          title: 'Nenhuma alteração',
+          message: 'Não foram feitas alterações no planeamento. Nenhum conflito foi gerado.',
           onConfirm: null,
           data: null
         });
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch('/api/level-user-days/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ from: fromDate, to: toDate, levels })
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erro ao salvar planeamento');
+      }
+
+      const data = await res.json();
+      await loadAllocations(fromDate, toDate);
+
+      const totalConflicts = data.conflicts || 0;
+      const savedCount = data.saved || 0;
+      if (totalConflicts > 0) {
+        if (savedCount > 0) {
+          setModal({
+            type: 'success',
+            title: 'Planeamento Aplicado',
+            message: `Alterações aplicadas com sucesso. ${totalConflicts} conflito(s) foram detectados e ignorados.`,
+            onConfirm: null,
+            data: null
+          });
+        } else {
+          setModal({
+            type: 'alert',
+            title: 'Conflitos detectados',
+            message: `Nenhuma alteração foi aplicada porque ${totalConflicts} alocação(ões) conflituosa(s) foram detectadas no intervalo selecionado.`,
+            onConfirm: null,
+            data: null
+          });
+        }
       } else {
         setModal({
           type: 'success',
@@ -478,8 +510,6 @@ export default function PlaneamentoGlobal() {
   const filteredObras = selectedObraId === 'all' 
     ? obras 
     : obras.filter(o => o.id === parseInt(selectedObraId));
-
-  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   if (accessDeniedModal) {
     return (
@@ -691,7 +721,6 @@ export default function PlaneamentoGlobal() {
                                 const afternoonActive = selected.has(keyAfternoon);
                                 const morningConflict = morningActive && (conflictCounts[`${user.id}::${d}::m`] || 0) > 1;
                                 const afternoonConflict = afternoonActive && (conflictCounts[`${user.id}::${d}::a`] || 0) > 1;
-                                const isPast = d < todayIso;
                                 const dow = new Date(d).getDay();
                                 const isWeekend = dow === 0 || dow === 6;
                                 
@@ -700,14 +729,14 @@ export default function PlaneamentoGlobal() {
                                     <div className="pg-card-day-date">{d}</div>
                                     <div className="pg-card-day-periods">
                                       <span 
-                                        className={`pg-chip ${morningActive ? 'active' : ''} ${morningConflict ? 'conflict' : ''} ${isPast ? 'disabled' : ''}`}
-                                        onClick={() => !isPast && toggleCell(user.id, obra.id, d, 'm')}
+                                        className={`pg-chip ${morningActive ? 'active' : ''} ${morningConflict ? 'conflict' : ''}`}
+                                        onClick={() => toggleCell(user.id, obra.id, d, 'm')}
                                       >
                                         🌅 Manhã {morningConflict && '⚠️'}
                                       </span>
                                       <span 
-                                        className={`pg-chip ${afternoonActive ? 'active' : ''} ${afternoonConflict ? 'conflict' : ''} ${isPast ? 'disabled' : ''}`}
-                                        onClick={() => !isPast && toggleCell(user.id, obra.id, d, 'a')}
+                                        className={`pg-chip ${afternoonActive ? 'active' : ''} ${afternoonConflict ? 'conflict' : ''}`}
+                                        onClick={() => toggleCell(user.id, obra.id, d, 'a')}
                                       >
                                         🌤️ Tarde {afternoonConflict && '⚠️'}
                                       </span>
@@ -815,26 +844,25 @@ export default function PlaneamentoGlobal() {
                             const afternoonActive = selected.has(keyAfternoon);
                             const morningConflict = morningActive && (conflictCounts[`${user.id}::${d}::m`] || 0) > 1;
                             const afternoonConflict = afternoonActive && (conflictCounts[`${user.id}::${d}::a`] || 0) > 1;
-                            const isPast = d < todayIso;
                             const dow = new Date(d).getDay();
                             const isWeekend = dow === 0 || dow === 6;
                             
                             return (
                               <td 
                                 key={d} 
-                                className={`pg-cell ${isPast ? 'past' : ''} ${isWeekend ? 'weekend' : ''}`}
+                                className={`pg-cell ${isWeekend ? 'weekend' : ''}`}
                               >
                                 <div className="pg-cell-periods">
                                   <div 
-                                    className={`pg-period ${morningActive ? 'active' : ''} ${morningConflict ? 'conflict' : ''} ${isPast ? 'disabled' : ''}`}
-                                    onClick={() => !isPast && toggleCell(user.id, obra.id, d, 'm')}
+                                    className={`pg-period ${morningActive ? 'active' : ''} ${morningConflict ? 'conflict' : ''}`}
+                                    onClick={() => toggleCell(user.id, obra.id, d, 'm')}
                                     title="Manhã"
                                   >
                                     {morningActive ? '✔' : ''}
                                   </div>
                                   <div 
-                                    className={`pg-period ${afternoonActive ? 'active' : ''} ${afternoonConflict ? 'conflict' : ''} ${isPast ? 'disabled' : ''}`}
-                                    onClick={() => !isPast && toggleCell(user.id, obra.id, d, 'a')}
+                                    className={`pg-period ${afternoonActive ? 'active' : ''} ${afternoonConflict ? 'conflict' : ''}`}
+                                    onClick={() => toggleCell(user.id, obra.id, d, 'a')}
                                     title="Tarde"
                                   >
                                     {afternoonActive ? '✔' : ''}
