@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import * as XLSX from "xlsx";
 
 export default function Presencas() {
   const { user, token } = useAuth();
@@ -220,38 +221,6 @@ export default function Presencas() {
         }
       }
 
-      // After processing all presencas, create or update afternoon record for overtime if needed
-      for (const userId of users.map(u => u.id)) {
-        const afternoonKey = `${userId}-a`;
-        const overtimeValue = overtimeHours[userId] || 0;
-
-        // If overtime > 0 but no afternoon record exists (or exists but we still want to ensure overtime saved), create/update it
-        if (overtimeValue > 0 && !(presencas[afternoonKey]?.recordId)) {
-          const res = await fetch('/api/level-user-days', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              levelId: selectedWork,
-              userId,
-              day: selectedDate,
-              period: 'a',
-              appeared: null, // No presence marked, just overtime
-              observations: "",
-              overtimeHours: overtimeValue
-            })
-          });
-          if (!res.ok) throw new Error('Erro ao criar registo de horas extra');
-        } else if (overtimeValue > 0 && presencas[afternoonKey]?.recordId) {
-          // If afternoon record exists, ensure overtimeHours is updated
-          const res = await fetch(`/api/level-user-days/${presencas[afternoonKey].recordId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ appeared: presencas[afternoonKey].appeared || null, observations: presencas[afternoonKey].observations || '', overtimeHours: overtimeValue })
-          });
-          if (!res.ok) throw new Error('Erro ao actualizar registo de horas extra');
-        }
-      }
-
       // Refresh presencas to reflect saved overtime values
       await fetchPresencas();
 
@@ -290,7 +259,25 @@ export default function Presencas() {
       if (!res.ok) throw new Error('Erro ao carregar relatório');
       const data = await res.json();
 
-      const confirmed = data.filter(r => r.appeared === 'yes');
+      const normalizeDay = (value) => typeof value === 'string'
+        ? value.slice(0, 10)
+        : new Date(value).toISOString().slice(0, 10);
+      const normalizeText = (value) => String(value || '').trim().toLowerCase();
+      const normalizedData = data.map((record) => ({
+        ...record,
+        day: normalizeDay(record.day),
+        period: normalizeText(record.period),
+        appeared: normalizeText(record.appeared)
+      }));
+
+      const confirmed = normalizedData.filter(r => r.appeared === 'yes');
+      const overtimeByUserDay = new Map();
+      normalizedData.forEach((record) => {
+        const overtime = Number(record.overtimeHours || 0);
+        if (overtime <= 0) return;
+        const key = `${record.userId}-${record.day}`;
+        overtimeByUserDay.set(key, (overtimeByUserDay.get(key) || 0) + overtime);
+      });
       const uniqueLevelIds = [...new Set(confirmed.map(r => r.levelId))];
       const levelMap = {};
 
@@ -323,35 +310,31 @@ export default function Presencas() {
           };
         }
 
-        const dayKey = typeof record.day === 'string'
-          ? record.day.split('T')[0]
-          : new Date(record.day).toISOString().slice(0, 10);
+        const dayKey = record.day;
 
         grouped[userId].days.add(dayKey);
         grouped[userId].totalConfirmed += 0.5;
-        grouped[userId].overtimeHours += Number(record.overtimeHours || 0);
         grouped[userId].works[record.levelId] = (grouped[userId].works[record.levelId] || 0) + 1;
       });
 
-        // Also include overtime from records where appeared !== 'yes' (e.g., afternoon marked 'no')
-        data.forEach((record) => {
-          const oh = Number(record.overtimeHours || 0);
-          if (oh > 0) {
-            const userId = record.userId;
-            if (!grouped[userId]) {
-              grouped[userId] = {
-                userId,
-                name: record.name || `User ${userId}`,
-                email: record.email || '',
-                days: new Set(),
-                totalConfirmed: 0,
-                overtimeHours: 0,
-                works: {}
-              };
-            }
-            grouped[userId].overtimeHours += oh;
-          }
-        });
+      // Overtime is counted from the stored records. The backend guarantees
+      // that future writes keep it on one period per user and day.
+      overtimeByUserDay.forEach((overtime, key) => {
+        const userId = Number(key.split('-')[0]);
+        const record = normalizedData.find(r => r.userId === userId);
+        if (!grouped[userId]) {
+          grouped[userId] = {
+            userId,
+            name: record?.name || `User ${userId}`,
+            email: record?.email || '',
+            days: new Set(),
+            totalConfirmed: 0,
+            overtimeHours: 0,
+            works: {}
+          };
+        }
+        grouped[userId].overtimeHours += overtime;
+      });
 
       const rows = Object.values(grouped)
         .map((u) => ({
@@ -360,7 +343,7 @@ export default function Presencas() {
           worksList: Object.entries(u.works).map(([levelId, count]) => ({
             levelId: parseInt(levelId),
             name: levelMap[levelId] || `Obra ${levelId}`,
-            count
+            days: count / 2
           }))
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
@@ -387,8 +370,8 @@ export default function Presencas() {
         const cells = {};
         usersOrdered.forEach(({ userId }) => {
           // morning
-          const morningRec = data.find(r => r.userId === userId && (typeof r.day === 'string' ? r.day.split('T')[0] : new Date(r.day).toISOString().slice(0,10)) === dayStr && r.period === 'm' && r.appeared === 'yes');
-          const afternoonRec = data.find(r => r.userId === userId && (typeof r.day === 'string' ? r.day.split('T')[0] : new Date(r.day).toISOString().slice(0,10)) === dayStr && r.period === 'a' && r.appeared === 'yes');
+          const morningRec = normalizedData.find(r => r.userId === userId && r.day === dayStr && r.period === 'm' && r.appeared === 'yes');
+          const afternoonRec = normalizedData.find(r => r.userId === userId && r.day === dayStr && r.period === 'a' && r.appeared === 'yes');
 
           const extractNum = (levelId) => {
             const name = levelMap[levelId] || '';
@@ -399,12 +382,7 @@ export default function Presencas() {
           const morningVal = morningRec && morningRec.levelId ? extractNum(morningRec.levelId) : '';
           const afternoonVal = afternoonRec && afternoonRec.levelId ? extractNum(afternoonRec.levelId) : '';
 
-          // Sum overtime for this user/day (both periods)
-          const overtimeSum = data.reduce((acc, r) => {
-            const rDay = (typeof r.day === 'string' ? r.day.split('T')[0] : new Date(r.day).toISOString().slice(0,10));
-            if (r.userId === userId && rDay === dayStr) return acc + Number(r.overtimeHours || 0);
-            return acc;
-          }, 0);
+          const overtimeSum = overtimeByUserDay.get(`${userId}-${dayStr}`) || 0;
 
           // If user has no confirmed presence for this day, leave cell blank
           const hasConfirmed = Boolean(morningRec || afternoonRec);
@@ -432,6 +410,42 @@ export default function Presencas() {
     } finally {
       setReportLoading(false);
     }
+  };
+
+  const exportMatrixToExcel = () => {
+    if (!reportMatrix || reportMatrix.rows.length === 0) return;
+
+    const header = ['Dia'];
+    const subheader = [''];
+    const merges = [{ s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }];
+
+    reportMatrix.users.forEach((user, userIndex) => {
+      const startColumn = 1 + userIndex * 3;
+      header.push(user.name, '', '');
+      subheader.push('M', 'T', 'HE');
+      merges.push({
+        s: { r: 0, c: startColumn },
+        e: { r: 0, c: startColumn + 2 }
+      });
+    });
+
+    const rows = reportMatrix.rows.map(row => [
+      row.day,
+      ...reportMatrix.users.map(user => {
+        const cell = row.cells[user.userId];
+        return cell ? [cell.morning, cell.afternoon, cell.overtime] : ['', '', ''];
+      }).flat()
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([header, subheader, ...rows]);
+    worksheet['!merges'] = merges;
+    worksheet['!cols'] = [
+      { wch: 14 },
+      ...reportMatrix.users.flatMap(() => [{ wch: 12 }, { wch: 12 }, { wch: 10 }])
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Matriz Presenças');
+    XLSX.writeFile(workbook, `matriz-presencas-${reportFrom}-${reportTo}.xlsx`);
   };
 
   return (
@@ -523,15 +537,16 @@ export default function Presencas() {
                           {SLOTS.map(slot => {
                             const key = `${user.id}-${slot}`;
                             const data = presencas[key] || { appeared: null, observations: "", recordId: null };
+                            const isPlanned = Boolean(data.recordId);
                             const slotLabel = slot === 'm' ? 'Manhã' : 'Tarde';
                             return (
                               <div key={slot} className="presencas-card-slot">
                                 <div className="presencas-card-slot-title">{slot === 'm' ? '🌅' : '🌤️'} {slotLabel}</div>
                                 <div className="presencas-card-presence">
-                                  <label className={`presencas-chip ${data.appeared === 'yes' ? 'active' : ''}`} onClick={() => handleToggleAppeared(user.id, slot, 'yes')}>
+                                  <label className={`presencas-chip ${data.appeared === 'yes' ? 'active' : ''} ${!isPlanned ? 'disabled' : ''}`} onClick={() => isPlanned && handleToggleAppeared(user.id, slot, 'yes')} title={!isPlanned ? 'Utilizador não planeado para este período' : 'Marcar como presente'}>
                                     Sim
                                   </label>
-                                  <label className={`presencas-chip ${data.appeared === 'no' ? 'active' : ''}`} onClick={() => handleToggleAppeared(user.id, slot, 'no')}>
+                                  <label className={`presencas-chip ${data.appeared === 'no' ? 'active' : ''} ${!isPlanned ? 'disabled' : ''}`} onClick={() => isPlanned && handleToggleAppeared(user.id, slot, 'no')} title={!isPlanned ? 'Utilizador não planeado para este período' : 'Marcar como ausente'}>
                                     Não
                                   </label>
                                 </div>
@@ -575,27 +590,30 @@ export default function Presencas() {
                         {SLOTS.map(slot => {
                           const key = `${user.id}-${slot}`;
                           const data = presencas[key] || { appeared: null, observations: "", recordId: null };
+                          const isPlanned = Boolean(data.recordId);
                           
                           return (
                             <div key={slot} className="presencas-slot-cell">
                               <div className="presencas-appearance">
-                                <label className="presencas-radio">
+                                <label className={`presencas-radio ${!isPlanned ? 'disabled' : ''}`} title={!isPlanned ? 'Utilizador não planeado para este período' : ''}>
                                   <input
                                     type="radio"
                                     name={`${key}-appearance`}
                                     value="yes"
                                     checked={data.appeared === 'yes'}
                                     onChange={() => handleToggleAppeared(user.id, slot, 'yes')}
+                                    disabled={!isPlanned}
                                   />
                                   Sim
                                 </label>
-                                <label className="presencas-radio">
+                                <label className={`presencas-radio ${!isPlanned ? 'disabled' : ''}`} title={!isPlanned ? 'Utilizador não planeado para este período' : ''}>
                                   <input
                                     type="radio"
                                     name={`${key}-appearance`}
                                     value="no"
                                     checked={data.appeared === 'no'}
                                     onChange={() => handleToggleAppeared(user.id, slot, 'no')}
+                                    disabled={!isPlanned}
                                   />
                                   Não
                                 </label>
@@ -690,7 +708,7 @@ export default function Presencas() {
                   <div>Presenças</div>
                   <div>Dias</div>
                   <div>Horas Extra</div>
-                  <div>Obras</div>
+                  <div>Obras (dias)</div>
                 </div>
                 {reportRows.map((row) => (
                   <div key={row.userId} className="presencas-report-row">
@@ -704,7 +722,7 @@ export default function Presencas() {
                     <div className="presencas-report-works">
                       {row.worksList.map((w) => (
                         <span key={w.levelId} className="presencas-report-chip">
-                          {w.name}: {w.count}
+                          {w.name}: {w.days.toFixed(1)}
                         </span>
                       ))}
                     </div>
@@ -715,7 +733,16 @@ export default function Presencas() {
 
             {reportMatrix && reportMatrix.rows.length > 0 && (
               <div className="presencas-matrix">
-                <h3>Matriz de Presenças por Dia</h3>
+                <div className="presencas-matrix-header">
+                  <h3>Matriz de Presenças por Dia</h3>
+                  <button
+                    onClick={exportMatrixToExcel}
+                    className="presencas-btn-load"
+                    type="button"
+                  >
+                    📊 Exportar Excel
+                  </button>
+                </div>
                 <div className="matrix-scroll">
                   <table className="matrix-table">
                     <thead>
@@ -741,7 +768,7 @@ export default function Presencas() {
                                     <div className="matrix-col-value">{c.morning}</div>
                                   </div>
                                   <div className="matrix-col">
-                                    <div className="matrix-col-label">A</div>
+                                    <div className="matrix-col-label">T</div>
                                     <div className="matrix-col-value">{c.afternoon}</div>
                                   </div>
                                   <div className="matrix-col">
@@ -865,10 +892,12 @@ export default function Presencas() {
         }
 
         .presencas-matrix { margin-top: 20px; }
+        .presencas-matrix-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .presencas-matrix-header h3 { margin: 0; }
         .matrix-scroll { overflow: auto; }
         .matrix-table { border-collapse: collapse; width: 100%; min-width: 800px; }
         .matrix-table th, .matrix-table td { border: 1px solid #e6f4ef; padding: 8px; text-align: left; vertical-align: top; }
-        .matrix-day { width: 120px; font-weight: 700; }
+        .matrix-day { width: 120px; min-width: 120px; white-space: nowrap; font-weight: 700; }
         .matrix-cell { white-space: nowrap; }
         .matrix-metric { font-size: 0.9rem; color: #0f172a; }
         .matrix-cell-grid { display: flex; gap: 12px; }
@@ -1080,6 +1109,15 @@ export default function Presencas() {
         .presencas-radio input {
           cursor: pointer;
           accent-color: #01a383;
+        }
+
+        .presencas-radio.disabled {
+          color: #94a3b8;
+          cursor: not-allowed;
+        }
+
+        .presencas-radio.disabled input {
+          cursor: not-allowed;
         }
         
         .presencas-btn-save {
@@ -1347,6 +1385,13 @@ export default function Presencas() {
             background: #dcfce7;
             color: #166534;
             border-color: #86efac;
+          }
+          .presencas-chip.disabled {
+            background: #f1f5f9;
+            color: #94a3b8;
+            border-color: #e2e8f0;
+            cursor: not-allowed;
+            opacity: 0.7;
           }
           .presencas-card-notes {
             width: 100%;
