@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
+import { buildMatrixCell } from "./presenceMatrix";
 
 export default function Presencas() {
   const { user, token } = useAuth();
@@ -13,6 +14,7 @@ export default function Presencas() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportRows, setReportRows] = useState([]);
   const [reportMatrix, setReportMatrix] = useState(null);
+  const [reportObservations, setReportObservations] = useState([]);
   const [users, setUsers] = useState([]);
   const [presencas, setPresencas] = useState({});
   const [overtimeHours, setOvertimeHours] = useState({});
@@ -267,10 +269,19 @@ export default function Presencas() {
         ...record,
         day: normalizeDay(record.day),
         period: normalizeText(record.period),
-        appeared: normalizeText(record.appeared)
+        appeared: normalizeText(record.appeared),
+        observations: String(record.observations || '').trim()
       }));
 
-      const confirmed = normalizedData.filter(r => r.appeared === 'yes');
+      const observationRecords = normalizedData
+        .filter(r => r.observations && ['yes', 'no'].includes(r.appeared))
+        .sort((a, b) => (a.day || '').localeCompare(b.day || '') || (a.userId || 0) - (b.userId || 0) || (a.period || '').localeCompare(b.period || ''));
+      observationRecords.forEach((record, index) => {
+        record.observationId = index + 1;
+      });
+      setReportObservations(observationRecords);
+
+      const presenceRecords = normalizedData.filter(r => ['yes', 'no'].includes(r.appeared));
       const overtimeByUserDay = new Map();
       normalizedData.forEach((record) => {
         const overtime = Number(record.overtimeHours || 0);
@@ -278,7 +289,7 @@ export default function Presencas() {
         const key = `${record.userId}-${record.day}`;
         overtimeByUserDay.set(key, (overtimeByUserDay.get(key) || 0) + overtime);
       });
-      const uniqueLevelIds = [...new Set(confirmed.map(r => r.levelId))];
+      const uniqueLevelIds = [...new Set(presenceRecords.map(r => r.levelId))];
       const levelMap = {};
 
       await Promise.all(
@@ -296,7 +307,7 @@ export default function Presencas() {
       );
 
       const grouped = {};
-      confirmed.forEach((record) => {
+      presenceRecords.forEach((record) => {
         const userId = record.userId;
         if (!grouped[userId]) {
           grouped[userId] = {
@@ -313,8 +324,10 @@ export default function Presencas() {
         const dayKey = record.day;
 
         grouped[userId].days.add(dayKey);
-        grouped[userId].totalConfirmed += 0.5;
-        grouped[userId].works[record.levelId] = (grouped[userId].works[record.levelId] || 0) + 1;
+        if (record.appeared === 'yes') {
+          grouped[userId].totalConfirmed += 0.5;
+          grouped[userId].works[record.levelId] = (grouped[userId].works[record.levelId] || 0) + 1;
+        }
       });
 
       // Overtime is counted from the stored records. The backend guarantees
@@ -346,12 +359,13 @@ export default function Presencas() {
             days: count / 2
           }))
         }))
+        .filter((u) => (u.daysCount || 0) > 0)
         .sort((a, b) => a.name.localeCompare(b.name));
 
       setReportRows(rows);
 
-      // Build report matrix: rows = days, columns = users with confirmed presences
-      const usersOrdered = rows.filter(r => (r.totalConfirmed || 0) > 0).map(r => ({ userId: r.userId, name: r.name }));
+      // Build report matrix: rows = days, columns = users with presence records (yes/no)
+      const usersOrdered = rows.map(r => ({ userId: r.userId, name: r.name }));
 
       // Helper to format date to YYYY-MM-DD
       const fmt = (d) => {
@@ -369,32 +383,14 @@ export default function Presencas() {
       const matrixRows = days.map((dayStr) => {
         const cells = {};
         usersOrdered.forEach(({ userId }) => {
-          // morning
-          const morningRec = normalizedData.find(r => r.userId === userId && r.day === dayStr && r.period === 'm' && r.appeared === 'yes');
-          const afternoonRec = normalizedData.find(r => r.userId === userId && r.day === dayStr && r.period === 'a' && r.appeared === 'yes');
-
-          const extractNum = (levelId) => {
-            const name = levelMap[levelId] || '';
-            const m = name.match(/\b(\d+)\b/);
-            return m ? m[1] : 'NA';
-          };
-
-          const morningVal = morningRec && morningRec.levelId ? extractNum(morningRec.levelId) : '';
-          const afternoonVal = afternoonRec && afternoonRec.levelId ? extractNum(afternoonRec.levelId) : '';
-
-          const overtimeSum = overtimeByUserDay.get(`${userId}-${dayStr}`) || 0;
-
-          // If user has no confirmed presence for this day, leave cell blank
-          const hasConfirmed = Boolean(morningRec || afternoonRec);
-          if (!hasConfirmed) {
-            cells[userId] = null;
-          } else {
-            cells[userId] = {
-              morning: morningVal === '' ? 'NA' : morningVal,
-              afternoon: afternoonVal === '' ? 'NA' : afternoonVal,
-              overtime: overtimeSum
-            };
-          }
+          const cell = buildMatrixCell({
+            userId,
+            day: dayStr,
+            records: normalizedData,
+            levelMap,
+            overtimeByUserDay
+          });
+          cells[userId] = cell;
         });
         return { day: dayStr, cells };
       });
@@ -760,16 +756,29 @@ export default function Presencas() {
                           {reportMatrix.users.map(u => {
                             const c = r.cells[u.userId];
                             if (!c) return <td key={u.userId} className="matrix-cell" />;
+                            const renderMarker = (markers) => markers.length ? (
+                              <div className="matrix-observation-markers">
+                                {markers.map(marker => (
+                                  <span key={`${marker.id}-${marker.type}`} className="matrix-obs-tag">*{marker.id}</span>
+                                ))}
+                              </div>
+                            ) : null;
                             return (
                               <td key={u.userId} className="matrix-cell">
                                 <div className="matrix-cell-grid">
                                   <div className="matrix-col">
                                     <div className="matrix-col-label">M</div>
-                                    <div className="matrix-col-value">{c.morning}</div>
+                                    <div className={`matrix-col-value ${c.morning === 'F' ? 'matrix-failure' : ''}`}>
+                                      {c.morning}
+                                    </div>
+                                    {renderMarker(c.morningMarkers || [])}
                                   </div>
                                   <div className="matrix-col">
                                     <div className="matrix-col-label">T</div>
-                                    <div className="matrix-col-value">{c.afternoon}</div>
+                                    <div className={`matrix-col-value ${c.afternoon === 'F' ? 'matrix-failure' : ''}`}>
+                                      {c.afternoon}
+                                    </div>
+                                    {renderMarker(c.afternoonMarkers || [])}
                                   </div>
                                   <div className="matrix-col">
                                     <div className="matrix-col-label">HE</div>
@@ -783,6 +792,17 @@ export default function Presencas() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                <div className="matrix-observations">
+                  <h4>Observações</h4>
+                  <ul>
+                    {reportObservations.map(record => (
+                      <li key={`${record.userId}-${record.day}-${record.period}-${record.observationId}`}>
+                        <strong>*{record.observationId}</strong> — {record.name || `User ${record.userId}`} · {record.day} · {record.period === 'm' ? 'Manhã' : 'Tarde'}: {record.observations}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             )}
@@ -904,6 +924,13 @@ export default function Presencas() {
         .matrix-col { display: flex; flex-direction: column; align-items: flex-start; min-width: 60px; }
         .matrix-col-label { font-weight: 700; color: #475569; font-size: 0.85rem; }
         .matrix-col-value { font-size: 0.95rem; color: #0f172a; }
+        .matrix-failure { color: #dc2626; font-weight: 800; }
+        .matrix-observation-markers { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+        .matrix-obs-tag { color: #b91c1c; font-size: 0.72rem; font-weight: 800; }
+        .matrix-observations { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+        .matrix-observations h4 { margin: 0 0 8px; color: #0f172a; }
+        .matrix-observations ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+        .matrix-observations li { color: #334155; }
         
         .presencas-field input,
         .presencas-field select {
